@@ -9,8 +9,8 @@ set(HELPERS_FILES
   src/zilvectors.hpp
 )
 set(IPC_CLASS_FILES
-  src/IPCsimulator.cpp
-  src/IPCsimulator.hpp
+  src/IPCsimulation.cpp
+  src/IPCsimulation.hpp
 )
 set(MAIN_FILES
   src/main.cpp

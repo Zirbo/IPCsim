@@ -2,19 +2,15 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include "IPCsimulator.hpp"
+#include "IPCsimulation.hpp"
 #define PI 3.1415926535897932
 
-void IPCsimulator::run(bool doWarmup) {
+void IPCsimulation::run(bool doWarmup) {
     // declarations
     time_t program_begins, simulation_begins, simulation_ends;
     time(&program_begins);
-    space::vec *x, *v, *F;
-    char *farben;
-    cell_lists cells;
-    unsigned long t(0);
-    std::fstream OUT;
-    std::fstream ET;
+    std::fstream outputFile;
+    std::fstream energyTrajectoryFile;
     std::string s1="siml/trajectory.xyz";
 
     // clean up old data
@@ -22,18 +18,18 @@ void IPCsimulator::run(bool doWarmup) {
     if(system("mkdir siml") != 0){ std::cerr<<"Unable to create 'siml/' directory...\n";    exit(1);  }
 
     // check starting flag; if ok initialize simulation
-    OUT.open("siml/output.out", std::ios::out);
-    warmup(x,v,F,farben,OUT,cells,doWarmup);
+    outputFile.open("siml/output.out", std::ios::out);
+    warmup(doWarmup);
 
 
     // print starting configuration and initialize output file
-    output(x,v,F,farben,s1,t,true);
-    OUT<<"\nPlot evolution.out to check the evolution of the system.\n";
-    ET.open("siml/evolution.out", std::ios::out);
-    ET<<std::scientific<<std::setprecision(10);
-    ET<<"#t\t\tT\t\tK\t\tU\t\tE\t\trminbb\t\trminbs\t\trminss\t\trmin\n";
-    ET<<t*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
-    ET<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
+    output(s1,true);
+    outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
+    energyTrajectoryFile.open("siml/evolution.out", std::ios::out);
+    energyTrajectoryFile<<std::scientific<<std::setprecision(10);
+    energyTrajectoryFile<<"#t\t\tT\t\tK\t\tU\t\tE\t\trminbb\t\trminbs\t\trminss\t\trmin\n";
+    energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
+    energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
 
     // compute printing schedule  --> CHANGE THIS AS NEEDED!
     //   par.nPrints = 2*int(log(par.SimLength)/log(2)+0.5);
@@ -48,19 +44,19 @@ void IPCsimulator::run(bool doWarmup) {
     // simulation begins
     time(&simulation_begins);
     int print=0;
-    while(t<int(par.SimLength/par.dt_nonscaled))
+    while(simulationTime<int(par.SimLength/par.dt_nonscaled))
     {
-      verlet(t,x,v,F,cells);
+      verlet();
 
-      if(t%10==0)  // print time, temperature, energies, minimum distances
+      if(simulationTime%10==0)  // print time, temperature, energies, minimum distances
       {
-        ET<<t*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
-        ET<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
+        energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
+        energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
       }
 
-      if( t==printtimes[print])  // print configuration
+      if( simulationTime==printtimes[print])  // print configuration
       {
-        output(x,v,F,farben,s1,t,true);
+        output(s1,true);
         print++;
       }
     }
@@ -71,16 +67,16 @@ void IPCsimulator::run(bool doWarmup) {
       pcm += v[i];
     pcm *= par.L;
 
-    output(x,v,F,farben,"startingstate.xyz",t,false);
+    output("startingstate.xyz",false);
     time(&simulation_ends);
     double dif = difftime (simulation_ends,simulation_begins);
-    OUT<<"The simulation lasted "<<dif<<" seconds.\n";
-    OUT<<"Residual momentum whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" ).\n"<<std::endl;
+    outputFile<<"The simulation lasted "<<dif<<" seconds.\n";
+    outputFile<<"Residual momentum whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" ).\n"<<std::endl;
     dif = difftime (simulation_ends,program_begins);
-    OUT<<"The whole program lasted "<<dif<<" seconds.\n";
+    outputFile<<"The whole program lasted "<<dif<<" seconds.\n";
 
-    OUT<<"\nYou divided by zero and the last monk of the only non-fake religion\n";
-    OUT<<"got Syphilis while lighting a candle for the candle-making industries.\n";
+    outputFile<<"\nYou divided by zero and the last monk of the only non-fake religion\n";
+    outputFile<<"got Syphilis while lighting a candle for the candle-making industries.\n";
 }
 
 
@@ -88,7 +84,7 @@ void IPCsimulator::run(bool doWarmup) {
 
 
 //************************************************************************//
-double IPCsimulator::omega(double Ra, double Rb, double rab)
+double IPCsimulation::omega(double Ra, double Rb, double rab)
 {  // BKL paper, formula 18
   if ( rab > Ra+Rb )    return 0.;
   else if ( rab <= fabs(Ra-Rb) )   return 8.*pow(std::min(Ra,Rb),3);
@@ -99,7 +95,7 @@ double IPCsimulator::omega(double Ra, double Rb, double rab)
             + (2.*Rb-cacca+rab/2.)*pow(Rb+cacca-rab/2.,2) );
   }
 }
-double IPCsimulator::d_dr_omega(double Ra, double Rb, double rab)
+double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab)
 {  // BKL paper, derivative of formula 18
   if ( rab >= Ra+Rb || rab <= fabs(Ra-Rb) )    return 0.;
   else
@@ -109,7 +105,7 @@ double IPCsimulator::d_dr_omega(double Ra, double Rb, double rab)
     return (6./rab)*( cacca_mins*(Ra-cacca_plus)*(Ra+cacca_plus) - cacca_plus*(Rb-cacca_mins)*(Rb+cacca_mins) );
   }
 }
-void IPCsimulator::FU_table::make_table(Ensemble par)
+void IPCsimulation::FU_table::make_table(Ensemble par)
 {
   int length = int( 2.*par.bigRadius/par.FUsamplingDeltar ) + 1;
   uBB   = new double [length];
@@ -175,13 +171,13 @@ void IPCsimulator::FU_table::make_table(Ensemble par)
 
 
 //************************************************************************//
-void IPCsimulator::output(space::vec x[], space::vec v[], space::vec F[], char farben[], std::string nome, unsigned long t, bool append)
+void IPCsimulation::output(std::string nome, bool append)
 {
   std::ofstream Out;
   if(append)   Out.open(nome.c_str(), std::ios::app);
   else         Out.open(nome.c_str());
   Out<<std::scientific<<std::setprecision(24);
-  Out<<3*par.nIPCs<<"\n"<<t*par.dt_nonscaled<<"\n";
+  Out<<3*par.nIPCs<<"\n"<<simulationTime*par.dt_nonscaled<<"\n";
   for(int i=0; i<par.nIPCs; i++)
   {
     for(int a=0; a<3; a++)
@@ -199,8 +195,10 @@ void IPCsimulator::output(space::vec x[], space::vec v[], space::vec F[], char f
 
 
 /*****************************************************************************************/
-void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, char *& farben, std::ostream & OUT, cell_lists & cells, bool restoreprevious)
+void IPCsimulation::warmup(bool restoreprevious)
 {
+  simulationTime = 0;
+
   Ran rand(483248720420);
   int N1, N2, N3;
   // input from file
@@ -249,7 +247,7 @@ void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, cha
     x = new space::vec[3*par.nIPCs]; v = new space::vec[3*par.nIPCs]; F = new space::vec[3*par.nIPCs];
     farben = new char[3*par.nIPCs];
 
-  //  OUT<<"Reading "<<par.nIPCs<< " particles positions and velocities from file.\n";
+  //  outputFile<<"Reading "<<par.nIPCs<< " particles positions and velocities from file.\n";
 
     for(int i=0;i<par.nIPCs;i++)
     {
@@ -265,31 +263,31 @@ void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, cha
   }
 
   // output the data for future checks
-  OUT<<N1<<"\t"<<par.rho<<"\t"<<par.kTimposed<<"\n";
-  OUT<<par.dt_nonscaled<<"\t"<<par.PrintEvery<<"\t"<<par.SimLength<<"\n";
-  OUT<<par.e_BB<<"\t"<<par.e_Bs1<<"\t"<<par.e_Bs2<<"\n";
-  OUT<<par.e_s1s2<<"\t"<<par.e_s1s1<<"\t"<<par.e_s2s2<<"\n";
-  OUT<<par.e_min<<"\n";
-  OUT<<par.ecc1<<"\t"<<par.s1Radius<<"\n";
-  OUT<<par.ecc2<<"\t"<<par.s2Radius<<"\n";
-  OUT<<par.m1<<"\t"<<par.m2<<"\t"<<par.mc;
-  OUT<<par.FakeHScoef<<"\t"<<par.FakeHSexp<<"\n";
-  OUT<<par.FUsamplingDeltar<<"\t"<<par.Tollerance;
-  OUT<<par.Ec.x<<"\t"<<par.Ec.y<<"\t"<<par.Ec.z<<"\n";
-  OUT<<par.qc<<"\t"<<par.qp1<<"\t"<<par.qp2<<"\n";
+  outputFile<<N1<<"\t"<<par.rho<<"\t"<<par.kTimposed<<"\n";
+  outputFile<<par.dt_nonscaled<<"\t"<<par.PrintEvery<<"\t"<<par.SimLength<<"\n";
+  outputFile<<par.e_BB<<"\t"<<par.e_Bs1<<"\t"<<par.e_Bs2<<"\n";
+  outputFile<<par.e_s1s2<<"\t"<<par.e_s1s1<<"\t"<<par.e_s2s2<<"\n";
+  outputFile<<par.e_min<<"\n";
+  outputFile<<par.ecc1<<"\t"<<par.s1Radius<<"\n";
+  outputFile<<par.ecc2<<"\t"<<par.s2Radius<<"\n";
+  outputFile<<par.m1<<"\t"<<par.m2<<"\t"<<par.mc;
+  outputFile<<par.FakeHScoef<<"\t"<<par.FakeHSexp<<"\n";
+  outputFile<<par.FUsamplingDeltar<<"\t"<<par.Tollerance;
+  outputFile<<par.Ec.x<<"\t"<<par.Ec.y<<"\t"<<par.Ec.z<<"\n";
+  outputFile<<par.qc<<"\t"<<par.qp1<<"\t"<<par.qp2<<"\n";
 
   // computing fields
   par.Ep1 = par.Ec*par.qp1;
   par.Ep2 = par.Ec*par.qp2;
   par.Ec *= par.qc;
 
-  OUT<<"\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-  OUT<<"\nDensity = "<<par.nIPCs<<"/"<<pow(par.L,3)<<" = ";
-  OUT<<par.nIPCs/pow(par.L,3)<<" = "<<par.rho<<"\nSide = "<<par.L<<std::endl;
-  OUT<<"Total number of simulated particles: "<<par.nIPCs+par.nPatc<<std::endl;
+  outputFile<<"\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
+  outputFile<<"\nDensity = "<<par.nIPCs<<"/"<<pow(par.L,3)<<" = ";
+  outputFile<<par.nIPCs/pow(par.L,3)<<" = "<<par.rho<<"\nSide = "<<par.L<<std::endl;
+  outputFile<<"Total number of simulated particles: "<<par.nIPCs+par.nPatc<<std::endl;
 
   // potential sampling
-  OUT<<"Printing potential plots in 'potentials.out'.\n";
+  outputFile<<"Printing potential plots in 'potentials.out'.\n";
   tab.make_table(par);
 
   // scaling of lenghts for [0.0:1.0] simulation box
@@ -375,18 +373,18 @@ void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, cha
 
   // cell list compilation
   cells.initialize(1.,par.PotRange,par.nIPCs,x);
-  OUT<<"Total number of cells: "<<cells.M3<<std::endl;
+  outputFile<<"Total number of cells: "<<cells.M3<<std::endl;
   cells.compilelists(x);
 
   // first computation of forces
-  free_force(x,v,F,cells);
+  free_force();
 
   // check that total momentum is zero
   space::vec pcm = space::vec( 0., 0., 0. );
   for(int i=0;i<3*par.nIPCs;i++)
     pcm += v[i];
   pcm *= par.L;
-  OUT<<"P whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" )."<<std::endl;
+  outputFile<<"P whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" )."<<std::endl;
 
   // if not restoring, correct the total momentum to be zero
       if(!restoreprevious)
@@ -399,7 +397,7 @@ void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, cha
           pcm_after += v[i];
         }
         pcm_after *= par.L;
-        OUT<<"P whole system corrected = ( "<<pcm_after.x<<", "<<pcm_after.y<<", "<<pcm_after.z<<" )."<<std::endl;
+        outputFile<<"P whole system corrected = ( "<<pcm_after.x<<", "<<pcm_after.y<<", "<<pcm_after.z<<" )."<<std::endl;
       }
 
   // compute kinetic and total energy, temperature
@@ -421,7 +419,7 @@ void IPCsimulator::warmup(space::vec *& x, space::vec *& v, space::vec *& F, cha
 
 
 /*****************************************************************************************/
-void IPCsimulator::free_force(space::vec x[], space::vec v[], space::vec F[], cell_lists cells)
+void IPCsimulation::free_force()
 {
   // Computes the force without accounting for constrains.
   // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
@@ -579,7 +577,7 @@ void IPCsimulator::free_force(space::vec x[], space::vec v[], space::vec F[], ce
 
 
 
-void IPCsimulator::verlet(unsigned long &t, space::vec x[], space::vec v[], space::vec F[], cell_lists cells)
+void IPCsimulation::verlet()
 {
   /*
    * Every IPC has 3 points: the cm and two patches.
@@ -634,7 +632,7 @@ void IPCsimulator::verlet(unsigned long &t, space::vec x[], space::vec v[], spac
   }
 
   cells.compilelists(x);                // rewrite cell lists for the new iteration
-  free_force(x,v,F,cells);      // compute F(x[t+dt]) and the potential
+  free_force();      // compute F(x[t+dt]) and the potential
 
   par.K = 0.;
   double virialconstrains(0.);
@@ -668,5 +666,5 @@ void IPCsimulator::verlet(unsigned long &t, space::vec x[], space::vec v[], spac
   par.K *= .5*par.L2;
   par.E = par.K + par.U;
   par.kT = par.kToverK*par.K;
-  t++;
+  simulationTime++;
 }

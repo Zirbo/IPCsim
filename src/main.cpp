@@ -1,5 +1,5 @@
 #include <iostream>
-#include "IPCsimulator.hpp"
+#include "IPCsimulation.hpp"
 
 int main ( int argc, char *argv[] )
 {
@@ -13,6 +13,6 @@ int main ( int argc, char *argv[] )
     else
     {    std::cerr<<"Uncorrect parameter, use either \"new\" or \"old\".\n";    exit(1);    }
 
-    IPCsimulator simulation;
+    IPCsimulation simulation;
     simulation.run(doWarmup);
 }

@@ -9,7 +9,7 @@
 #include "cell_lists.hpp"
 
 
-class IPCsimulator {
+class IPCsimulation {
 public:
     //IPCsimulator();
     void run(bool doWarmup);
@@ -44,6 +44,13 @@ private:
         double qc, qp1, qp2;
     } par;
 
+    unsigned long simulationTime;
+    space::vec *x, *v, *F;
+    char *farben;
+    cell_lists cells;
+    std::ofstream outputFile;
+    std::ofstream energyTrajectoryFile;
+
 
     // force and potential tables computation
     struct FU_table
@@ -56,11 +63,11 @@ private:
     static double omega(double Ra, double Rb, double rab);
     static double d_dr_omega(double Ra, double Rb, double rab);
     // simulation parts
-    void free_force(space::vec x[], space::vec v[], space::vec F[], cell_lists cells);
-    void verlet(unsigned long &t, space::vec x[], space::vec v[], space::vec F[], cell_lists cells);
+    void free_force();
+    void verlet();
     // selfexplanatory
-    void warmup(space::vec *& x, space::vec *& v, space::vec *& F, char *& farben, std::ostream & OUT, cell_lists & cells, bool restoreprevious);
-    void output(space::vec x[], space::vec v[], space::vec F[], char farben[], std::string nome, unsigned long t, bool append);
+    void warmup(bool restoreprevious);
+    void output(std::string nome, bool append);
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__
