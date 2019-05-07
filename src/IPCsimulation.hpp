@@ -4,7 +4,6 @@
 
 #include <fstream>
 #include <string>
-#include "zilrandom.hpp"
 #include "zilvectors.hpp"
 #include "cell_lists.hpp"
 
@@ -50,7 +49,6 @@ private:
     cell_lists cells;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;
-
 
     // force and potential tables computation
     struct FU_table

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include "zilrandom.hpp"
 #include "IPCsimulation.hpp"
 #define PI 3.1415926535897932
 
@@ -199,7 +200,7 @@ void IPCsimulation::warmup(bool restoreprevious)
 {
   simulationTime = 0;
 
-  Ran rand(483248720420);
+  RandomDoubleGenerator rand;
   int N1, N2, N3;
   // input from file
   std::fstream IN("input.in", std::ios::in);
@@ -327,25 +328,25 @@ void IPCsimulation::warmup(bool restoreprevious)
     farben = new char[3*par.nIPCs];
 
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
-    // 4 is to compensate that the average |x| from x=rand.d55() is 0.25
+    // 4 is to compensate that the average |x| from x=rand.getRandom55() is 0.25
     double vel_scaling = 4.*sqrt(2.*par.kTimposed/PI)/par.L;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
       // FCC is obtained as 4 intersecating SC
-      x[i]      = space::vec( i%N1 + .1*rand.d55(), (i/N1)%N1 + .1*rand.d55(), i/N2 + .1*rand.d55() )/N1;
+      x[i]      = space::vec( i%N1 + .1*rand.getRandom55(), (i/N1)%N1 + .1*rand.getRandom55(), i/N2 + .1*rand.getRandom55() )/N1;
         floorccp(x[i]);
-      x[i+N3]   = space::vec( .5+i%N1 + .1*rand.d55(), .5+(i/N1)%N1 + .1*rand.d55(), i/N2 + .1*rand.d55() )/N1;
+      x[i+N3]   = space::vec( .5+i%N1 + .1*rand.getRandom55(), .5+(i/N1)%N1 + .1*rand.getRandom55(), i/N2 + .1*rand.getRandom55() )/N1;
         floorccp(x[i+N3]);
-      x[i+2*N3] = space::vec( i%N1 + .1*rand.d55(), .5+(i/N1)%N1 + .1*rand.d55(), .5+i/N2 + .1*rand.d55() )/N1;
+      x[i+2*N3] = space::vec( i%N1 + .1*rand.getRandom55(), .5+(i/N1)%N1 + .1*rand.getRandom55(), .5+i/N2 + .1*rand.getRandom55() )/N1;
         floorccp(x[i+2*N3]);
-      x[i+3*N3] = space::vec( .5+i%N1 + .1*rand.d55(), (i/N1)%N1 + .1*rand.d55(), .5+i/N2 + .1*rand.d55() )/N1;
+      x[i+3*N3] = space::vec( .5+i%N1 + .1*rand.getRandom55(), (i/N1)%N1 + .1*rand.getRandom55(), .5+i/N2 + .1*rand.getRandom55() )/N1;
         floorccp(x[i+3*N3]);
       // starting from random but ONLY TRANSLATIONAL speeds, for compatibility with rattle
-      v[i]          = space::vec( rand.d55()*vel_scaling, rand.d55()*vel_scaling, rand.d55()*vel_scaling );
-      v[i+N3]       = space::vec( rand.d55()*vel_scaling, rand.d55()*vel_scaling, rand.d55()*vel_scaling );
-      v[i+N3+N3]    = space::vec( rand.d55()*vel_scaling, rand.d55()*vel_scaling, rand.d55()*vel_scaling );
-      v[i+N3+N3+N3] = space::vec( rand.d55()*vel_scaling, rand.d55()*vel_scaling, rand.d55()*vel_scaling );
+      v[i]          = space::vec( rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling );
+      v[i+N3]       = space::vec( rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling );
+      v[i+N3+N3]    = space::vec( rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling );
+      v[i+N3+N3+N3] = space::vec( rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling, rand.getRandom55()*vel_scaling );
     }
     //v[1]=v[2]=v[3]=space::vec(0.,0.,0.);
     // initialize patches positions
