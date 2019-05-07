@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
@@ -9,8 +8,6 @@ void IPCsimulation::run(bool doWarmup) {
     // declarations
     time_t program_begins, simulation_begins, simulation_ends;
     time(&program_begins);
-    std::fstream outputFile;
-    std::fstream energyTrajectoryFile;
     std::string s1="siml/trajectory.xyz";
 
     // clean up old data
@@ -23,7 +20,7 @@ void IPCsimulation::run(bool doWarmup) {
 
 
     // print starting configuration and initialize output file
-    output(s1,true);
+    outputSystemState(s1,true);
     outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
     energyTrajectoryFile.open("siml/evolution.out", std::ios::out);
     energyTrajectoryFile<<std::scientific<<std::setprecision(10);
@@ -46,17 +43,11 @@ void IPCsimulation::run(bool doWarmup) {
     int print=0;
     while(simulationTime<int(par.SimLength/par.dt_nonscaled))
     {
-      verlet();
-
-      if(simulationTime%10==0)  // print time, temperature, energies, minimum distances
-      {
-        energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
-        energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
-      }
+      velocityVerletIteration();
 
       if( simulationTime==printtimes[print])  // print configuration
       {
-        output(s1,true);
+        outputSystemState(s1,true);
         print++;
       }
     }
@@ -67,7 +58,7 @@ void IPCsimulation::run(bool doWarmup) {
       pcm += v[i];
     pcm *= par.L;
 
-    output("startingstate.xyz",false);
+    outputSystemState("startingstate.xyz",false);
     time(&simulation_ends);
     double dif = difftime (simulation_ends,simulation_begins);
     outputFile<<"The simulation lasted "<<dif<<" seconds.\n";
@@ -171,7 +162,7 @@ void IPCsimulation::FU_table::make_table(Ensemble par)
 
 
 //************************************************************************//
-void IPCsimulation::output(std::string nome, bool append)
+void IPCsimulation::outputSystemState(std::string nome, bool append)
 {
   std::ofstream Out;
   if(append)   Out.open(nome.c_str(), std::ios::app);
@@ -188,6 +179,9 @@ void IPCsimulation::output(std::string nome, bool append)
     }
   }
   Out.close();
+
+  energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
+  energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
 }
 
 
@@ -377,7 +371,7 @@ void IPCsimulation::warmup(bool restoreprevious)
   cells.compilelists(x);
 
   // first computation of forces
-  free_force();
+  computeFreeForce();
 
   // check that total momentum is zero
   space::vec pcm = space::vec( 0., 0., 0. );
@@ -419,7 +413,7 @@ void IPCsimulation::warmup(bool restoreprevious)
 
 
 /*****************************************************************************************/
-void IPCsimulation::free_force()
+void IPCsimulation::computeFreeForce()
 {
   // Computes the force without accounting for constrains.
   // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
@@ -577,7 +571,7 @@ void IPCsimulation::free_force()
 
 
 
-void IPCsimulation::verlet()
+void IPCsimulation::velocityVerletIteration()
 {
   /*
    * Every IPC has 3 points: the cm and two patches.
@@ -632,7 +626,7 @@ void IPCsimulation::verlet()
   }
 
   cells.compilelists(x);                // rewrite cell lists for the new iteration
-  free_force();      // compute F(x[t+dt]) and the potential
+  computeFreeForce();      // compute F(x[t+dt]) and the potential
 
   par.K = 0.;
   double virialconstrains(0.);

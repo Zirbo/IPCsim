@@ -63,11 +63,11 @@ private:
     static double omega(double Ra, double Rb, double rab);
     static double d_dr_omega(double Ra, double Rb, double rab);
     // simulation parts
-    void free_force();
-    void verlet();
+    void computeFreeForce();
+    void velocityVerletIteration();
     // selfexplanatory
     void warmup(bool restoreprevious);
-    void output(std::string nome, bool append);
+    void outputSystemState(std::string nome, bool append);
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__
