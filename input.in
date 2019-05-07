@@ -1,21 +1,33 @@
-8         0.65      1.
-2.5e-3    20        20000
-3.18802   -24.3562  58.9717   1.02726
+5         0.65      1.0
+2.5e-3    20        20
+3.18802   -24.3562  -24.3562
+58.9717   58.9717   58.9717
+1.02726
 0.22      0.38
+0.22      0.38
+1.        1.        1.
 500       15
 1e-6      1e-12
+0.        0.        0.
+2.        -1.       -1.
 ________________________________________________________________
 |               explanation                                     |
 |                                                               |
   IN>>N1>>par.rho>>par.kTimposed;
   IN>>par.dt_nonscaled>>par.PrintEvery>>par.SimLength;
-  IN>>par.e_BB>>par.e_BS>>par.e_SS>>par.e_min;
-  IN>>par.eccentricity>>par.smallRadius;
+  IN>>par.e_BB>>par.e_Bs1>>par.e_Bs2;
+  IN>>par.e_s1s1>>par.e_s2s2>>par.e_s1s2;
+  IN>>par.e_min;
+  IN>>par.ecc1>>par.s1Radius;
+  IN>>par.ecc2>>par.s2Radius;
+  IN>>par.m1>>par.m2>>par.mc;
   IN>>par.FakeHScoef>>par.FakeHSexp;
   IN>>par.FUsamplingDeltar>>par.Tollerance;
+  IN>>par.Ec.x>>par.Ec.y>>par.Ec.z;
+  IN>>par.qc>>par.qp1>>par.qp2;
   
   kTimposed is the tentative temperature for a new simulation,
-  and the ratio by which to multiply velocities for a restore.
+  and the ratio by which to multiply velocities for a restore.S
   
   
   30n
