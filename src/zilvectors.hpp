@@ -36,28 +36,6 @@
 #include <list>
 #include "zilrandom.hpp"
 
-namespace plane
-{
-  // 2D vector class
-  class vec
-  {
-  public:
-    double x, y;
-    vec (void)  {};
-    vec (double a, double b)  {  x=a;  y=b;  }
-   ~vec ()  {}
-    vec operator + (vec);
-    vec operator - (vec);
-    vec operator * (double);
-    vec operator / (double);
-    void operator += (vec);
-    void operator -= (vec);
-    void operator *= (double);
-    void operator /= (double);
-    double operator * (vec);  // scalar product
-  };
-}
-/*----------------------------------------------------------------*/
 namespace space
 {
   // 3D vector class
@@ -65,7 +43,7 @@ namespace space
   {
   public:
     double x, y, z;
-    vec (void)  {};
+    vec (void)  {}
     vec (double a, double b, double c)    {  x=a;  y=b;  z=c;  }
    ~vec ()  {}
     vec operator + (vec);
@@ -101,15 +79,6 @@ inline void ranor(space::vec & a, RandomDoubleGenerator & r)
 }
 
 
-inline plane::vec plane::vec::operator + (vec add)  {  return vec (x+add.x, y+add.y);  }
-inline plane::vec plane::vec::operator - (vec add)  {  return vec (x-add.x, y-add.y);  }
-inline plane::vec plane::vec::operator * (double a) {  return vec (x*a, y*a);  }
-inline plane::vec plane::vec::operator / (double a) {  a=1./a; return vec (x*a, y*a);  }
-inline void plane::vec::operator += (vec add) { x+=add.x; y+=add.y; }
-inline void plane::vec::operator -= (vec add) { x-=add.x; y-=add.y; }
-inline void plane::vec::operator *= (double a) {  x*=a; y*=a;  }
-inline void plane::vec::operator /= (double a) {  a=1./a; x*=a; y*=a;  }
-inline double plane::vec::operator * (vec a) {  return x*a.x + y*a.y;  }
 /*******************************************************************************/
 inline space::vec space::vec::operator + (vec add)  {  return vec (x+add.x, y+add.y, z+add.z);  }
 inline space::vec space::vec::operator - (vec add)  {  return vec (x-add.x, y-add.y, z-add.z);  }
