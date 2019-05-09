@@ -29,50 +29,30 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
   energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
 }
 
-void IPCsimulation::run() {    // declarations
-  time_t program_begins, simulation_begins, simulation_ends;
-  time(&program_begins);
+void IPCsimulation::run() {
+  time_t simulationStartTime, simulationEndTime;
 
-    // compute printing schedule  --> CHANGE THIS AS NEEDED!
-    //   par.nPrints = 2*int(log(par.SimLength)/log(2)+0.5);
-    //   int *printtimes = new int [par.nPrints];
-    //   printtimes[0]=1;    printtimes[1]=2;    printtimes[2]=3;    printtimes[3]=4;
-    //   for(int i=4; i<par.nPrints; i++)  printtimes[i] = 2*printtimes[i-2];
-    simulationParameters.nPrints = int(simulationParameters.SimLength/simulationParameters.PrintEvery);
-    int *printtimes = new int [simulationParameters.nPrints];
-    for(int i=0; i<simulationParameters.nPrints; i++)
-      printtimes[i] = int((i+1)*simulationParameters.PrintEvery/simulationParameters.dt_nonscaled);
+  const unsigned long simulationDurationInIterations = unsigned long(simulationParameters.SimLength/simulationParameters.dt_nonscaled);
+  const unsigned long printingInterval = unsigned long(simulationParameters.PrintEvery/simulationParameters.dt_nonscaled);
 
-    // simulation begins
-    time(&simulation_begins);
-    int print=0;
-    while(simulationTime<int(simulationParameters.SimLength/simulationParameters.dt_nonscaled))
-    {
-      velocityVerletIteration();
+  // simulation begins
+  time(&simulationStartTime);
+  while(simulationTime < simulationDurationInIterations) {
+    velocityVerletIteration();
+    if( simulationTime%printingInterval == 0)
+      outputSystemState();
+  }
 
-      if( simulationTime==printtimes[print])  // print configuration
-      {
-        outputSystemState();
-        print++;
-      }
-    }
+  // check that total momentum is still zero and print final stuff
+  space::vec pcm = space::vec( 0., 0., 0. );
+  for(int i=0;i<3*simulationParameters.nIPCs;i++)
+    pcm += v[i];
+  pcm *= simulationParameters.L;
 
-    // check that total momentum is still zero and print final stuff
-    space::vec pcm = space::vec( 0., 0., 0. );
-    for(int i=0;i<3*simulationParameters.nIPCs;i++)
-      pcm += v[i];
-    pcm *= simulationParameters.L;
-
-    outputFINALSystemState();
-    time(&simulation_ends);
-    double dif = difftime (simulation_ends,simulation_begins);
-    outputFile<<"The simulation lasted "<<dif<<" seconds.\n";
-    outputFile<<"Residual momentum whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" ).\n"<<std::endl;
-    dif = difftime (simulation_ends,program_begins);
-    outputFile<<"The whole program lasted "<<dif<<" seconds.\n";
-
-    outputFile<<"\nYou divided by zero and the last monk of the only non-fake religion\n";
-    outputFile<<"got Syphilis while lighting a candle for the candle-making industries.\n";
+  outputFINALSystemState();
+  time(&simulationEndTime);
+  outputFile << "The simulation lasted " << difftime (simulationEndTime,simulationStartTime) << " seconds.\n";
+  outputFile << "Residual momentum of the whole system = ( " << pcm.x << ", " << pcm.y << ", " << pcm.z << " ).\n" << std::endl;
 }
 
 
