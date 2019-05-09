@@ -11,10 +11,11 @@
 
 class IPCsimulation {
 public:
-    //IPCsimulator();
-    void run(bool doWarmup);
+    IPCsimulation(bool restorePreviousSimulation);
+    void run();
 
 private:
+    IPCsimulation();
     struct Ensemble {
         // state point
         int nIPCs;
@@ -50,6 +51,7 @@ private:
     cell_lists cells;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;
+    std::ofstream trajectoryFile;
 
     // force and potential tables computation
     struct FU_table
@@ -65,8 +67,9 @@ private:
     void computeFreeForce();
     void velocityVerletIteration();
     // selfexplanatory
-    void warmup(bool restoreprevious);
-    void outputSystemState(std::string nome, bool append);
+    void initializeSystem(bool restoreprevious);
+    void outputSystemState();
+    void outputFINALSystemState();
 
 private:
     // small helpers

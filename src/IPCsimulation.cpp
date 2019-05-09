@@ -4,29 +4,34 @@
 #include "IPCsimulation.hpp"
 #define PI 3.1415926535897932
 
-void IPCsimulation::run(bool doWarmup) {
-    // declarations
-    time_t program_begins, simulation_begins, simulation_ends;
-    time(&program_begins);
-    std::string s1="siml/trajectory.xyz";
+IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
+  // clean up old data and recreate output directory
+  system("rm -rf siml");
+  if(system("mkdir siml") != 0) {
+    std::cerr<<"Unable to create 'siml/' directory...\n";
+    exit(1);
+  }
 
-    // clean up old data
-    if(system("rm -r siml") != 0)  std::cerr<<"Just ignore this 'rm: cannot remove ...' thing\n";
-    if(system("mkdir siml") != 0){ std::cerr<<"Unable to create 'siml/' directory...\n";    exit(1);  }
+  // open output files
+  outputFile.open("siml/output.out");
+  trajectoryFile.open("siml/trajectory.xyz");
+  energyTrajectoryFile.open("siml/evolution.out");
 
-    // check starting flag; if ok initialize simulation
-    outputFile.open("siml/output.out", std::ios::out);
-    warmup(doWarmup);
+  // initialize system
+  initializeSystem(restorePreviousSimulation);
 
+  // print starting configuration and initialize output file
+  outputSystemState();
+  outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
+  energyTrajectoryFile<<std::scientific<<std::setprecision(10);
+  energyTrajectoryFile<<"#t\t\tT\t\tK\t\tU\t\tE\t\trminbb\t\trminbs\t\trminss\t\trmin\n";
+  energyTrajectoryFile<<simulationTime*simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.kT<<"\t"<<simulationParameters.K/simulationParameters.nIPCs<<"\t"<<simulationParameters.U/simulationParameters.nIPCs<<"\t"<<simulationParameters.E/simulationParameters.nIPCs;
+  energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
+}
 
-    // print starting configuration and initialize output file
-    outputSystemState(s1,true);
-    outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
-    energyTrajectoryFile.open("siml/evolution.out", std::ios::out);
-    energyTrajectoryFile<<std::scientific<<std::setprecision(10);
-    energyTrajectoryFile<<"#t\t\tT\t\tK\t\tU\t\tE\t\trminbb\t\trminbs\t\trminss\t\trmin\n";
-    energyTrajectoryFile<<simulationTime*simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.kT<<"\t"<<simulationParameters.K/simulationParameters.nIPCs<<"\t"<<simulationParameters.U/simulationParameters.nIPCs<<"\t"<<simulationParameters.E/simulationParameters.nIPCs;
-    energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
+void IPCsimulation::run() {    // declarations
+  time_t program_begins, simulation_begins, simulation_ends;
+  time(&program_begins);
 
     // compute printing schedule  --> CHANGE THIS AS NEEDED!
     //   par.nPrints = 2*int(log(par.SimLength)/log(2)+0.5);
@@ -47,7 +52,7 @@ void IPCsimulation::run(bool doWarmup) {
 
       if( simulationTime==printtimes[print])  // print configuration
       {
-        outputSystemState(s1,true);
+        outputSystemState();
         print++;
       }
     }
@@ -58,7 +63,7 @@ void IPCsimulation::run(bool doWarmup) {
       pcm += v[i];
     pcm *= simulationParameters.L;
 
-    outputSystemState("startingstate.xyz",false);
+    outputFINALSystemState();
     time(&simulation_ends);
     double dif = difftime (simulation_ends,simulation_begins);
     outputFile<<"The simulation lasted "<<dif<<" seconds.\n";
@@ -174,23 +179,19 @@ void IPCsimulation::FU_table::make_table(Ensemble par, bool printPotentials)
 
 
 //************************************************************************//
-void IPCsimulation::outputSystemState(std::string nome, bool append)
+void IPCsimulation::outputSystemState()
 {
-  std::ofstream Out;
-  if(append)   Out.open(nome.c_str(), std::ios::app);
-  else         Out.open(nome.c_str());
-  Out<<std::scientific<<std::setprecision(24);
-  Out<<3*simulationParameters.nIPCs<<"\n"<<simulationTime*simulationParameters.dt_nonscaled<<"\n";
+  trajectoryFile<<std::scientific<<std::setprecision(24);
+  trajectoryFile<<3*simulationParameters.nIPCs<<"\n"<<simulationTime*simulationParameters.dt_nonscaled<<"\n";
   for(int i=0; i<simulationParameters.nIPCs; i++)
   {
     for(int a=0; a<3; a++)
     {
-      Out<<farben[i+a*simulationParameters.nIPCs]<<"\t";
-      Out<<x[i+a*simulationParameters.nIPCs].x<<"\t"<<x[i+a*simulationParameters.nIPCs].y<<"\t"<<x[i+a*simulationParameters.nIPCs].z<<"\t";
-      Out<<v[i+a*simulationParameters.nIPCs].x<<"\t"<<v[i+a*simulationParameters.nIPCs].y<<"\t"<<v[i+a*simulationParameters.nIPCs].z<<"\n";
+      trajectoryFile<<farben[i+a*simulationParameters.nIPCs]<<"\t";
+      trajectoryFile<<x[i+a*simulationParameters.nIPCs].x<<"\t"<<x[i+a*simulationParameters.nIPCs].y<<"\t"<<x[i+a*simulationParameters.nIPCs].z<<"\t";
+      trajectoryFile<<v[i+a*simulationParameters.nIPCs].x<<"\t"<<v[i+a*simulationParameters.nIPCs].y<<"\t"<<v[i+a*simulationParameters.nIPCs].z<<"\n";
     }
   }
-  Out.close();
 
   energyTrajectoryFile<<simulationTime*simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.kT<<"\t"<<simulationParameters.K/simulationParameters.nIPCs<<"\t"<<simulationParameters.U/simulationParameters.nIPCs<<"\t"<<simulationParameters.E/simulationParameters.nIPCs;
   energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
@@ -200,8 +201,31 @@ void IPCsimulation::outputSystemState(std::string nome, bool append)
 
 
 
+//************************************************************************//
+void IPCsimulation::outputFINALSystemState()
+{
+
+  std::ofstream outputFile("siml/startingstate.xyz");
+  outputFile<<std::scientific<<std::setprecision(24);
+  outputFile<<3*simulationParameters.nIPCs<<"\n"<<simulationTime*simulationParameters.dt_nonscaled<<"\n";
+  for(int i=0; i<simulationParameters.nIPCs; i++)
+  {
+    for(int a=0; a<3; a++)
+    {
+      outputFile<<farben[i+a*simulationParameters.nIPCs]<<"\t";
+      outputFile<<x[i+a*simulationParameters.nIPCs].x<<"\t"<<x[i+a*simulationParameters.nIPCs].y<<"\t"<<x[i+a*simulationParameters.nIPCs].z<<"\t";
+      outputFile<<v[i+a*simulationParameters.nIPCs].x<<"\t"<<v[i+a*simulationParameters.nIPCs].y<<"\t"<<v[i+a*simulationParameters.nIPCs].z<<"\n";
+    }
+  }
+  outputFile.close();
+}
+
+
+
+
+
 /*****************************************************************************************/
-void IPCsimulation::warmup(bool restoreprevious)
+void IPCsimulation::initializeSystem(bool restoreprevious)
 {
   simulationTime = 0;
 
