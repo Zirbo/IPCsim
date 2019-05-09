@@ -1,7 +1,6 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include "randomNumberGenerator.hpp"
 #include "IPCsimulation.hpp"
 #define PI 3.1415926535897932
 
@@ -26,23 +25,23 @@ void IPCsimulation::run(bool doWarmup) {
     energyTrajectoryFile.open("siml/evolution.out", std::ios::out);
     energyTrajectoryFile<<std::scientific<<std::setprecision(10);
     energyTrajectoryFile<<"#t\t\tT\t\tK\t\tU\t\tE\t\trminbb\t\trminbs\t\trminss\t\trmin\n";
-    energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
-    energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
+    energyTrajectoryFile<<simulationTime*simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.kT<<"\t"<<simulationParameters.K/simulationParameters.nIPCs<<"\t"<<simulationParameters.U/simulationParameters.nIPCs<<"\t"<<simulationParameters.E/simulationParameters.nIPCs;
+    energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
 
     // compute printing schedule  --> CHANGE THIS AS NEEDED!
     //   par.nPrints = 2*int(log(par.SimLength)/log(2)+0.5);
     //   int *printtimes = new int [par.nPrints];
     //   printtimes[0]=1;    printtimes[1]=2;    printtimes[2]=3;    printtimes[3]=4;
     //   for(int i=4; i<par.nPrints; i++)  printtimes[i] = 2*printtimes[i-2];
-    par.nPrints = int(par.SimLength/par.PrintEvery);
-    int *printtimes = new int [par.nPrints];
-    for(int i=0; i<par.nPrints; i++)
-      printtimes[i] = int((i+1)*par.PrintEvery/par.dt_nonscaled);
+    simulationParameters.nPrints = int(simulationParameters.SimLength/simulationParameters.PrintEvery);
+    int *printtimes = new int [simulationParameters.nPrints];
+    for(int i=0; i<simulationParameters.nPrints; i++)
+      printtimes[i] = int((i+1)*simulationParameters.PrintEvery/simulationParameters.dt_nonscaled);
 
     // simulation begins
     time(&simulation_begins);
     int print=0;
-    while(simulationTime<int(par.SimLength/par.dt_nonscaled))
+    while(simulationTime<int(simulationParameters.SimLength/simulationParameters.dt_nonscaled))
     {
       velocityVerletIteration();
 
@@ -55,9 +54,9 @@ void IPCsimulation::run(bool doWarmup) {
 
     // check that total momentum is still zero and print final stuff
     space::vec pcm = space::vec( 0., 0., 0. );
-    for(int i=0;i<3*par.nIPCs;i++)
+    for(int i=0;i<3*simulationParameters.nIPCs;i++)
       pcm += v[i];
-    pcm *= par.L;
+    pcm *= simulationParameters.L;
 
     outputSystemState("startingstate.xyz",false);
     time(&simulation_ends);
@@ -76,49 +75,60 @@ void IPCsimulation::run(bool doWarmup) {
 
 
 //************************************************************************//
-double IPCsimulation::omega(double Ra, double Rb, double rab)
-{  // BKL paper, formula 18
-  if ( rab > Ra+Rb )    return 0.;
-  else if ( rab <= fabs(Ra-Rb) )   return 8.*pow(std::min(Ra,Rb),3);
+double IPCsimulation::omega(double Ra, double Rb, double rab) {
+  // BKL paper, formula 18
+  if ( rab > Ra+Rb )
+    return 0.;
+  else if ( rab <= std::fabs(Ra-Rb) )
+    return 8.*std::pow(std::min(Ra,Rb),3);
   else
   {
-    double cacca = (Ra*Ra-Rb*Rb)/(2.*rab);
-    return 2.*( (2.*Ra+cacca+rab/2.)*pow(Ra-cacca-rab/2.,2)
-            + (2.*Rb-cacca+rab/2.)*pow(Rb+cacca-rab/2.,2) );
+    const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
+    return 2.*( (2.*Ra+tempSum+rab/2.)*pow(Ra-tempSum-rab/2.,2)
+            + (2.*Rb-tempSum+rab/2.)*pow(Rb+tempSum-rab/2.,2) );
   }
 }
-double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab)
-{  // BKL paper, derivative of formula 18
+
+double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
+  // BKL paper, derivative of formula 18
   if ( rab >= Ra+Rb || rab <= fabs(Ra-Rb) )    return 0.;
   else
   {
-    double cacca_plus, cacca_mins;
-    cacca_plus = (Ra*Ra-Rb*Rb)/(2.*rab);    cacca_mins=cacca_plus-rab/2.;    cacca_plus+=rab/2.;
-    return (6./rab)*( cacca_mins*(Ra-cacca_plus)*(Ra+cacca_plus) - cacca_plus*(Rb-cacca_mins)*(Rb+cacca_mins) );
+    const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
+    const double tempSumMinus = tempSum - rab/2.;
+    const double tempSumPlus = tempSum + rab/2.;
+    return (6./rab) * (tempSumMinus*(Ra - tempSumPlus)*(Ra + tempSumPlus) - tempSumPlus*(Rb - tempSumMinus)*(Rb + tempSumMinus) );
   }
 }
-void IPCsimulation::FU_table::make_table(Ensemble par)
+void IPCsimulation::FU_table::make_table(Ensemble par, bool printPotentials)
 {
-  int length = int( 2.*par.bigRadius/par.FUsamplingDeltar ) + 1;
-  uBB   = new double [length];
-  uBs1  = new double [length];
-  uBs2  = new double [length];
-  us1s2 = new double [length];
-  us1s1 = new double [length];
-  us2s2 = new double [length];
-  fBB   = new double [length];
-  fBs1  = new double [length];
-  fBs2  = new double [length];
-  fs1s2 = new double [length];
-  fs1s1 = new double [length];
-  fs2s2 = new double [length];
-  std::ofstream CACCA("siml/potentials.out"); CACCA<<std::scientific<<std::setprecision(6);
-  CACCA<<"#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
-  CACCA<<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
-  int conto(1);
-  for ( int i=0; i<length; i++)
+  const size_t potentialRangeSamplingSize = size_t( 2.*par.bigRadius/par.forceAndEnergySamplingStep ) + 1;
+
+  uBB   = new double [potentialRangeSamplingSize];
+  uBs1  = new double [potentialRangeSamplingSize];
+  uBs2  = new double [potentialRangeSamplingSize];
+  us1s2 = new double [potentialRangeSamplingSize];
+  us1s1 = new double [potentialRangeSamplingSize];
+  us2s2 = new double [potentialRangeSamplingSize];
+  fBB   = new double [potentialRangeSamplingSize];
+  fBs1  = new double [potentialRangeSamplingSize];
+  fBs2  = new double [potentialRangeSamplingSize];
+  fs1s2 = new double [potentialRangeSamplingSize];
+  fs1s1 = new double [potentialRangeSamplingSize];
+  fs2s2 = new double [potentialRangeSamplingSize];
+
+  std::ofstream POT_OUTPUT;
+  int potOutputPrintCount = 1;
+  if (printPotentials) {
+    POT_OUTPUT.open("siml/potentials.out");
+    POT_OUTPUT<<std::scientific<<std::setprecision(6);
+    POT_OUTPUT<<"#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
+    POT_OUTPUT<<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
+  }
+
+  for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
   {
-    double r = i*par.FUsamplingDeltar;
+    double r = i*par.forceAndEnergySamplingStep;
     uBB[i]   = (par.e_BB  /par.e_min) * omega(par.bigRadius,par.bigRadius,r);
     uBs1[i]  = (par.e_Bs1 /par.e_min) * omega(par.bigRadius,par.s1Radius,r);
     uBs2[i]  = (par.e_Bs2 /par.e_min) * omega(par.bigRadius,par.s2Radius,r);
@@ -136,17 +146,18 @@ void IPCsimulation::FU_table::make_table(Ensemble par)
     if ( r <= 1.0 )
     {
       // setting up a Fake Hard Sphere Core
-      double rm = pow(r,-par.FakeHSexp);
-      uBB[i]   += par.FakeHScoef*((rm-2.)*rm+1.);
-      fBB[i]   += -2.*par.FakeHSexp*par.FakeHScoef*(rm-1.)*rm/r;
+      double rm = pow(r,-par.fakeHSexp);
+      uBB[i]   += par.fakeHScoef*((rm-2.)*rm+1.);
+      fBB[i]   += -2.*par.fakeHSexp*par.fakeHScoef*(rm-1.)*rm/r;
     }
-    if ( int( (1000.*i)/length ) == conto )
+    if ( printPotentials && int( (1000.*i)/potentialRangeSamplingSize ) == potOutputPrintCount )
     {
-      conto++;
-      CACCA<<r<<"\t"<<uBB[i]<<"\t"<<uBs1[i]<<"\t"<<uBs2[i]<<"\t"<<us1s2[i]<<"\t"<<us2s2[i]<<"\t"<<us1s1[i]<<"\t";
-      CACCA<<r<<"\t"<<fBB[i]<<"\t"<<fBs1[i]<<"\t"<<fBs2[i]<<"\t"<<fs1s2[i]<<"\t"<<fs2s2[i]<<"\t"<<fs1s1[i]<<"\n";
+      potOutputPrintCount++;
+      POT_OUTPUT<<r<<"\t"<<uBB[i]<<"\t"<<uBs1[i]<<"\t"<<uBs2[i]<<"\t"<<us1s2[i]<<"\t"<<us2s2[i]<<"\t"<<us1s1[i]<<"\t";
+      POT_OUTPUT<<r<<"\t"<<fBB[i]<<"\t"<<fBs1[i]<<"\t"<<fBs2[i]<<"\t"<<fs1s2[i]<<"\t"<<fs2s2[i]<<"\t"<<fs1s1[i]<<"\n";
     }
-    // this is to not divide by r during the execution but not having it in the plots
+    // this division is done here to save a division during runtime;
+    // it's only done now not to be seen in the plots
     double x = 1./(r);
     fBB[i] *= x;
     fBs1[i] *= x;
@@ -155,7 +166,7 @@ void IPCsimulation::FU_table::make_table(Ensemble par)
     fs1s1[i] *= x;
     fs2s2[i] *= x;
   }
-  CACCA.close();
+  POT_OUTPUT.close();
 }
 
 
@@ -169,20 +180,20 @@ void IPCsimulation::outputSystemState(std::string nome, bool append)
   if(append)   Out.open(nome.c_str(), std::ios::app);
   else         Out.open(nome.c_str());
   Out<<std::scientific<<std::setprecision(24);
-  Out<<3*par.nIPCs<<"\n"<<simulationTime*par.dt_nonscaled<<"\n";
-  for(int i=0; i<par.nIPCs; i++)
+  Out<<3*simulationParameters.nIPCs<<"\n"<<simulationTime*simulationParameters.dt_nonscaled<<"\n";
+  for(int i=0; i<simulationParameters.nIPCs; i++)
   {
     for(int a=0; a<3; a++)
     {
-      Out<<farben[i+a*par.nIPCs]<<"\t";
-      Out<<x[i+a*par.nIPCs].x<<"\t"<<x[i+a*par.nIPCs].y<<"\t"<<x[i+a*par.nIPCs].z<<"\t";
-      Out<<v[i+a*par.nIPCs].x<<"\t"<<v[i+a*par.nIPCs].y<<"\t"<<v[i+a*par.nIPCs].z<<"\n";
+      Out<<farben[i+a*simulationParameters.nIPCs]<<"\t";
+      Out<<x[i+a*simulationParameters.nIPCs].x<<"\t"<<x[i+a*simulationParameters.nIPCs].y<<"\t"<<x[i+a*simulationParameters.nIPCs].z<<"\t";
+      Out<<v[i+a*simulationParameters.nIPCs].x<<"\t"<<v[i+a*simulationParameters.nIPCs].y<<"\t"<<v[i+a*simulationParameters.nIPCs].z<<"\n";
     }
   }
   Out.close();
 
-  energyTrajectoryFile<<simulationTime*par.dt_nonscaled<<"\t"<<par.kT<<"\t"<<par.K/par.nIPCs<<"\t"<<par.U/par.nIPCs<<"\t"<<par.E/par.nIPCs;
-  energyTrajectoryFile<<"\t"<<par.rminbb*par.L<<"\t"<<par.rminbs*par.L<<"\t"<<par.rminss*par.L<<"\t"<<sqrt(par.rmin2)*par.L<<std::endl;
+  energyTrajectoryFile<<simulationTime*simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.kT<<"\t"<<simulationParameters.K/simulationParameters.nIPCs<<"\t"<<simulationParameters.U/simulationParameters.nIPCs<<"\t"<<simulationParameters.E/simulationParameters.nIPCs;
+  energyTrajectoryFile<<"\t"<<simulationParameters.rminbb*simulationParameters.L<<"\t"<<simulationParameters.rminbs*simulationParameters.L<<"\t"<<simulationParameters.rminss*simulationParameters.L<<"\t"<<sqrt(simulationParameters.rmin2)*simulationParameters.L<<std::endl;
 }
 
 
@@ -194,136 +205,136 @@ void IPCsimulation::warmup(bool restoreprevious)
 {
   simulationTime = 0;
 
-  RandomDoubleGenerator rand;
+  RandomNumberGenerator rand;
   int N1, N2, N3;
   // input from file
   std::fstream IN("input.in", std::ios::in);
-  IN>>N1>>par.rho>>par.kTimposed;
-  IN>>par.dt_nonscaled>>par.PrintEvery>>par.SimLength;
-  IN>>par.e_BB>>par.e_Bs1>>par.e_Bs2;
-  IN>>par.e_s1s1>>par.e_s2s2>>par.e_s1s2;
-  IN>>par.e_min;
-  IN>>par.ecc1>>par.s1Radius;
-  IN>>par.ecc2>>par.s2Radius;
-  IN>>par.m1>>par.m2>>par.mc;
-  IN>>par.FakeHScoef>>par.FakeHSexp;
-  IN>>par.FUsamplingDeltar>>par.Tollerance;
-  IN>>par.Ec.x>>par.Ec.y>>par.Ec.z;
-  IN>>par.qc>>par.qp1>>par.qp2;
+  IN>>N1>>simulationParameters.rho>>simulationParameters.kTimposed;
+  IN>>simulationParameters.dt_nonscaled>>simulationParameters.PrintEvery>>simulationParameters.SimLength;
+  IN>>simulationParameters.e_BB>>simulationParameters.e_Bs1>>simulationParameters.e_Bs2;
+  IN>>simulationParameters.e_s1s1>>simulationParameters.e_s2s2>>simulationParameters.e_s1s2;
+  IN>>simulationParameters.e_min;
+  IN>>simulationParameters.ecc1>>simulationParameters.s1Radius;
+  IN>>simulationParameters.ecc2>>simulationParameters.s2Radius;
+  IN>>simulationParameters.m1>>simulationParameters.m2>>simulationParameters.mc;
+  IN>>simulationParameters.fakeHScoef>>simulationParameters.fakeHSexp;
+  IN>>simulationParameters.forceAndEnergySamplingStep>>simulationParameters.tollerance;
+  IN>>simulationParameters.Ec.x>>simulationParameters.Ec.y>>simulationParameters.Ec.z;
+  IN>>simulationParameters.qc>>simulationParameters.qp1>>simulationParameters.qp2;
   IN.close();
 
   // processing the data
   N2 = N1*N1;        N3 = N2*N1;
-  par.nIPCs = 4*N3;
-  par.nPatc = 2*par.nIPCs;
-  if ( abs( (par.ecc1+par.s1Radius)-(par.ecc2+par.s2Radius) ) >= 1e-10 )
+  simulationParameters.nIPCs = 4*N3;
+  simulationParameters.nPatc = 2*simulationParameters.nIPCs;
+  if ( abs( (simulationParameters.ecc1+simulationParameters.s1Radius)-(simulationParameters.ecc2+simulationParameters.s2Radius) ) >= 1e-10 )
   {
-    std::cerr<<par.ecc1<<"+"<<par.s1Radius<<"="<<par.ecc1+par.s1Radius<<"-";
-    std::cerr<<par.ecc2<<"+"<<par.s2Radius<<"="<<par.ecc2+par.s2Radius<<"=\n";
-    std::cerr<<(par.ecc1+par.s1Radius)-(par.ecc2+par.s2Radius)<<std::endl;
+    std::cerr<<simulationParameters.ecc1<<"+"<<simulationParameters.s1Radius<<"="<<simulationParameters.ecc1+simulationParameters.s1Radius<<"-";
+    std::cerr<<simulationParameters.ecc2<<"+"<<simulationParameters.s2Radius<<"="<<simulationParameters.ecc2+simulationParameters.s2Radius<<"=\n";
+    std::cerr<<(simulationParameters.ecc1+simulationParameters.s1Radius)-(simulationParameters.ecc2+simulationParameters.s2Radius)<<std::endl;
     std::cerr<<"eccentricities and radii are not consistent!\n"; exit(1);
   }
-  par.bigRadius = par.ecc1 + par.s1Radius;
-  par.L=cbrt(par.nIPCs/par.rho);
-  par.L2=par.L*par.L;
-  par.kToverK = 2./(5.*par.nIPCs-3.);
+  simulationParameters.bigRadius = simulationParameters.ecc1 + simulationParameters.s1Radius;
+  simulationParameters.L=cbrt(simulationParameters.nIPCs/simulationParameters.rho);
+  simulationParameters.L2=simulationParameters.L*simulationParameters.L;
+  simulationParameters.kToverK = 2./(5.*simulationParameters.nIPCs-3.);
 
   if(restoreprevious)
   {
-    par.kTimposed = sqrt(par.kTimposed);
+    simulationParameters.kTimposed = sqrt(simulationParameters.kTimposed);
     char culo; double muntonarzu;
     IN.open("startingstate.xyz", std::ios::in);
-    IN>>par.nIPCs>>muntonarzu;
-    par.nIPCs /= 3;
-    par.nPatc = 2*par.nIPCs;
-    par.L = cbrt(par.nIPCs/par.rho);
-    par.L2=par.L*par.L;
-    par.kToverK = 2./(5.*par.nIPCs-3.);
-    x = new space::vec[3*par.nIPCs]; v = new space::vec[3*par.nIPCs]; F = new space::vec[3*par.nIPCs];
-    farben = new char[3*par.nIPCs];
+    IN>>simulationParameters.nIPCs>>muntonarzu;
+    simulationParameters.nIPCs /= 3;
+    simulationParameters.nPatc = 2*simulationParameters.nIPCs;
+    simulationParameters.L = cbrt(simulationParameters.nIPCs/simulationParameters.rho);
+    simulationParameters.L2=simulationParameters.L*simulationParameters.L;
+    simulationParameters.kToverK = 2./(5.*simulationParameters.nIPCs-3.);
+    x = new space::vec[3*simulationParameters.nIPCs]; v = new space::vec[3*simulationParameters.nIPCs]; F = new space::vec[3*simulationParameters.nIPCs];
+    farben = new char[3*simulationParameters.nIPCs];
 
   //  outputFile<<"Reading "<<par.nIPCs<< " particles positions and velocities from file.\n";
 
-    for(int i=0;i<par.nIPCs;i++)
+    for(int i=0;i<simulationParameters.nIPCs;i++)
     {
       for(int a=0; a<3; a++)
       {
-        IN>>culo>>x[i+a*par.nIPCs].x>>x[i+a*par.nIPCs].y>>x[i+a*par.nIPCs].z;
-        IN>>v[i+a*par.nIPCs].x>>v[i+a*par.nIPCs].y>>v[i+a*par.nIPCs].z;
-        v[i+a*par.nIPCs] *= par.kTimposed;
-        farben[i+a*par.nIPCs]=culo;
+        IN>>culo>>x[i+a*simulationParameters.nIPCs].x>>x[i+a*simulationParameters.nIPCs].y>>x[i+a*simulationParameters.nIPCs].z;
+        IN>>v[i+a*simulationParameters.nIPCs].x>>v[i+a*simulationParameters.nIPCs].y>>v[i+a*simulationParameters.nIPCs].z;
+        v[i+a*simulationParameters.nIPCs] *= simulationParameters.kTimposed;
+        farben[i+a*simulationParameters.nIPCs]=culo;
       }
     }
     IN.close();
   }
 
   // output the data for future checks
-  outputFile<<N1<<"\t"<<par.rho<<"\t"<<par.kTimposed<<"\n";
-  outputFile<<par.dt_nonscaled<<"\t"<<par.PrintEvery<<"\t"<<par.SimLength<<"\n";
-  outputFile<<par.e_BB<<"\t"<<par.e_Bs1<<"\t"<<par.e_Bs2<<"\n";
-  outputFile<<par.e_s1s2<<"\t"<<par.e_s1s1<<"\t"<<par.e_s2s2<<"\n";
-  outputFile<<par.e_min<<"\n";
-  outputFile<<par.ecc1<<"\t"<<par.s1Radius<<"\n";
-  outputFile<<par.ecc2<<"\t"<<par.s2Radius<<"\n";
-  outputFile<<par.m1<<"\t"<<par.m2<<"\t"<<par.mc;
-  outputFile<<par.FakeHScoef<<"\t"<<par.FakeHSexp<<"\n";
-  outputFile<<par.FUsamplingDeltar<<"\t"<<par.Tollerance;
-  outputFile<<par.Ec.x<<"\t"<<par.Ec.y<<"\t"<<par.Ec.z<<"\n";
-  outputFile<<par.qc<<"\t"<<par.qp1<<"\t"<<par.qp2<<"\n";
+  outputFile<<N1<<"\t"<<simulationParameters.rho<<"\t"<<simulationParameters.kTimposed<<"\n";
+  outputFile<<simulationParameters.dt_nonscaled<<"\t"<<simulationParameters.PrintEvery<<"\t"<<simulationParameters.SimLength<<"\n";
+  outputFile<<simulationParameters.e_BB<<"\t"<<simulationParameters.e_Bs1<<"\t"<<simulationParameters.e_Bs2<<"\n";
+  outputFile<<simulationParameters.e_s1s2<<"\t"<<simulationParameters.e_s1s1<<"\t"<<simulationParameters.e_s2s2<<"\n";
+  outputFile<<simulationParameters.e_min<<"\n";
+  outputFile<<simulationParameters.ecc1<<"\t"<<simulationParameters.s1Radius<<"\n";
+  outputFile<<simulationParameters.ecc2<<"\t"<<simulationParameters.s2Radius<<"\n";
+  outputFile<<simulationParameters.m1<<"\t"<<simulationParameters.m2<<"\t"<<simulationParameters.mc;
+  outputFile<<simulationParameters.fakeHScoef<<"\t"<<simulationParameters.fakeHSexp<<"\n";
+  outputFile<<simulationParameters.forceAndEnergySamplingStep<<"\t"<<simulationParameters.tollerance;
+  outputFile<<simulationParameters.Ec.x<<"\t"<<simulationParameters.Ec.y<<"\t"<<simulationParameters.Ec.z<<"\n";
+  outputFile<<simulationParameters.qc<<"\t"<<simulationParameters.qp1<<"\t"<<simulationParameters.qp2<<"\n";
 
   // computing fields
-  par.Ep1 = par.Ec*par.qp1;
-  par.Ep2 = par.Ec*par.qp2;
-  par.Ec *= par.qc;
+  simulationParameters.Ep1 = simulationParameters.Ec*simulationParameters.qp1;
+  simulationParameters.Ep2 = simulationParameters.Ec*simulationParameters.qp2;
+  simulationParameters.Ec *= simulationParameters.qc;
 
   outputFile<<"\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-  outputFile<<"\nDensity = "<<par.nIPCs<<"/"<<pow(par.L,3)<<" = ";
-  outputFile<<par.nIPCs/pow(par.L,3)<<" = "<<par.rho<<"\nSide = "<<par.L<<std::endl;
-  outputFile<<"Total number of simulated particles: "<<par.nIPCs+par.nPatc<<std::endl;
+  outputFile<<"\nDensity = "<<simulationParameters.nIPCs<<"/"<<pow(simulationParameters.L,3)<<" = ";
+  outputFile<<simulationParameters.nIPCs/pow(simulationParameters.L,3)<<" = "<<simulationParameters.rho<<"\nSide = "<<simulationParameters.L<<std::endl;
+  outputFile<<"Total number of simulated particles: "<<simulationParameters.nIPCs+simulationParameters.nPatc<<std::endl;
 
   // potential sampling
   outputFile<<"Printing potential plots in 'potentials.out'.\n";
-  tab.make_table(par);
+  tab.make_table(simulationParameters, true);
 
   // scaling of lenghts for [0.0:1.0] simulation box
-  par.bigRadius /= par.L;
-  par.s1Radius /= par.L;
-  par.ecc1 /= par.L;
-  par.s2Radius /= par.L;
-  par.ecc2 /= par.L;
-  par.dt = par.dt_nonscaled/par.L;
-  par.FUsamplingDeltar /= par.L;
-  par.PotRange = 2*par.bigRadius;
-  par.PotRangeSquared = par.PotRange*par.PotRange;
-  par.PatchDistance = par.ecc1+par.ecc2;
-  par.PatchDistanceSquared = par.PatchDistance*par.PatchDistance;
-  par.im1 = 1./par.m1;
-  par.im2 = 1./par.m2;
-  par.imc = 1./par.mc;
+  simulationParameters.bigRadius /= simulationParameters.L;
+  simulationParameters.s1Radius /= simulationParameters.L;
+  simulationParameters.ecc1 /= simulationParameters.L;
+  simulationParameters.s2Radius /= simulationParameters.L;
+  simulationParameters.ecc2 /= simulationParameters.L;
+  simulationParameters.dt = simulationParameters.dt_nonscaled/simulationParameters.L;
+  simulationParameters.forceAndEnergySamplingStep /= simulationParameters.L;
+  simulationParameters.PotRange = 2*simulationParameters.bigRadius;
+  simulationParameters.PotRangeSquared = simulationParameters.PotRange*simulationParameters.PotRange;
+  simulationParameters.PatchDistance = simulationParameters.ecc1+simulationParameters.ecc2;
+  simulationParameters.PatchDistanceSquared = simulationParameters.PatchDistance*simulationParameters.PatchDistance;
+  simulationParameters.im1 = 1./simulationParameters.m1;
+  simulationParameters.im2 = 1./simulationParameters.m2;
+  simulationParameters.imc = 1./simulationParameters.mc;
   // inverse of the I parameter from formulas!
-  double iI = 1./(par.PatchDistanceSquared*par.imc + par.ecc1*par.ecc1*par.im2 + par.ecc2*par.ecc2*par.im1);
-  par.cP11 = 1.-par.ecc2*par.ecc2*iI*par.im1;
-  par.cP12 = -par.ecc1*par.ecc2*iI*par.im2;
-  par.cP1c = par.PatchDistance*par.ecc2*iI*par.imc;
-  par.cP21 = par.cP12;
-  par.cP22 = 1.-par.ecc1*par.ecc1*iI*par.im2;
-  par.cP2c = par.PatchDistance*par.ecc1*iI*par.imc;
-  par.alpha_1 = 1. - par.ecc2*iI*(par.ecc2*par.im1-par.ecc1*par.im2);
-  par.alpha_2 = 1. + par.ecc1*iI*(par.ecc2*par.im1-par.ecc1*par.im2);
-  par.alpha_sum = par.alpha_1 + par.alpha_2;
-  par.Ec  /= par.L;
-  par.Ep1 /= par.L;
-  par.Ep2 /= par.L;
+  double iI = 1./(simulationParameters.PatchDistanceSquared*simulationParameters.imc + simulationParameters.ecc1*simulationParameters.ecc1*simulationParameters.im2 + simulationParameters.ecc2*simulationParameters.ecc2*simulationParameters.im1);
+  simulationParameters.cP11 = 1.-simulationParameters.ecc2*simulationParameters.ecc2*iI*simulationParameters.im1;
+  simulationParameters.cP12 = -simulationParameters.ecc1*simulationParameters.ecc2*iI*simulationParameters.im2;
+  simulationParameters.cP1c = simulationParameters.PatchDistance*simulationParameters.ecc2*iI*simulationParameters.imc;
+  simulationParameters.cP21 = simulationParameters.cP12;
+  simulationParameters.cP22 = 1.-simulationParameters.ecc1*simulationParameters.ecc1*iI*simulationParameters.im2;
+  simulationParameters.cP2c = simulationParameters.PatchDistance*simulationParameters.ecc1*iI*simulationParameters.imc;
+  simulationParameters.alpha_1 = 1. - simulationParameters.ecc2*iI*(simulationParameters.ecc2*simulationParameters.im1-simulationParameters.ecc1*simulationParameters.im2);
+  simulationParameters.alpha_2 = 1. + simulationParameters.ecc1*iI*(simulationParameters.ecc2*simulationParameters.im1-simulationParameters.ecc1*simulationParameters.im2);
+  simulationParameters.alpha_sum = simulationParameters.alpha_1 + simulationParameters.alpha_2;
+  simulationParameters.Ec  /= simulationParameters.L;
+  simulationParameters.Ep1 /= simulationParameters.L;
+  simulationParameters.Ep2 /= simulationParameters.L;
 
   // initialize positions of the particles
   if(!restoreprevious)
   {
-    x = new space::vec[3*par.nIPCs]; v = new space::vec[3*par.nIPCs]; F = new space::vec[3*par.nIPCs];
-    farben = new char[3*par.nIPCs];
+    x = new space::vec[3*simulationParameters.nIPCs]; v = new space::vec[3*simulationParameters.nIPCs]; F = new space::vec[3*simulationParameters.nIPCs];
+    farben = new char[3*simulationParameters.nIPCs];
 
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
     // 4 is to compensate that the average |x| from x=rand.getRandom55() is 0.25
-    double vel_scaling = 4.*sqrt(2.*par.kTimposed/PI)/par.L;
+    double vel_scaling = 4.*sqrt(2.*simulationParameters.kTimposed/PI)/simulationParameters.L;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
@@ -344,30 +355,30 @@ void IPCsimulation::warmup(bool restoreprevious)
     }
     //v[1]=v[2]=v[3]=space::vec(0.,0.,0.);
     // initialize patches positions
-    for(int i=0;i<par.nIPCs;i++)
+    for(int i=0;i<simulationParameters.nIPCs;i++)
     {
       space::vec a;        ranor(a,rand);
 
-      x[i+par.nIPCs] = x[i] + a*par.ecc1;
-        floorccp(x[i+par.nIPCs]);
-      x[i+par.nPatc] = x[i] - a*par.ecc2;
-        floorccp(x[i+par.nPatc]);
+      x[i+simulationParameters.nIPCs] = x[i] + a*simulationParameters.ecc1;
+        floorccp(x[i+simulationParameters.nIPCs]);
+      x[i+simulationParameters.nPatc] = x[i] - a*simulationParameters.ecc2;
+        floorccp(x[i+simulationParameters.nPatc]);
 
       space::vec surra;    ranor(surra,rand);
       surra = surra*sqrt(.5*(v[i]*v[i])/(surra*surra));
       surra = surra - a*(surra*a); // now it's orthogonal!
 
-      v[i+par.nPatc] = v[i] + surra;
-      v[i+par.nIPCs] = v[i] - surra;
+      v[i+simulationParameters.nPatc] = v[i] + surra;
+      v[i+simulationParameters.nIPCs] = v[i] - surra;
 
       farben[i] = 'C';
-      farben[i+par.nIPCs] = 'P';
-      farben[i+par.nPatc] = 'G';
+      farben[i+simulationParameters.nIPCs] = 'P';
+      farben[i+simulationParameters.nPatc] = 'G';
     }
   }
 
   // cell list compilation
-  cells.initialize(1.,par.PotRange,par.nIPCs,x);
+  cells.initialize(1.,simulationParameters.PotRange,simulationParameters.nIPCs,x);
   outputFile<<"Total number of cells: "<<cells.M3<<std::endl;
   cells.compilelists(x);
 
@@ -376,37 +387,37 @@ void IPCsimulation::warmup(bool restoreprevious)
 
   // check that total momentum is zero
   space::vec pcm = space::vec( 0., 0., 0. );
-  for(int i=0;i<3*par.nIPCs;i++)
+  for(int i=0;i<3*simulationParameters.nIPCs;i++)
     pcm += v[i];
-  pcm *= par.L;
+  pcm *= simulationParameters.L;
   outputFile<<"P whole system = ( "<<pcm.x<<", "<<pcm.y<<", "<<pcm.z<<" )."<<std::endl;
 
   // if not restoring, correct the total momentum to be zero
       if(!restoreprevious)
       {
         space::vec pcm_after = space::vec( 0., 0., 0. );
-        pcm /= 3*par.nIPCs*par.L;
-        for(int i=0;i<3*par.nIPCs;i++)
+        pcm /= 3*simulationParameters.nIPCs*simulationParameters.L;
+        for(int i=0;i<3*simulationParameters.nIPCs;i++)
         {
           v[i] -= pcm;
           pcm_after += v[i];
         }
-        pcm_after *= par.L;
+        pcm_after *= simulationParameters.L;
         outputFile<<"P whole system corrected = ( "<<pcm_after.x<<", "<<pcm_after.y<<", "<<pcm_after.z<<" )."<<std::endl;
       }
 
   // compute kinetic and total energy, temperature
-  par.K = 0.;
+  simulationParameters.K = 0.;
   double kc(0.),k1(0.),k2(0.);
-  for(int i=0; i<par.nIPCs; i++)
+  for(int i=0; i<simulationParameters.nIPCs; i++)
   {
     kc += v[i]*v[i];
-    k1 += v[i+par.nIPCs]*v[i+par.nIPCs];
-    k2 += v[i+par.nPatc]*v[i+par.nPatc];
+    k1 += v[i+simulationParameters.nIPCs]*v[i+simulationParameters.nIPCs];
+    k2 += v[i+simulationParameters.nPatc]*v[i+simulationParameters.nPatc];
   }
-  par.K = (kc*par.mc + k1*par.m1 + k2*par.m2)*.5*par.L2;
-  par.kT = par.K*par.kToverK;
-  par.E = par.K + par.U;
+  simulationParameters.K = (kc*simulationParameters.mc + k1*simulationParameters.m1 + k2*simulationParameters.m2)*.5*simulationParameters.L2;
+  simulationParameters.kT = simulationParameters.K*simulationParameters.kToverK;
+  simulationParameters.E = simulationParameters.K + simulationParameters.U;
 }
 
 
@@ -418,15 +429,15 @@ void IPCsimulation::computeFreeForce()
 {
   // Computes the force without accounting for constrains.
   // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
-  for(int i=0;i<3*par.nIPCs;i++)
+  for(int i=0;i<3*simulationParameters.nIPCs;i++)
     F[i] = space::vec(0.0,0.0,0.0);
-  par.U = 0.0;  par.rmin2 = par.rminbb = par.rminbs = par.rminss = 1.;
+  simulationParameters.U = 0.0;  simulationParameters.rmin2 = simulationParameters.rminbb = simulationParameters.rminbs = simulationParameters.rminss = 1.;
 
   #pragma omp parallel
   {
-    space::vec * Floop = new space::vec [3*par.nIPCs];
+    space::vec * Floop = new space::vec [3*simulationParameters.nIPCs];
     double Uloop(0.), rmin2loop(1.), rminbbloop(1.), rminbsloop(1.), rminssloop(1.);
-    for(int i=0;i<3*par.nIPCs;i++)    Floop[i] = space::vec(0.0,0.0,0.0);
+    for(int i=0;i<3*simulationParameters.nIPCs;i++)    Floop[i] = space::vec(0.0,0.0,0.0);
 
     #pragma omp for
     for(int m=0; m<cells.M3; m++)  // loop over all cells
@@ -444,13 +455,13 @@ void IPCsimulation::computeFreeForce()
           {
             for (int j=0;j<3;j++)
             {
-              rji = x[*loc+i*par.nIPCs]-x[*ext+j*par.nIPCs];        lroundccp(rji);
+              rji = x[*loc+i*simulationParameters.nIPCs]-x[*ext+j*simulationParameters.nIPCs];        lroundccp(rji);
               r = rji*rji;
               // Store the smallest distance between attraction centers:
               if( r<rmin2loop) rmin2loop=r;
-              if (r <= par.PotRangeSquared)
+              if (r <= simulationParameters.PotRangeSquared)
               {
-                r=sqrt(r);                      int dist = int( r/par.FUsamplingDeltar );
+                r=sqrt(r);                      int dist = int( r/simulationParameters.forceAndEnergySamplingStep );
                 if (i==0 && j==0)        // means cm -> cm
                 {
                   ff = rji*(tab.fBB[dist]);  Uloop += tab.uBB[dist];
@@ -482,8 +493,8 @@ void IPCsimulation::computeFreeForce()
                   if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
                 }
                 else  { std::cerr<<"CRAAAAAAAAAAAAAAAAAAP!"<<std::endl; exit(1);}
-                Floop[*loc+i*par.nIPCs] -= ff;
-                Floop[*ext+j*par.nIPCs] += ff;
+                Floop[*loc+i*simulationParameters.nIPCs] -= ff;
+                Floop[*ext+j*simulationParameters.nIPCs] += ff;
               }
             }
           }
@@ -502,13 +513,13 @@ void IPCsimulation::computeFreeForce()
           {
             for (int j=0;j<3;j++)
             {
-              rji = x[*loc+i*par.nIPCs]-x[*ins+j*par.nIPCs];        lroundccp(rji);
+              rji = x[*loc+i*simulationParameters.nIPCs]-x[*ins+j*simulationParameters.nIPCs];        lroundccp(rji);
               r = rji*rji;
               // Store the smallest distance between attraction centers:
               if( r<rmin2loop) rmin2loop=r;
-              if (r <= par.PotRangeSquared)
+              if (r <= simulationParameters.PotRangeSquared)
               {
-                r=sqrt(r);                      int dist = int( r/par.FUsamplingDeltar );
+                r=sqrt(r);                      int dist = int( r/simulationParameters.forceAndEnergySamplingStep );
                 if (i==0 && j==0)        // means cm -> cm
                 {
                   ff = rji*(tab.fBB[dist]);  Uloop += tab.uBB[dist];
@@ -540,8 +551,8 @@ void IPCsimulation::computeFreeForce()
                   if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
                 }
                 else  { std::cerr<<"CRAAAAAAAAAAAAAAAAAAP!"<<std::endl; exit(1);}
-                Floop[*loc+i*par.nIPCs] -= ff;
-                Floop[*ins+j*par.nIPCs] += ff;
+                Floop[*loc+i*simulationParameters.nIPCs] -= ff;
+                Floop[*ins+j*simulationParameters.nIPCs] += ff;
               }
             }
           }
@@ -550,22 +561,22 @@ void IPCsimulation::computeFreeForce()
     }
     #pragma omp critical
     {
-      for(int i=0;i<3*par.nIPCs;i++)
+      for(int i=0;i<3*simulationParameters.nIPCs;i++)
         F[i] += Floop[i];
-      par.U += Uloop;
-      if(rmin2loop < par.rmin2) par.rmin2 = rmin2loop;
-      if(rminbbloop < par.rminbb) par.rminbb = rminbbloop;
-      if(rminbsloop < par.rminbs) par.rminbs = rminbsloop;
-      if(rminssloop < par.rminss) par.rminss = rminssloop;
+      simulationParameters.U += Uloop;
+      if(rmin2loop < simulationParameters.rmin2) simulationParameters.rmin2 = rmin2loop;
+      if(rminbbloop < simulationParameters.rminbb) simulationParameters.rminbb = rminbbloop;
+      if(rminbsloop < simulationParameters.rminbs) simulationParameters.rminbs = rminbsloop;
+      if(rminssloop < simulationParameters.rminss) simulationParameters.rminss = rminssloop;
     }
     delete [] Floop;
   }
-  for(int i=0;i<par.nIPCs;i++)
-    F[i] += par.Ec;
-  for(int i=par.nIPCs;i<par.nPatc;i++)
-    F[i] += par.Ep1;
-  for(int i=par.nPatc;i<=par.nIPCs+par.nPatc;i++)
-    F[i] += par.Ep1;
+  for(int i=0;i<simulationParameters.nIPCs;i++)
+    F[i] += simulationParameters.Ec;
+  for(int i=simulationParameters.nIPCs;i<simulationParameters.nPatc;i++)
+    F[i] += simulationParameters.Ep1;
+  for(int i=simulationParameters.nPatc;i<=simulationParameters.nIPCs+simulationParameters.nPatc;i++)
+    F[i] += simulationParameters.Ep1;
 }
 
 
@@ -594,72 +605,80 @@ void IPCsimulation::velocityVerletIteration()
    * They are really easy to derive following Ciccotti's paper.
    *
    */
-  for ( int i=0; i<par.nIPCs; i++ )
+  for ( int i=0; i<simulationParameters.nIPCs; i++ )
   {
-    space::vec eFp1 = F[i+par.nIPCs]*par.cP11 + F[i+par.nPatc]*par.cP12 + F[i]*par.cP1c;
-    space::vec eFp2 = F[i+par.nIPCs]*par.cP21 + F[i+par.nPatc]*par.cP22 + F[i]*par.cP2c;
-    v[i+par.nIPCs] += eFp1*(.5*par.dt*par.im1);
-    v[i+par.nPatc] += eFp2*(.5*par.dt*par.im2);
-    space::vec r1 = x[i+par.nIPCs] + v[i+par.nIPCs]*par.dt;      floorccp(r1);
-    space::vec r2 = x[i+par.nPatc] + v[i+par.nPatc]*par.dt;      floorccp(r2);
+    space::vec eFp1 = F[i+simulationParameters.nIPCs]*simulationParameters.cP11 + F[i+simulationParameters.nPatc]*simulationParameters.cP12 + F[i]*simulationParameters.cP1c;
+    space::vec eFp2 = F[i+simulationParameters.nIPCs]*simulationParameters.cP21 + F[i+simulationParameters.nPatc]*simulationParameters.cP22 + F[i]*simulationParameters.cP2c;
+    v[i+simulationParameters.nIPCs] += eFp1*(.5*simulationParameters.dt*simulationParameters.im1);
+    v[i+simulationParameters.nPatc] += eFp2*(.5*simulationParameters.dt*simulationParameters.im2);
+    space::vec r1 = x[i+simulationParameters.nIPCs] + v[i+simulationParameters.nIPCs]*simulationParameters.dt;      floorccp(r1);
+    space::vec r2 = x[i+simulationParameters.nPatc] + v[i+simulationParameters.nPatc]*simulationParameters.dt;      floorccp(r2);
 
     // start working with constrains
     space::vec r12 = r1-r2;          lroundccp(r12);
-    double diff = r12*r12-par.PatchDistanceSquared;
-    while( fabs(diff) > par.Tollerance*par.PatchDistanceSquared )
+    double diff = r12*r12-simulationParameters.PatchDistanceSquared;
+    while( fabs(diff) > simulationParameters.tollerance*simulationParameters.PatchDistanceSquared )
     {
-      space::vec r12old = x[i+par.nIPCs]-x[i+par.nPatc];      lroundccp(r12old);
-      double g = diff/( 2.*(r12*r12old)*par.alpha_sum*par.dt );
+      space::vec r12old = x[i+simulationParameters.nIPCs]-x[i+simulationParameters.nPatc];      lroundccp(r12old);
+      double g = diff/( 2.*(r12*r12old)*simulationParameters.alpha_sum*simulationParameters.dt );
       space::vec DX = r12old*g;
-      v[i+par.nIPCs] -= DX*par.alpha_1;
-      v[i+par.nPatc] += DX*par.alpha_2;
-        DX *= par.dt;
-      r1 -= DX*par.alpha_1;      floorccp(r1);
-      r2 += DX*par.alpha_2;      floorccp(r2);
+      v[i+simulationParameters.nIPCs] -= DX*simulationParameters.alpha_1;
+      v[i+simulationParameters.nPatc] += DX*simulationParameters.alpha_2;
+        DX *= simulationParameters.dt;
+      r1 -= DX*simulationParameters.alpha_1;      floorccp(r1);
+      r2 += DX*simulationParameters.alpha_2;      floorccp(r2);
       r12 = r1-r2;   lroundccp(r12);
 
-      diff = r12*r12-par.PatchDistanceSquared;
+      diff = r12*r12-simulationParameters.PatchDistanceSquared;
     }
-    x[i+par.nIPCs] = r1;
-    x[i+par.nPatc] = r2;
-    x[i] = r2 + r12*par.ecc2/par.PatchDistance;  // with their notation r12=r1<-2
+    x[i+simulationParameters.nIPCs] = r1;
+    x[i+simulationParameters.nPatc] = r2;
+    x[i] = r2 + r12*simulationParameters.ecc2/simulationParameters.PatchDistance;  // with their notation r12=r1<-2
     floorccp(x[i]);
   }
 
   cells.compilelists(x);                // rewrite cell lists for the new iteration
   computeFreeForce();      // compute F(x[t+dt]) and the potential
 
-  par.K = 0.;
+  simulationParameters.K = 0.;
   double virialconstrains(0.);
 
-  for ( int i=0; i<par.nIPCs; i++ )
+  for ( int i=0; i<simulationParameters.nIPCs; i++ )
   {
-    space::vec eFp1 = F[i+par.nIPCs]*par.cP11 + F[i+par.nPatc]*par.cP12 + F[i]*par.cP1c;
-    space::vec eFp2 = F[i+par.nIPCs]*par.cP21 + F[i+par.nPatc]*par.cP22 + F[i]*par.cP2c;
-    space::vec q1   = v[i+par.nIPCs] + eFp1*(.5*par.dt*par.im1);
-    space::vec q2   = v[i+par.nPatc] + eFp2*(.5*par.dt*par.im2);
+    space::vec eFp1 = F[i+simulationParameters.nIPCs]*simulationParameters.cP11 + F[i+simulationParameters.nPatc]*simulationParameters.cP12 + F[i]*simulationParameters.cP1c;
+    space::vec eFp2 = F[i+simulationParameters.nIPCs]*simulationParameters.cP21 + F[i+simulationParameters.nPatc]*simulationParameters.cP22 + F[i]*simulationParameters.cP2c;
+    space::vec q1   = v[i+simulationParameters.nIPCs] + eFp1*(.5*simulationParameters.dt*simulationParameters.im1);
+    space::vec q2   = v[i+simulationParameters.nPatc] + eFp2*(.5*simulationParameters.dt*simulationParameters.im2);
 
     // start working with constrains
-    space::vec r12 = x[i+par.nIPCs]-x[i+par.nPatc];      lroundccp(r12);
+    space::vec r12 = x[i+simulationParameters.nIPCs]-x[i+simulationParameters.nPatc];      lroundccp(r12);
     space::vec q12 = q1-q2;
-    double k = (r12*q12)/( par.alpha_sum*par.PatchDistanceSquared );
-    while( fabs(k) > par.Tollerance )
+    double k = (r12*q12)/( simulationParameters.alpha_sum*simulationParameters.PatchDistanceSquared );
+    while( fabs(k) > simulationParameters.tollerance )
     {
       space::vec DX = r12*k;
-      q1 -= DX*par.alpha_1;
-      q2 += DX*par.alpha_2;
+      q1 -= DX*simulationParameters.alpha_1;
+      q2 += DX*simulationParameters.alpha_2;
       q12 = q1-q2;
-      k = (r12*q12)/( par.alpha_sum*par.PatchDistanceSquared );
+      k = (r12*q12)/( simulationParameters.alpha_sum*simulationParameters.PatchDistanceSquared );
     }
     virialconstrains += k;
-    v[i+par.nIPCs] = q1;
-    v[i+par.nPatc] = q2;
-    v[i] = (q1*par.ecc2+q2*par.ecc1)/par.PatchDistance;
-    par.K += (q1*q1)*par.m1 + (q2*q2)*par.m2 + (v[i]*v[i])*par.mc;
+    v[i+simulationParameters.nIPCs] = q1;
+    v[i+simulationParameters.nPatc] = q2;
+    v[i] = (q1*simulationParameters.ecc2+q2*simulationParameters.ecc1)/simulationParameters.PatchDistance;
+    simulationParameters.K += (q1*q1)*simulationParameters.m1 + (q2*q2)*simulationParameters.m2 + (v[i]*v[i])*simulationParameters.mc;
   }
-  virialconstrains *= par.PatchDistance;
-  par.K *= .5*par.L2;
-  par.E = par.K + par.U;
-  par.kT = par.kToverK*par.K;
+  virialconstrains *= simulationParameters.PatchDistance;
+  simulationParameters.K *= .5*simulationParameters.L2;
+  simulationParameters.E = simulationParameters.K + simulationParameters.U;
+  simulationParameters.kT = simulationParameters.kToverK*simulationParameters.K;
   simulationTime++;
+}
+
+// Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
+void IPCsimulation::ranor(space::vec & a, RandomNumberGenerator & r)
+{
+  double x,y,quad=2.;
+  while ( quad > 1. )  {    x = r.getRandom11();    y = r.getRandom11();    quad = x*x + y*y;  }
+  double norm = 2.*sqrt(1.-quad);  a.x=x*norm;  a.y=y*norm;  a.z=1.-2.*quad;
 }

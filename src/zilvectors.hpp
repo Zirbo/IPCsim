@@ -32,10 +32,6 @@
 #ifndef __ZILVECTORS_HEADER_INCLUDED__
 #define __ZILVECTORS_HEADER_INCLUDED__
 
-#include <cmath>
-#include <list>
-#include "randomNumberGenerator.hpp"
-
 namespace space
 {
   // 3D vector class
@@ -59,21 +55,6 @@ namespace space
   };
 }
 
-
-/*----------------------------------------------------------------*
- * MISCELLANEOUS
- *----------------------------------------------------------------*/
-void ranor(space::vec & a, RandomDoubleGenerator & r);
-// 3D boundary conditions enforcers
-inline void floorccp(space::vec & a)  {  a.x-=std::floor(a.x);   a.y-=std::floor(a.y);   a.z-=std::floor(a.z);   }
-inline void lroundccp(space::vec & a) {  a.x-=std::lround(a.x);  a.y-=std::lround(a.y);  a.z-=std::lround(a.z);  }
-// Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-inline void ranor(space::vec & a, RandomDoubleGenerator & r)
-{
-  double x,y,quad=2.;
-  while ( quad > 1. )  {    x = r.getRandom11();    y = r.getRandom11();    quad = x*x + y*y;  }
-  double norm = 2.*sqrt(1.-quad);  a.x=x*norm;  a.y=y*norm;  a.z=1.-2.*quad;
-}
 
 
 /*******************************************************************************/

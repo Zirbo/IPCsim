@@ -6,6 +6,7 @@
 #include <string>
 #include "zilvectors.hpp"
 #include "cell_lists.hpp"
+#include "randomNumberGenerator.hpp"
 
 
 class IPCsimulation {
@@ -22,8 +23,8 @@ private:
         // potential
         double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
         double bigRadius, s1Radius, ecc1, s2Radius, ecc2;
-        double FakeHSexp, FakeHScoef;
-        double FUsamplingDeltar, Tollerance;
+        double fakeHSexp, fakeHScoef;
+        double forceAndEnergySamplingStep, tollerance;
         // masses and inverse masses
         double m1, m2, mc, im1, im2, imc;
         // simulation
@@ -41,7 +42,7 @@ private:
         // external field on cm and patches
         space::vec Ec, Ep1, Ep2;
         double qc, qp1, qp2;
-    } par;
+    } simulationParameters;
 
     unsigned long simulationTime;
     space::vec *x, *v, *F;
@@ -55,7 +56,7 @@ private:
     {
         double *uBB, *uBs1, *uBs2, *us1s2, *us1s1, *us2s2;
         double *fBB, *fBs1, *fBs2, *fs1s2, *fs1s1, *fs2s2;
-        void make_table(Ensemble par);
+        void make_table(Ensemble simulationParameters, bool printPotentials);
     } tab;
 
     static double omega(double Ra, double Rb, double rab);
@@ -66,6 +67,14 @@ private:
     // selfexplanatory
     void warmup(bool restoreprevious);
     void outputSystemState(std::string nome, bool append);
+
+private:
+    // small helpers
+    // 3D boundary conditions enforcers
+    inline void floorccp(space::vec & a)  {  a.x-=std::floor(a.x);   a.y-=std::floor(a.y);   a.z-=std::floor(a.z);   }
+    inline void lroundccp(space::vec & a) {  a.x-=std::lround(a.x);  a.y-=std::lround(a.y);  a.z-=std::lround(a.z);  }
+    // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
+    void ranor(space::vec & a, RandomNumberGenerator & r);
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__

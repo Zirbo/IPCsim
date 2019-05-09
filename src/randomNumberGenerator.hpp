@@ -35,10 +35,10 @@
 #include <random>
 #include <chrono>
 
-class RandomDoubleGenerator {
+class RandomNumberGenerator {
   std::mt19937 randomNumberGenerator;
 public:
-  RandomDoubleGenerator() {
+  RandomNumberGenerator() {
     randomNumberGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
   }
   double getRandomDoubleInRange(double from, double to) {
