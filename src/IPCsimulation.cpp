@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include "zilrandom.hpp"
+#include "randomNumberGenerator.hpp"
 #include "IPCsimulation.hpp"
 #define PI 3.1415926535897932
 

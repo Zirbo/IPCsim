@@ -5,7 +5,7 @@ project(IPCsim)
 set(HELPERS_FILES
   src/cell_lists.hpp
   src/cell_lists.cpp
-  src/zilrandom.hpp
+  src/randomNumberGenerator.hpp
   src/zilvectors.hpp
 )
 set(IPC_CLASS_FILES
