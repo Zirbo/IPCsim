@@ -577,17 +577,17 @@ void IPCsimulation::restorePreviousConfiguration() {
 
     for (IPC &ipc: particles) {
         IN >> ipc.type
-           >> ipc.center.x[0] >> ipc.center.x[1] >> center.ipc.x[2]
-           >> ipc.center.v[0] >> ipc.center.v[1] >> center.ipc.v[2]
-           >> ipc.center.F[0] >> ipc.center.F[1] >> center.ipc.F[2];
+           >> ipc.center.x[0] >> ipc.center.x[1] >> ipc.center.x[2]
+           >> ipc.center.v[0] >> ipc.center.v[1] >> ipc.center.v[2]
+           >> ipc.center.F[0] >> ipc.center.F[1] >> ipc.center.F[2];
         IN >> charJunk
-           >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> firstPatch.ipc.x[2]
-           >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> firstPatch.ipc.v[2]
-           >> ipc.firstPatch.F[0] >> ipc.firstPatch.F[1] >> firstPatch.ipc.F[2];
+           >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> ipc.firstPatch.x[2]
+           >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2]
+           >> ipc.firstPatch.F[0] >> ipc.firstPatch.F[1] >> ipc.firstPatch.F[2];
         IN >> charJunk
-           >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> secndPatch.ipc.x[2]
-           >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> secndPatch.ipc.v[2]
-           >> ipc.secndPatch.F[0] >> ipc.secndPatch.F[1] >> secndPatch.ipc.F[2];
+           >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
+           >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2]
+           >> ipc.secndPatch.F[0] >> ipc.secndPatch.F[1] >> ipc.secndPatch.F[2];
     }
     IN.close();
 }
