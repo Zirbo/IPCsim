@@ -71,11 +71,22 @@ private:
 
 
     void computeTrajectoryStep();
-    void computeVerletHalfStepForIPC(IPC & ipc);
+
+    void computeVerletHalfStepForIPC(IPC & ipc);   
     void computeVerletHalfStep();
-    void computeFreeForces();
+
     void finishVerletStepForIPC(IPC & ipc);
     void finishVerletStep();
+
+    void computeFreeForces();
+    struct loopVariables {
+        std::vector<double[3]> force;
+        double U, minimumSquaredDistance;
+        loopVariables() : U{0.}, minimumSquaredDistance{1.} {}
+    };
+    void computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcInCurrentCell, loopVariables & loopVars);
+    void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcInNeighbouringCells, loopVariables & loopVars);
+    void computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables & loopVars);
 
     void outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream &energyTrajectoryFile, unsigned long simulationTime);
 
@@ -88,6 +99,7 @@ private:
     inline void lroundccp(double & x) {  x-=std::lround(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
     void ranor(double (&a)[3], RandomNumberGenerator & r);
+
 
 };
 

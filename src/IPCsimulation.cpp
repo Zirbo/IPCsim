@@ -608,156 +608,162 @@ void IPCsimulation::computeFreeForces() {
     }
     U = 0.0;  rmin2 = 1.;
 
-    #pragma omp parallel {
-        double * Floopx = new double [3*nIPCs];
-        double * Floopy = new double [3*nIPCs];
-        double * Floopz = new double [3*nIPCs];
-
-        double Uloop(0.), rmin2loop(1.);
-        for(int i=0;i<3*nIPCs;i++) {
-            Floopx[i] = Floopy[i] = Floopz[i] = 0.;
+    #pragma omp parallel
+    {
+        loopVariables loopVars;
+        const double a[3] = {0., 0., 0.};
+        for (size_t i = 0; i < nIPCs; ++i) {
+            loopVars.force.push_back(a);
         }
+        loopVars.force.shrink_to_fit();
 
         #pragma omp for
         for(int m=0; m<cells.M3; m++)  // loop over all cells
         {
-            std::list<int> neighbs, local;
-            cells.neighbour_cells(m,local,neighbs);
+            std::list<int> ipcInNeighbouringCells, ipcInCurrentCell;
+            cells.neighbour_cells(m,ipcInCurrentCell,ipcInNeighbouringCells);
 
-            for( std::list<int>::iterator loc = local.begin(); loc!=local.end(); loc++) {
-              // loop over particles in neighbouring cells
-                for( std::list<int>::iterator ext = neighbs.begin(); ext!=neighbs.end(); ext++)
-                {
-
-                  space::vec ff, rji;        double r;
-                  // loop over cm and patches
-                  for (int i=0;i<3;i++)
-                  {
-                    for (int j=0;j<3;j++)
-                    {
-                      rji = x[*loc+i*nIPCs]-x[*ext+j*nIPCs];        lroundccp(rji);
-                      r = rji*rji;
-                      // Store the smallest distance between attraction centers:
-                      if( r<rmin2loop) rmin2loop=r;
-                      if (r <= PotRangeSquared)
-                      {
-                        r=sqrt(r);                      int dist = int( r/forceAndEnergySamplingStep );
-                        if (i==0 && j==0)        // means cm -> cm
-                        {
-                          ff = rji*(fBB[dist]);  Uloop += uBB[dist];
-                          if(r<rminbbloop) rminbbloop=r;    // Store the smallest distance between IPCs:
-                        }
-                        else if ( (i==0 && j==1) || (i==1 && j==0) )  // means cm -> patch1
-                        {
-                          ff = rji*(fBs1[dist]);  Uloop += uBs1[dist];
-                          if(r<rminbsloop) rminbsloop=r;    // Store the smallest distance between an IPC center and a patch:
-                        }
-                        else if ( (i==0 && j==2) || (i==2 && j==0) )  // means cm -> patch2
-                        {
-                          ff = rji*(fBs2[dist]);  Uloop += uBs2[dist];
-                          if(r<rminbsloop) rminbsloop=r;    // Store the smallest distance between an IPC center and a patch:
-                        }
-                        else if (i==2 && j==2)  // means  patch2 -> patch2
-                        {
-                          ff = rji*(fs2s2[dist]);  Uloop += us2s2[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else if (i==1 && j==1)  // means  patch1 -> patch1
-                        {
-                          ff = rji*(fs1s1[dist]);  Uloop += us1s1[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else if ( (i==1 && j==2) || (i==2 && j==1) )  // means patch1 -> patch2
-                        {
-                          ff = rji*(fs1s2[dist]);  Uloop += us1s2[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else  { std::cerr<<"CRAAAAAAAAAAAAAAAAAAP!"<<std::endl; exit(1);}
-                        Floop[*loc+i*nIPCs] -= ff;
-                        Floop[*ext+j*nIPCs] += ff;
-                      }
-                    }
-                  }
-                }
-                // loop over members of the cell m (internal interactions!)
-                for( std::list<int>::iterator ins = loc; ins!=local.end(); ins++)
-                {
-                  // starts from loc which is like summing over i >= j inside the cell
-                  // with a list, you have to access from loc because there's no way
-                  // to directly access (loc+1); so you need the following
-                  if(ins == loc) continue;  // to skip i=j iteration
-                  // after that, same code
-                  space::vec ff, rji;        double r;
-                  // loop over cm and patches
-                  for (int i=0;i<3;i++)
-                  {
-                    for (int j=0;j<3;j++)
-                    {
-                      rji = x[*loc+i*nIPCs]-x[*ins+j*nIPCs];        lroundccp(rji);
-                      r = rji*rji;
-                      // Store the smallest distance between attraction centers:
-                      if( r<rmin2loop) rmin2loop=r;
-                      if (r <= PotRangeSquared)
-                      {
-                        r=sqrt(r);                      int dist = int( r/forceAndEnergySamplingStep );
-                        if (i==0 && j==0)        // means cm -> cm
-                        {
-                          ff = rji*(fBB[dist]);  Uloop += uBB[dist];
-                          if(r<rminbbloop) rminbbloop=r;    // Store the smallest distance between IPCs:
-                        }
-                        else if ( (i==0 && j==1) || (i==1 && j==0) )  // means cm -> patch1
-                        {
-                          ff = rji*(fBs1[dist]);  Uloop += uBs1[dist];
-                          if(r<rminbsloop) rminbsloop=r;    // Store the smallest distance between an IPC center and a patch:
-                        }
-                        else if ( (i==0 && j==2) || (i==2 && j==0) )  // means cm -> patch2
-                        {
-                          ff = rji*(fBs2[dist]);  Uloop += uBs2[dist];
-                          if(r<rminbsloop) rminbsloop=r;    // Store the smallest distance between an IPC center and a patch:
-                        }
-                        else if (i==2 && j==2)  // means  patch2 -> patch2
-                        {
-                          ff = rji*(fs2s2[dist]);  Uloop += us2s2[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else if (i==1 && j==1)  // means  patch1 -> patch1
-                        {
-                          ff = rji*(fs1s1[dist]);  Uloop += us1s1[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else if ( (i==1 && j==2) || (i==2 && j==1) )  // means patch1 -> patch2
-                        {
-                          ff = rji*(fs1s2[dist]);  Uloop += us1s2[dist];
-                          if(r<rminssloop) rminssloop=r;    // Store the smallest distance between patches of different IPCs:
-                        }
-                        else  { std::cerr<<"CRAAAAAAAAAAAAAAAAAAP!"<<std::endl; exit(1);}
-                        Floop[*loc+i*nIPCs] -= ff;
-                        Floop[*ins+j*nIPCs] += ff;
-                      }
-                    }
-                  }
-                }
+            for( std::list<int>::iterator ipc = ipcInCurrentCell.begin(); ipc != ipcInCurrentCell.end(); ipc++) {
+                computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcInNeighbouringCells, loopVars);
+                computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
             }
         }
         #pragma omp critical
         {
-          for(int i=0;i<3*nIPCs;i++)
-            F[i] += Floop[i];
-          U += Uloop;
-          if(rmin2loop < rmin2) rmin2 = rmin2loop;
-          if(rminbbloop < rminbb) rminbb = rminbbloop;
-          if(rminbsloop < rminbs) rminbs = rminbsloop;
-          if(rminssloop < rminss) rminss = rminssloop;
+            for (size_t j = 0; j < nIPCs; ++j) {
+                for (unsigned short i: {0, 1, 2}) {
+                    particles[j].center.F[i] += loopVars.force[j][i];
+                    particles[j].firstPatch.F[i] += loopVars.force[j+nIPCs][i];
+                    particles[j].secndPatch.F[i] += loopVars.force[j+nIPCs][i];
+                }
+            }
+            U += loopVars.U;
+            if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
         }
-        delete [] Floop;
     }
-  /*  for(int i=0;i<nIPCs;i++)
-      F[i] += Ec;
-    for(int i=nIPCs;i<nPatc;i++)
-     F[i] += Ep1;
-    for(int i=nPatc;i<=nIPCs+nPatc;i++)
-     F[i] += Ep1;
-    }*/
+
+/*
+    for (IPC &ipc: particles) {
+        for (unsigned short i: {0, 1, 2}) {
+            ipc.center.F[i] += Ec[i];
+            ipc.firstPatch.F[i] += Ep1[i];
+            ipc.secndPatch.F[i] += Ep2[i];
+          }
+    }
+*/
+}
+
+void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcInNeighbouringCells, loopVariables & loopVars) {
+    for( std::list<int>::iterator ext = ipcInNeighbouringCells.begin(); ext != ipcInNeighbouringCells.end(); ext++) {
+        computeInteractionsBetweenTwoIPCs(*loc, *ext, loopVars);
+    }
 }
 
 
+
+void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcInCurrentCell, loopVariables &loopVars) {
+    for( std::list<int>::iterator ins = loc; ins != ipcInCurrentCell.end(); ins++)
+    {
+      // starts from loc which is like summing over i >= j inside the cell
+      // with a list, you have to access from loc because there's no way
+      // to directly access (loc+1); so you need the following "continue" statement
+      if(ins == loc) continue;  // to skip i=j iteration
+
+      computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
+    }
+}
+
+void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables &loopVars) {
+    IPC & first = particles[firstIPC];
+    IPC & second = particles[secndIPC];
+    double siteSiteSeparation[9][3];
+    // center-center
+    for (unsigned short i: {0, 1, 2}) {
+        siteSiteSeparation[0][i] = first.center.x[i] - second.center.x[i];
+        siteSiteSeparation[1][i] = first.center.x[i] - second.firstPatch.x[i];
+        siteSiteSeparation[2][i] = first.center.x[i] - second.secndPatch.x[i];
+        siteSiteSeparation[3][i] = first.firstPatch.x[i] - second.center.x[i];
+        siteSiteSeparation[4][i] = first.firstPatch.x[i] - second.firstPatch.x[i];
+        siteSiteSeparation[5][i] = first.firstPatch.x[i] - second.secndPatch.x[i];
+        siteSiteSeparation[6][i] = first.secndPatch.x[i] - second.center.x[i];
+        siteSiteSeparation[7][i] = first.secndPatch.x[i] - second.firstPatch.x[i];
+        siteSiteSeparation[8][i] = first.secndPatch.x[i] - second.secndPatch.x[i];
+    }
+    for (unsigned short j = 0; j < 9; ++j) {
+        double siteSiteSeparationModulus = siteSiteSeparation[j][0]*siteSiteSeparation[j][0]
+                                         + siteSiteSeparation[j][1]*siteSiteSeparation[j][1]
+                                         + siteSiteSeparation[j][2]*siteSiteSeparation[j][2];
+
+        if (siteSiteSeparationModulus < loopVars.minimumSquaredDistance)
+            loopVars.minimumSquaredDistance = siteSiteSeparationModulus;
+
+        if (siteSiteSeparationModulus <= PotRangeSquared) {
+            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+            const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
+            if (j == 0) { // center - center
+                loopVars.U += uBB[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBB[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC][i] += modulus;
+                }
+            } else if (j == 1) { // center - patch1
+                loopVars.U += uBs1[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC+nIPCs][i] += modulus;
+                }
+            } else if (j == 3) { // patch1 - center
+                loopVars.U += uBs1[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC+nIPCs][i] += modulus;
+                }
+            } else if (j == 2) { // center - patch2
+                loopVars.U += uBs2[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+                }
+            } else if (j == 6) { // patch2 - center
+                loopVars.U += uBs2[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
+                    loopVars.force[secndIPC][i] += modulus;
+                }
+            } else if (j == 4) { // patch1 - patch1
+                loopVars.U += us1s1[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fs1s1[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC+nIPCs][i] -= modulus;
+                    loopVars.force[secndIPC+nIPCs][i] += modulus;
+                }
+            } else if (j == 8) { // patch2 - patch2
+                loopVars.U += us2s2[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fBB[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
+                    loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+                }
+            } else if (j == 5) { // patch1 - patch2
+                loopVars.U += us1s2[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC][i] += modulus;
+                }
+            } else if (j == 7) { // patch2 - patch1
+                loopVars.U += us1s2[dist];
+                for (unsigned short i: {0, 1, 2}) {
+                    const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                    loopVars.force[firstIPC][i] -= modulus;
+                    loopVars.force[secndIPC][i] += modulus;
+                }
+            }
+        }
+    }
+}
