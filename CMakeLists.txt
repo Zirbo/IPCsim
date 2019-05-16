@@ -3,17 +3,17 @@ set (CMAKE_CXX_STANDARD 11)
 project(IPCsim)
 
 set(HELPERS_FILES
-  src/cell_lists.hpp
-  src/cell_lists.cpp
-  src/randomNumberGenerator.hpp
-  src/zilvectors.hpp
+    src/cell_lists.hpp
+    src/cell_lists.cpp
+    src/randomNumberGenerator.hpp
 )
 set(IPC_CLASS_FILES
-  src/IPCsimulation.cpp
-  src/IPCsimulation.hpp
+    src/IPC.hpp
+    src/IPCsimulation.cpp
+    src/IPCsimulation.hpp
 )
 set(MAIN_FILES
-  src/main.cpp
+    src/main.cpp
 )
 set(ALL_FILES
     ${HELPERS_FILES}

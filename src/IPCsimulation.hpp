@@ -3,10 +3,14 @@
 
 
 #include <fstream>
+#include <vector>
 #include <string>
-#include "zilvectors.hpp"
+#include <cmath>
+#include "IPC.hpp"
 #include "cell_lists.hpp"
 #include "randomNumberGenerator.hpp"
+
+
 
 
 class IPCsimulation {
@@ -16,68 +20,75 @@ public:
 
 private:
     IPCsimulation();
-    struct Ensemble {
-        // state point
-        int nIPCs;
-        double rho;
-        double kT, kTimposed;
-        // potential
-        double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
-        double bigRadius, s1Radius, ecc1, s2Radius, ecc2;
-        double fakeHSexp, fakeHScoef;
-        double forceAndEnergySamplingStep, tollerance;
-        // masses and inverse masses
-        double m1, m2, mc, im1, im2, imc;
-        // simulation
-        double dt_nonscaled;
-        double SimLength;
-        double PrintEvery;
-        // work parameters
-        double kToverK, E, U, K, L, L2, dt;
-        double rmin2, rminbb, rminbs, rminss;
-        double PotRange, PotRangeSquared;
-        double PatchDistance, PatchDistanceSquared;
-        double cP11, cP12, cP1c, cP21, cP22, cP2c, alpha_1, alpha_2, alpha_sum;
-        int nPrints;
-        int nPatc;
-        // external field on cm and patches
-        space::vec Ec, Ep1, Ep2;
-        double qc, qp1, qp2;
-    } simulationParameters;
 
     unsigned long simulationTime;
-    space::vec *x, *v, *F;
-    char *farben;
-    cell_lists cells;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;
     std::ofstream trajectoryFile;
 
     // force and potential tables computation
-    struct FU_table
-    {
+    //struct FU_table
+    //{
         double *uBB, *uBs1, *uBs2, *us1s2, *us1s1, *us2s2;
         double *fBB, *fBs1, *fBs2, *fs1s2, *fs1s1, *fs2s2;
-        void make_table(Ensemble simulationParameters, bool printPotentials);
-    } tab;
+        void make_table(bool printPotentials);
+    //private:
+        double omega(double Ra, double Rb, double rab);
+        double d_dr_omega(double Ra, double Rb, double rab);
+   // } tab;
 
-    static double omega(double Ra, double Rb, double rab);
-    static double d_dr_omega(double Ra, double Rb, double rab);
-    // simulation parts
-    void computeFreeForce();
-    void velocityVerletIteration();
+    // state point
+    int nIPCs;
+    double rho;
+    double kT, kTimposed;
+    // potential
+    double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
+    double bigRadius, s1Radius, ecc1, s2Radius, ecc2;
+    double fakeHSexp, fakeHScoef;
+    double forceAndEnergySamplingStep, tollerance;
+    // masses and inverse masses
+    double mass[3], inverseMass[3];
+    // simulation
+    double dt_nonscaled;
+    double SimLength;
+    double PrintEvery;
+    // work parameters
+    double kToverK, E, U, K, L, L2, dt;
+    double rmin2;
+    double PotRange, PotRangeSquared;
+    double PatchDistance, PatchDistanceSquared;
+    double cP11, cP12, cP1c, cP21, cP22, cP2c, alpha_1, alpha_2, alpha_sum;
+    int nPrints;
+    int nPatc;
+    // particles
+    std::vector<IPC> particles;
+    cell_lists cells;
+
     // selfexplanatory
     void initializeSystem(bool restoreprevious);
-    void outputSystemState();
-    void outputFINALSystemState();
+    void restorePreviousConfiguration();
+    void initializeNewConfiguration(int N1);
 
-private:
-    // small helpers
+
+    void computeTrajectoryStep();
+    void computeVerletHalfStepForIPC(IPC & ipc);
+    void computeVerletHalfStep();
+    void computeFreeForces();
+    void finishVerletStepForIPC(IPC & ipc);
+    void finishVerletStep();
+
+    void outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream &energyTrajectoryFile, unsigned long simulationTime);
+
+
     // 3D boundary conditions enforcers
-    inline void floorccp(space::vec & a)  {  a.x-=std::floor(a.x);   a.y-=std::floor(a.y);   a.z-=std::floor(a.z);   }
-    inline void lroundccp(space::vec & a) {  a.x-=std::lround(a.x);  a.y-=std::lround(a.y);  a.z-=std::lround(a.z);  }
+    void computeSystemMomentum(double (&pcm) [3]);
+    inline void floorccp(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }
+    inline void floorccp(double & x)  {  x-=std::floor(x);  }
+    inline void lroundccp(double & x, double & y, double &z) {  x-=std::lround(x);  y-=std::lround(y);  z-=std::lround(z);  }
+    inline void lroundccp(double & x) {  x-=std::lround(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-    void ranor(space::vec & a, RandomNumberGenerator & r);
+    void ranor(double (&a)[3], RandomNumberGenerator & r);
+
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__

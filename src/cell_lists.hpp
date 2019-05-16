@@ -34,18 +34,18 @@
 
 //#include <iostream>
 #include <list>
-#include "zilvectors.hpp"
+#include <vector>
+#include "IPC.hpp"
 
 class cell_lists
 {
   // cell lists
 public:
   cell_lists() {}
-  cell_lists(double Side, double InteractionRange, int Nparticles, space::vec x[]);
-  void initialize(double Side, double InteractionRange, int Nparticles, space::vec x[]);
+  void initialize(double Side, double InteractionRange, int Nparticles);
   // BoxSide and IntRange have to be in the same units of the positions x,
   // it is not supposed to have a 1-side box
-  void compilelists(space::vec x[]); // Only takes the first Nparticles coordinates!
+  void compilelists(std::vector<IPC> const& ipcs); // Only takes the first Nparticles coordinates!
   void neighbour_cells(int Cell, std::list<int> &local, std::list<int> &neigh);
   // Cell is the number of the cell you want to inquire, after the call
   // local will contain the indices of ALL the particles in cell Cell
@@ -55,7 +55,7 @@ private:
   int M, M2, N;
   double l;
   std::list<int> *vicini, *lista;
-  int cell(space::vec x);
+  int cell(const Particle &x);
   int cell(int x, int y, int z);
 };
 

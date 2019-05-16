@@ -36,20 +36,20 @@
 #include <chrono>
 
 class RandomNumberGenerator {
-  std::mt19937 randomNumberGenerator;
+    std::mt19937 randomNumberGenerator;
 public:
-  RandomNumberGenerator() {
-    randomNumberGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
-  }
-  double getRandomDoubleInRange(double from, double to) {
-    return std::uniform_real_distribution<double>(from, to)(randomNumberGenerator);
-  }
-  double getRandom55() {
-    getRandomDoubleInRange(-.5, .5);
-  }
-  double getRandom11() {
-    getRandomDoubleInRange(-1., 1.);
-  }
+    RandomNumberGenerator() {
+        randomNumberGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    }
+    double getRandomDoubleInRange(double from, double to) {
+        return std::uniform_real_distribution<double>(from, to)(randomNumberGenerator);
+    }
+    double getRandom55() {
+        getRandomDoubleInRange(-.5, .5);
+    }
+    double getRandom11() {
+        getRandomDoubleInRange(-1., 1.);
+    }
 };
 
 #endif //__ZILRANDOM_HEADER_INCLUDED__
