@@ -674,13 +674,10 @@ void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::con
     // ---------------------------------------------------------------
     // SILVANOOOOO something is not working here, the loop is endless
     // ---------------------------------------------------------------
-    for( auto ins = loc; ins != ipcsInCurrentCell.cend(); ++ins)
-    {
-      // starts from loc which is like summing over i >= j inside the cell
-      // with a list, you have to access from loc because there's no way
-      // to directly access (loc+1); so you need the following "continue" statement
-      if(ins == loc) continue;  // to skip i=j iteration
 
+    // starts from loc+1 which is like summing over i > j inside the cell
+    auto ins = std::next(loc);
+    for(; ins != ipcsInCurrentCell.cend(); ++ins) {
       computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
     }
 }
