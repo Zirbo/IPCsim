@@ -593,9 +593,11 @@ void IPCsimulation::restorePreviousConfiguration() {
         ipc.ipcCenter.v[0] *= kTimposed;
         ipc.ipcCenter.v[1] *= kTimposed;
         ipc.ipcCenter.v[2] *= kTimposed;
+
         ipc.firstPatch.v[0] *= kTimposed;
         ipc.firstPatch.v[1] *= kTimposed;
         ipc.firstPatch.v[2] *= kTimposed;
+
         ipc.secndPatch.v[0] *= kTimposed;
         ipc.secndPatch.v[1] *= kTimposed;
         ipc.secndPatch.v[2] *= kTimposed;
@@ -630,7 +632,7 @@ void IPCsimulation::computeFreeForces() {
             std::list<int> ipcInNeighbouringCells, ipcInCurrentCell;
             cells.neighbour_cells(m,ipcInCurrentCell,ipcInNeighbouringCells);
 
-            for( std::list<int>::iterator ipc = ipcInCurrentCell.begin(); ipc != ipcInCurrentCell.end(); ipc++) {
+            for( std::list<int>::const_iterator ipc = ipcInCurrentCell.cbegin(); ipc != ipcInCurrentCell.cend(); ++ipc) {
                 computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcInNeighbouringCells, loopVars);
                 computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
             }
@@ -660,19 +662,19 @@ void IPCsimulation::computeFreeForces() {
 */
 }
 
-void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcsInNeighbouringCells, loopVariables & loopVars) {
-    for( auto ext = ipcsInNeighbouringCells.begin(); ext != ipcsInNeighbouringCells.end(); ++ext) {
+void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars) {
+    for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
         computeInteractionsBetweenTwoIPCs(*loc, *ext, loopVars);
     }
 }
 
 
 
-void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcsInCurrentCell, loopVariables &loopVars) {
+void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables &loopVars) {
     // ---------------------------------------------------------------
     // SILVANOOOOO something is not working here, the loop is endless
     // ---------------------------------------------------------------
-    for( auto ins = loc; ins != ipcsInCurrentCell.end(); ++ins)
+    for( auto ins = loc; ins != ipcsInCurrentCell.cend(); ++ins)
     {
       // starts from loc which is like summing over i >= j inside the cell
       // with a list, you have to access from loc because there's no way
