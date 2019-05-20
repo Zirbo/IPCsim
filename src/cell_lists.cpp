@@ -47,7 +47,7 @@ void cell_lists::compilelists(std::vector<IPC> const& ipcs) {  // empty all the 
         lista[m].clear();
     // put every particle in the right list
     for(int i=0; i<N; i++)
-        lista[   cell(ipcs[i].center)   ].push_back(i);
+        lista[   cell(ipcs[i].ipcCenter)   ].push_back(i);
     // now the list contains the indices of the particles inside its volume
 }
 void cell_lists::neighbour_cells(int Cell, std::list<int> &local, std::list<int> &neigh)

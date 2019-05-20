@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.10)
 set (CMAKE_CXX_STANDARD 11)
 
 project(IPCsim)
@@ -22,3 +23,5 @@ set(ALL_FILES
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
+#target_compile_options(${PROJECT_NAME} "-O2 -g")
+set(CMAKE_BUILD_TYPE Debug)

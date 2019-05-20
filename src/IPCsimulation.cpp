@@ -70,7 +70,7 @@ void IPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
         pcm[i] = 0.;
     for(IPC ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
-            pcm[i] += mass[0]*ipc.center.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
+            pcm[i] += mass[0]*ipc.ipcCenter.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
         }
     }
     for (unsigned short i: {0, 1, 2})
@@ -211,11 +211,11 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
             pcm[i] /= 3*nIPCs*L;
         for(IPC ipc: particles) {
             for (unsigned short i: {0, 1, 2}) {
-                ipc.center.v[i] -= pcm[i];
+                ipc.ipcCenter.v[i] -= pcm[i];
                 ipc.firstPatch.v[i] -= pcm[i];
                 ipc.secndPatch.v[i] -= pcm[i];
 
-                pcmCorrected[i] += ipc.center.v[i] + ipc.firstPatch.v[i] + ipc.secndPatch.v[i];
+                pcmCorrected[i] += ipc.ipcCenter.v[i] + ipc.firstPatch.v[i] + ipc.secndPatch.v[i];
             }
         }
         for (unsigned short i: {0, 1, 2})
@@ -408,8 +408,8 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     for (unsigned short i: {0, 1, 2}) {
         ipc.firstPatch.x[i] = x1[i];
         ipc.secndPatch.x[i] = x2[i];
-        ipc.center.x[i] = x2[i] + dxNew[i]*ecc2/PatchDistance;
-        floorccp(ipc.center.x[i]);
+        ipc.ipcCenter.x[i] = x2[i] + dxNew[i]*ecc2/PatchDistance;
+        floorccp(ipc.ipcCenter.x[i]);
     }
 }
 
@@ -427,8 +427,8 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     double v1[3], v2[3], dx[3], dv[3];
     for (unsigned short i: {0, 1, 2}) {
         // compute the new effective forces from the new forces
-        ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.center.F[i]*cP1c;
-        ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.center.F[i]*cP2c;
+        ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
+        ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
 
         // compute the the final velocities from the new effective forces
         v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*inverseMass[1]);
@@ -457,11 +457,11 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     for (unsigned short i: {0, 1, 2}) {
         ipc.firstPatch.v[i] = v1[i];
         ipc.secndPatch.v[i] = v2[i];
-        ipc.center.v[i] = (v1[i]*ecc2 + v2[i]*ecc1)/PatchDistance;
+        ipc.ipcCenter.v[i] = (v1[i]*ecc2 + v2[i]*ecc1)/PatchDistance;
     }
     K += mass[1]*(v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2])
        + mass[2]*(v2[0]*v2[0] + v2[1]*v2[1] + v2[2]*v2[2])
-       + mass[0]*(ipc.center.v[0]*ipc.center.v[0] + ipc.center.v[1]*ipc.center.v[1] + ipc.center.v[2]*ipc.center.v[2]);
+       + mass[0]*(ipc.ipcCenter.v[0]*ipc.ipcCenter.v[0] + ipc.ipcCenter.v[1]*ipc.ipcCenter.v[1] + ipc.ipcCenter.v[2]*ipc.ipcCenter.v[2]);
 }
 
 
@@ -472,7 +472,7 @@ void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std:
     outputTrajectoryFile<<std::scientific<<std::setprecision(24);
     outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*dt_nonscaled<<"\n";
     for (IPC ipc: particles) {
-        outputTrajectoryFile << ipc.type << "\t" << ipc.center.x[0] << "\t" << ipc.center.x[1] << "\t" << ipc.center.x[2] << "\n"
+        outputTrajectoryFile << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2] << "\n"
                              << "P"      << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2] << "\n"
                              << "Q"      << "\t" << ipc.secndPatch.F[0] << "\t" << ipc.secndPatch.F[1] << "\t" << ipc.secndPatch.F[2] << "\n";
     }
@@ -499,40 +499,40 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     for(int i=0;i<N3;i++)
     {
       // FCC is obtained as 4 intersecating SC
-        particles[i].center.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i].center.x[0]);
-        particles[i].center.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i].center.x[1]);
-        particles[i].center.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
-        floorccp(particles[i].center.x[2]);
+        particles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i].ipcCenter.x[0]);
+        particles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i].ipcCenter.x[1]);
+        particles[i].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
+        floorccp(particles[i].ipcCenter.x[2]);
 
-        particles[i+N3].center.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3].center.x[0]);
-        particles[i+N3].center.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3].center.x[1]);
-        particles[i+N3].center.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
-        floorccp(particles[i+N3].center.x[2]);
+        particles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3].ipcCenter.x[0]);
+        particles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3].ipcCenter.x[1]);
+        particles[i+N3].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
+        floorccp(particles[i+N3].ipcCenter.x[2]);
 
-        particles[i+N3+N3].center.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3+N3].center.x[0]);
-        particles[i+N3+N3].center.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3+N3].center.x[1]);
-        particles[i+N3+N3].center.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
-        floorccp(particles[i+N3+N3].center.x[2]);
+        particles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3+N3].ipcCenter.x[0]);
+        particles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3+N3].ipcCenter.x[1]);
+        particles[i+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
+        floorccp(particles[i+N3+N3].ipcCenter.x[2]);
 
-        particles[i+N3+N3+N3].center.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3+N3+N3].center.x[0]);
-        particles[i+N3+N3+N3].center.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
-        floorccp(particles[i+N3+N3+N3].center.x[1]);
-        particles[i+N3+N3+N3].center.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
-        floorccp(particles[i+N3+N3+N3].center.x[2]);
+        particles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3+N3+N3].ipcCenter.x[0]);
+        particles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
+        floorccp(particles[i+N3+N3+N3].ipcCenter.x[1]);
+        particles[i+N3+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
+        floorccp(particles[i+N3+N3+N3].ipcCenter.x[2]);
 
         // starting from random but ONLY TRANSLATIONAL speeds, for compatibility with rattle
         for (unsigned short j: {0, 1, 2}) {
-           particles[i].center.v[j]          = rand.getRandom55()*vel_scaling;
-           particles[i+N3].center.v[j]       = rand.getRandom55()*vel_scaling;
-           particles[i+N3+N3].center.v[j]    = rand.getRandom55()*vel_scaling;
-           particles[i+N3+N3+N3].center.v[j] = rand.getRandom55()*vel_scaling;
+           particles[i].ipcCenter.v[j]          = rand.getRandom55()*vel_scaling;
+           particles[i+N3].ipcCenter.v[j]       = rand.getRandom55()*vel_scaling;
+           particles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom55()*vel_scaling;
+           particles[i+N3+N3+N3].ipcCenter.v[j] = rand.getRandom55()*vel_scaling;
         }
     }
     // initialize patches positions
@@ -541,7 +541,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         ranor(ipcAxis,rand);
         ranor(ipcOrthogonalAxis, rand);
         double normOfIpcOrthogonalAxis = std::sqrt( .5*
-                (std::pow(ipc.center.v[0],2) + std::pow(ipc.center.v[1],2) + std::pow(ipc.center.v[2],2))
+                (std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2))
                 /
                 (std::pow(ipcOrthogonalAxis[0],2) + std::pow(ipcOrthogonalAxis[1],2) + std::pow(ipcOrthogonalAxis[2],2))
                 );
@@ -552,12 +552,12 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
             ipcOrthogonalAxis[i] *= normOfIpcOrthogonalAxis;
             ipcOrthogonalAxis[i] -= ipcAxis[i]*scalarProductOfTheTwoAxes;
 
-            ipc.firstPatch.x[i] = ipc.center.x[i] + ipcAxis[i]*ecc1;
+            ipc.firstPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*ecc1;
             floorccp(ipc.firstPatch.x[i]);
-            ipc.secndPatch.x[i] = ipc.center.x[i] + ipcAxis[i]*ecc2;
+            ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*ecc2;
             floorccp(ipc.secndPatch.x[i]);
 
-            ipc.firstPatch.v[i] = ipc.center.v[i] + ipcOrthogonalAxis[i]*vel_scaling;
+            ipc.firstPatch.v[i] = ipc.ipcCenter.v[i] + ipcOrthogonalAxis[i]*vel_scaling;
         }
     }
 }
@@ -577,9 +577,9 @@ void IPCsimulation::restorePreviousConfiguration() {
 
     for (IPC &ipc: particles) {
         IN >> ipc.type
-           >> ipc.center.x[0] >> ipc.center.x[1] >> ipc.center.x[2]
-           >> ipc.center.v[0] >> ipc.center.v[1] >> ipc.center.v[2]
-           >> ipc.center.F[0] >> ipc.center.F[1] >> ipc.center.F[2];
+           >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
+           >> ipc.ipcCenter.v[0] >> ipc.ipcCenter.v[1] >> ipc.ipcCenter.v[2]
+           >> ipc.ipcCenter.F[0] >> ipc.ipcCenter.F[1] >> ipc.ipcCenter.F[2];
         IN >> charJunk
            >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> ipc.firstPatch.x[2]
            >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2]
@@ -588,6 +588,17 @@ void IPCsimulation::restorePreviousConfiguration() {
            >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
            >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2]
            >> ipc.secndPatch.F[0] >> ipc.secndPatch.F[1] >> ipc.secndPatch.F[2];
+
+        // scale velociteis -> move to another fct
+        ipc.ipcCenter.v[0] *= kTimposed;
+        ipc.ipcCenter.v[1] *= kTimposed;
+        ipc.ipcCenter.v[2] *= kTimposed;
+        ipc.firstPatch.v[0] *= kTimposed;
+        ipc.firstPatch.v[1] *= kTimposed;
+        ipc.firstPatch.v[2] *= kTimposed;
+        ipc.secndPatch.v[0] *= kTimposed;
+        ipc.secndPatch.v[1] *= kTimposed;
+        ipc.secndPatch.v[2] *= kTimposed;
     }
     IN.close();
 }
@@ -601,9 +612,9 @@ void IPCsimulation::computeFreeForces() {
     // reset all forces
     for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
+            ipc.ipcCenter.F[i] = 0.;
             ipc.firstPatch.F[i] = 0.;
             ipc.secndPatch.F[i] = 0.;
-            ipc.center.F[i] = 0.;
         }
     }
     U = 0.0;  rmin2 = 1.;
@@ -611,11 +622,7 @@ void IPCsimulation::computeFreeForces() {
     #pragma omp parallel
     {
         loopVariables loopVars;
-        const double a[3] = {0., 0., 0.};
-        for (size_t i = 0; i < nIPCs; ++i) {
-            loopVars.force.push_back(a);
-        }
-        loopVars.force.shrink_to_fit();
+        loopVars.force.resize(3*nIPCs, {0.0, 0.0, 0.0});
 
         #pragma omp for
         for(int m=0; m<cells.M3; m++)  // loop over all cells
@@ -632,9 +639,9 @@ void IPCsimulation::computeFreeForces() {
         {
             for (size_t j = 0; j < nIPCs; ++j) {
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[j].center.F[i] += loopVars.force[j][i];
+                    particles[j].ipcCenter.F[i] += loopVars.force[j][i];
                     particles[j].firstPatch.F[i] += loopVars.force[j+nIPCs][i];
-                    particles[j].secndPatch.F[i] += loopVars.force[j+nIPCs][i];
+                    particles[j].secndPatch.F[i] += loopVars.force[j+nIPCs+nIPCs][i];
                 }
             }
             U += loopVars.U;
@@ -653,16 +660,19 @@ void IPCsimulation::computeFreeForces() {
 */
 }
 
-void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcInNeighbouringCells, loopVariables & loopVars) {
-    for( std::list<int>::iterator ext = ipcInNeighbouringCells.begin(); ext != ipcInNeighbouringCells.end(); ext++) {
+void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcsInNeighbouringCells, loopVariables & loopVars) {
+    for( auto ext = ipcsInNeighbouringCells.begin(); ext != ipcsInNeighbouringCells.end(); ++ext) {
         computeInteractionsBetweenTwoIPCs(*loc, *ext, loopVars);
     }
 }
 
 
 
-void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcInCurrentCell, loopVariables &loopVars) {
-    for( std::list<int>::iterator ins = loc; ins != ipcInCurrentCell.end(); ins++)
+void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcsInCurrentCell, loopVariables &loopVars) {
+    // ---------------------------------------------------------------
+    // SILVANOOOOO something is not working here, the loop is endless
+    // ---------------------------------------------------------------
+    for( auto ins = loc; ins != ipcsInCurrentCell.end(); ++ins)
     {
       // starts from loc which is like summing over i >= j inside the cell
       // with a list, you have to access from loc because there's no way
@@ -679,13 +689,13 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
     double siteSiteSeparation[9][3];
     // center-center
     for (unsigned short i: {0, 1, 2}) {
-        siteSiteSeparation[0][i] = first.center.x[i] - second.center.x[i];
-        siteSiteSeparation[1][i] = first.center.x[i] - second.firstPatch.x[i];
-        siteSiteSeparation[2][i] = first.center.x[i] - second.secndPatch.x[i];
-        siteSiteSeparation[3][i] = first.firstPatch.x[i] - second.center.x[i];
+        siteSiteSeparation[0][i] = first.ipcCenter.x[i] - second.ipcCenter.x[i];
+        siteSiteSeparation[1][i] = first.ipcCenter.x[i] - second.firstPatch.x[i];
+        siteSiteSeparation[2][i] = first.ipcCenter.x[i] - second.secndPatch.x[i];
+        siteSiteSeparation[3][i] = first.firstPatch.x[i] - second.ipcCenter.x[i];
         siteSiteSeparation[4][i] = first.firstPatch.x[i] - second.firstPatch.x[i];
         siteSiteSeparation[5][i] = first.firstPatch.x[i] - second.secndPatch.x[i];
-        siteSiteSeparation[6][i] = first.secndPatch.x[i] - second.center.x[i];
+        siteSiteSeparation[6][i] = first.secndPatch.x[i] - second.ipcCenter.x[i];
         siteSiteSeparation[7][i] = first.secndPatch.x[i] - second.firstPatch.x[i];
         siteSiteSeparation[8][i] = first.secndPatch.x[i] - second.secndPatch.x[i];
     }

@@ -80,12 +80,12 @@ private:
 
     void computeFreeForces();
     struct loopVariables {
-        std::vector<double[3]> force;
+        std::vector<std::vector<double>> force;
         double U, minimumSquaredDistance;
         loopVariables() : U{0.}, minimumSquaredDistance{1.} {}
     };
-    void computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcInCurrentCell, loopVariables & loopVars);
-    void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcInNeighbouringCells, loopVariables & loopVars);
+    void computeInteractionsWithIPCsInTheSameCell(std::list<int>::iterator loc, std::list<int> ipcsInCurrentCell, loopVariables & loopVars);
+    void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::iterator loc, std::list<int> ipcsInNeighbouringCells, loopVariables & loopVars);
     void computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables & loopVars);
 
     void outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream &energyTrajectoryFile, unsigned long simulationTime);
