@@ -415,8 +415,10 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
 
 void IPCsimulation::finishVerletStep() {
     K = 0.;
+    int i = 0;
     for(IPC &ipc: particles) {
         finishVerletStepForIPC(ipc);
+        i++;
     }
     K *= .5*L2;
     E = K + U;
@@ -426,10 +428,6 @@ void IPCsimulation::finishVerletStep() {
 void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     double v1[3], v2[3], dx[3], dv[3];
     for (unsigned short i: {0, 1, 2}) {
-        // compute the new effective forces from the new forces
-        ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
-        ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
-
         // compute the the final velocities from the new effective forces
         v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*inverseMass[1]);
         v2[i] = ipc.secndPatch.v[i] + ipc.eFp2[i]*(.5*dt*inverseMass[2]);
@@ -441,7 +439,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     }
     // check how much the constraints are being violated
     double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*PatchDistanceSquared);
-    while( fabs(k) > tollerance ) {
+    while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
         double DX[3];
         for (unsigned short i: {0, 1, 2}) {
@@ -470,12 +468,19 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream & energyTrajectoryFile, unsigned long simulationTime)
 {
     outputTrajectoryFile<<std::scientific<<std::setprecision(24);
-    outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*dt_nonscaled<<"\n";
+    outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*dt_nonscaled;
     for (IPC ipc: particles) {
-        outputTrajectoryFile << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2] << "\n"
-                             << "P"      << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2] << "\n"
-                             << "Q"      << "\t" << ipc.secndPatch.F[0] << "\t" << ipc.secndPatch.F[1] << "\t" << ipc.secndPatch.F[2] << "\n";
+        outputTrajectoryFile << "\n"
+                             << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
+                                         << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2]
+                             << "\n"
+                             << 'P'      << "\t" << ipc.firstPatch.x[0] << "\t" << ipc.firstPatch.x[1] << "\t" << ipc.firstPatch.x[2]
+                                         << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2]
+                             << "\n"
+                             << 'P'      << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
+                                         << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
     }
+    outputTrajectoryFile << std::endl;
 
     energyTrajectoryFile << simulationTime*dt_nonscaled << "\t" << kT << "\t"
                          << K/nIPCs << "\t" << U/nIPCs << "\t" << E/nIPCs << "\t"
@@ -499,6 +504,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     for(int i=0;i<N3;i++)
     {
       // FCC is obtained as 4 intersecating SC
+        particles[i].type = 'C';
         particles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         floorccp(particles[i].ipcCenter.x[0]);
         particles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -506,6 +512,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         particles[i].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
         floorccp(particles[i].ipcCenter.x[2]);
 
+        particles[i+N3].type = 'C';
         particles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         floorccp(particles[i+N3].ipcCenter.x[0]);
         particles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -513,6 +520,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         particles[i+N3].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
         floorccp(particles[i+N3].ipcCenter.x[2]);
 
+        particles[i+N3+N3].type = 'C';
         particles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         floorccp(particles[i+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -520,6 +528,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         particles[i+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
         floorccp(particles[i+N3+N3].ipcCenter.x[2]);
 
+        particles[i+N3+N3+N3].type = 'C';
         particles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         floorccp(particles[i+N3+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -554,10 +563,11 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 
             ipc.firstPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*ecc1;
             floorccp(ipc.firstPatch.x[i]);
-            ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*ecc2;
+            ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] - ipcAxis[i]*ecc2;
             floorccp(ipc.secndPatch.x[i]);
 
             ipc.firstPatch.v[i] = ipc.ipcCenter.v[i] + ipcOrthogonalAxis[i]*vel_scaling;
+            ipc.secndPatch.v[i] = ipc.ipcCenter.v[i] - ipcOrthogonalAxis[i]*vel_scaling;
         }
     }
 }
@@ -651,6 +661,13 @@ void IPCsimulation::computeFreeForces() {
         }
     }
 
+    for(IPC &ipc: particles) {
+        for (unsigned short i: {0, 1, 2}) {
+            ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
+            ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
+        }
+    }
+
 /*
     for (IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
@@ -671,10 +688,6 @@ void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int
 
 
 void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables &loopVars) {
-    // ---------------------------------------------------------------
-    // SILVANOOOOO something is not working here, the loop is endless
-    // ---------------------------------------------------------------
-
     // starts from loc+1 which is like summing over i > j inside the cell
     auto ins = std::next(loc);
     for(; ins != ipcsInCurrentCell.cend(); ++ins) {
@@ -683,8 +696,8 @@ void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::con
 }
 
 void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables &loopVars) {
-    IPC & first = particles[firstIPC];
-    IPC & second = particles[secndIPC];
+    IPC const& first = particles[firstIPC];
+    IPC const& second = particles[secndIPC];
     double siteSiteSeparation[9][3];
     // center-center
     for (unsigned short i: {0, 1, 2}) {
@@ -706,72 +719,74 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
         if (siteSiteSeparationModulus < loopVars.minimumSquaredDistance)
             loopVars.minimumSquaredDistance = siteSiteSeparationModulus;
 
-        if (siteSiteSeparationModulus <= PotRangeSquared) {
-            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
-            const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
-            if (j == 0) { // center - center
-                loopVars.U += uBB[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBB[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC][i] += modulus;
-                }
-            } else if (j == 1) { // center - patch1
-                loopVars.U += uBs1[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC+nIPCs][i] += modulus;
-                }
-            } else if (j == 3) { // patch1 - center
-                loopVars.U += uBs1[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC+nIPCs][i] += modulus;
-                }
-            } else if (j == 2) { // center - patch2
-                loopVars.U += uBs2[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
-                }
-            } else if (j == 6) { // patch2 - center
-                loopVars.U += uBs2[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
-                    loopVars.force[secndIPC][i] += modulus;
-                }
-            } else if (j == 4) { // patch1 - patch1
-                loopVars.U += us1s1[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fs1s1[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC+nIPCs][i] -= modulus;
-                    loopVars.force[secndIPC+nIPCs][i] += modulus;
-                }
-            } else if (j == 8) { // patch2 - patch2
-                loopVars.U += us2s2[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fBB[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
-                    loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
-                }
-            } else if (j == 5) { // patch1 - patch2
-                loopVars.U += us1s2[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC][i] += modulus;
-                }
-            } else if (j == 7) { // patch2 - patch1
-                loopVars.U += us1s2[dist];
-                for (unsigned short i: {0, 1, 2}) {
-                    const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
-                    loopVars.force[firstIPC][i] -= modulus;
-                    loopVars.force[secndIPC][i] += modulus;
-                }
+        // if we are too far, no interaction, skip to the next site-site pair
+        if (siteSiteSeparationModulus >= PotRangeSquared)
+            continue;
+
+        siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+        const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
+        if (j == 0) { // center - center
+            loopVars.U += uBB[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBB[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC][i] -= modulus;
+                loopVars.force[secndIPC][i] += modulus;
+            }
+        } else if (j == 1) { // center - patch1
+            loopVars.U += uBs1[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs][i] += modulus;
+            }
+        } else if (j == 3) { // patch1 - center
+            loopVars.U += uBs1[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC][i] += modulus;
+            }
+        } else if (j == 2) { // center - patch2
+            loopVars.U += uBs2[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+            }
+        } else if (j == 6) { // patch2 - center
+            loopVars.U += uBs2[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC][i] += modulus;
+            }
+        } else if (j == 4) { // patch1 - patch1
+            loopVars.U += us1s1[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fs1s1[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs][i] += modulus;
+            }
+        } else if (j == 8) { // patch2 - patch2
+            loopVars.U += us2s2[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fBB[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+            }
+        } else if (j == 5) { // patch1 - patch2
+            loopVars.U += us1s2[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+            }
+        } else if (j == 7) { // patch2 - patch1
+            loopVars.U += us1s2[dist];
+            for (unsigned short i: {0, 1, 2}) {
+                const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
+                loopVars.force[secndIPC+nIPCs][i] += modulus;
             }
         }
     }
