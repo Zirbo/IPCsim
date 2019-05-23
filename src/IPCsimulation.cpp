@@ -25,7 +25,7 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
   outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
 
   energyTrajectoryFile<<std::scientific<<std::setprecision(10);
-  energyTrajectoryFile<<"#t\t\tT\t\tK\t\tU\t\tE\t\trmin\n";
+  energyTrajectoryFile<<"#t\t\t\tT\t\t\tK\t\t\t\tU\t\t\tE\t\t\trmin\n";
   energyTrajectoryFile<<simulationTime*dt_nonscaled<<"\t"<<kT<<"\t"<<K/nIPCs<<"\t"<<U/nIPCs<<"\t"<<E/nIPCs;
   energyTrajectoryFile<<"\t"<<sqrt(rmin2)*L<<std::endl;
 
@@ -36,8 +36,9 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
 void IPCsimulation::run() {
     time_t simulationStartTime, simulationEndTime;
 
-    unsigned long simulationDurationInIterations = (unsigned long)SimLength/dt_nonscaled;
-    unsigned long printingInterval = (unsigned long)PrintEvery/dt_nonscaled;
+    const size_t simulationDurationInIterations = (size_t)SimLength/dt_nonscaled;
+    const double printingIntervalDouble = PrintEvery/dt_nonscaled;
+    const size_t printingInterval = (size_t)printingIntervalDouble;
 
     // simulation begins
     time(&simulationStartTime);
@@ -46,7 +47,7 @@ void IPCsimulation::run() {
         ++simulationTime;
 
         if( simulationTime%printingInterval == 0)
-        outputSystemState(trajectoryFile, energyTrajectoryFile, simulationTime);
+            outputSystemState(trajectoryFile, energyTrajectoryFile, simulationTime);
     }
 
     // check that total momentum is still zero and print final stuff
@@ -68,6 +69,7 @@ void IPCsimulation::run() {
 void IPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
     for (unsigned short i: {0, 1, 2})
         pcm[i] = 0.;
+
     for(IPC ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
             pcm[i] += mass[0]*ipc.ipcCenter.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
@@ -364,19 +366,20 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*inverseMass[1]);
         ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*inverseMass[2]);
 
-        // compute new positions from the half step velocities
+        // compute the new positions from the half step velocities
         x1[i] = ipc.firstPatch.x[i] + ipc.firstPatch.v[i]*dt;
         floorccp(x1[i]);
         x2[i] = ipc.secndPatch.x[i] + ipc.secndPatch.v[i]*dt;
         floorccp(x2[i]);
 
-        // check how much the constraints are being violated
+        // compute the separation between the two patches
         dxNew[i] = x1[i] - x2[i];
         lroundccp(dxNew[i]);
     }
+    // compute the (squared) violation of the constraint
     double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - PatchDistanceSquared;
 
-    // correct the positions and velocities until the violation is inside the tollerance
+    // correct the positions and the velocities until the violation is less than the tollerance
     while( std::abs(diff) > tollerance*PatchDistanceSquared )
     {
         double dxOld[3], DX[3];
@@ -477,7 +480,7 @@ void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std:
                              << 'P'      << "\t" << ipc.firstPatch.x[0] << "\t" << ipc.firstPatch.x[1] << "\t" << ipc.firstPatch.x[2]
                                          << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2]
                              << "\n"
-                             << 'P'      << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
+                             << 'Q'      << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
                                          << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
     }
     outputTrajectoryFile << std::endl;
@@ -614,8 +617,6 @@ void IPCsimulation::restorePreviousConfiguration() {
     }
     IN.close();
 }
-
-
 
 void IPCsimulation::computeFreeForces() {
     // Computes the force without accounting for constrains.
