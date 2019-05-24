@@ -53,13 +53,12 @@ private:
     double SimLength;
     double PrintEvery;
     // work parameters
-    double kToverK, E, U, K, L, L2, dt;
+    double kToverK, E, U, K, L, dt;
     double rmin2;
     double PotRange, PotRangeSquared;
     double PatchDistance, PatchDistanceSquared;
     double cP11, cP12, cP1c, cP21, cP22, cP2c, alpha_1, alpha_2, alpha_sum;
     int nPrints;
-    int nPatc;
     // particles
     std::vector<IPC> particles;
     cell_lists cells;
