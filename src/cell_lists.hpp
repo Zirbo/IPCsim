@@ -46,7 +46,7 @@ public:
   // BoxSide and IntRange have to be in the same units of the positions x,
   // it is not supposed to have a 1-side box
   void compilelists(std::vector<IPC> const& ipcs); // Only takes the first Nparticles coordinates!
-  void neighbour_cells(int Cell, std::list<int> &local, std::list<int> &neigh);
+  void neighbour_cells(int cell, std::list<int> &local, std::list<int> &neigh);
   // Cell is the number of the cell you want to inquire, after the call
   // local will contain the indices of ALL the particles in cell Cell
   // neigh will contain the indices of ALL the particles in the neighbouring cells.
@@ -54,9 +54,14 @@ public:
 private:
   int M, M2, N;
   double l;
-  std::list<int> *vicini, *lista;
-  int cell(const Particle &x);
-  int cell(int x, int y, int z);
+  std::vector<std::list<int>> neighbouring_cells, list_of_neighbours;
+
+  int cell(Particle const& ipc) {  // gives you the list where this coordinate belong
+      return int(ipc.x[0]/l)+M*int(ipc.x[1]/l)+M2*int(ipc.x[2]/l);
+  }
+  int cell(int x, int y, int z) {  // hope it really inlines because it's really stupid to have it
+      return x + M*y + M2*z;
+  }
 };
 
 #endif //__CELL_LISTS_HEADER_INCLUDED__

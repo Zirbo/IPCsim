@@ -362,10 +362,6 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*inverseMass[1]);
         ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*inverseMass[2]);
 
-        if (ipc.firstPatch.v[i] > 10. || ipc.secndPatch.v[i] > 10.) {
-            std::cout << "Jebote";
-        }
-
         // compute the new positions from the half step velocities
         x1[i] = ipc.firstPatch.x[i] + ipc.firstPatch.v[i]*dt;
         floorccp(x1[i]);
@@ -395,9 +391,6 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
             ipc.firstPatch.v[i] -= alpha_1*DX[i];
             ipc.secndPatch.v[i] += alpha_2*DX[i];
 
-            if (ipc.firstPatch.v[i] > 10. || ipc.secndPatch.v[i] > 10.) {
-                std::cout << "Jebote";
-            }
             DX[i] *= dt;
 
             x1[i] -= DX[i]*alpha_1;
@@ -638,6 +631,44 @@ void IPCsimulation::computeFreeForces() {
     }
     U = 0.0;  rmin2 = 1.;
 
+    for(int m=0; m<cells.M3; m++) {
+        std::list<int> ipcsInNeighbouringCells, ipcsInCurrentCell;
+        cells.neighbour_cells(m,ipcsInCurrentCell,ipcsInNeighbouringCells);
+
+        for(auto loc = ipcsInCurrentCell.cbegin(); loc != ipcsInCurrentCell.cend(); ++loc) {
+            for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
+                double r[3], rmod(0.);
+                for (unsigned short i: {0, 1, 2}) {
+                    r[i] = particles[*loc].ipcCenter.x[i] - particles[*ext].ipcCenter.x[i];
+                    lroundccp(r[i]);
+                    rmod += r[i]*r[i];
+                }
+                double Pmod = pow(rmod,-3);
+                U += Pmod*(Pmod-1);
+                double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
+                for (unsigned short i: {0, 1, 2}) {
+                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
+                    particles[*ext].ipcCenter.F[i] += Fmod*r[i];
+                }
+            }
+            for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
+                double r[3], rmod(0.);
+                for (unsigned short i: {0, 1, 2}) {
+                    r[i] = particles[*loc].ipcCenter.x[i] - particles[*ins].ipcCenter.x[i];
+                    lroundccp(r[i]);
+                    rmod += r[i]*r[i];
+                }
+                double Pmod = pow(rmod,-3);
+                U += Pmod*(Pmod-1);
+                double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
+                for (unsigned short i: {0, 1, 2}) {
+                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
+                    particles[*ins].ipcCenter.F[i] += Fmod*r[i];
+                }
+            }
+        }
+    }
+/*
     #pragma omp parallel
     {
         loopVariables loopVars;
@@ -649,7 +680,7 @@ void IPCsimulation::computeFreeForces() {
             std::list<int> ipcInNeighbouringCells, ipcInCurrentCell;
             cells.neighbour_cells(m,ipcInCurrentCell,ipcInNeighbouringCells);
 
-            for( std::list<int>::const_iterator ipc = ipcInCurrentCell.cbegin(); ipc != ipcInCurrentCell.cend(); ++ipc) {
+            for(auto ipc = ipcInCurrentCell.cbegin(); ipc != ipcInCurrentCell.cend(); ++ipc) {
                 computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcInNeighbouringCells, loopVars);
                 computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
             }
@@ -674,7 +705,7 @@ void IPCsimulation::computeFreeForces() {
             ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
         }
     }
-
+*/
 /*
     for (IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
@@ -696,8 +727,8 @@ void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int
 
 void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables &loopVars) {
     // starts from loc+1 which is like summing over i > j inside the cell
-    for(auto ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
-      computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
+    for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
+        computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
     }
 }
 
@@ -724,6 +755,10 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
 
         if (siteSiteSeparationModulus < loopVars.minimumSquaredDistance)
             loopVars.minimumSquaredDistance = siteSiteSeparationModulus;
+
+        // if the CENTERS are too far, no interactions, skip this couple of IPCs
+        if (j == 0 && siteSiteSeparationModulus >= PotRangeSquared)
+            break;
 
         // if we are too far, no interaction, skip to the next site-site pair
         if (siteSiteSeparationModulus >= PotRangeSquared)

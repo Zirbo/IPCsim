@@ -8,8 +8,9 @@ struct IPC {
     Particle ipcCenter, firstPatch, secndPatch;
     double eFp1[3], eFp2[3];
     char type;
-    // just for debuggin purposes
-    unsigned short number;
+    // unfortunately I need the number for managing the lists...
+    // there's probably another way but I don't see it now, and anyway this is cheap
+    int number;
 };
 
 #endif // __IPC_HEADER_INCLUDED__
