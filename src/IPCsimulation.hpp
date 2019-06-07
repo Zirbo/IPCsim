@@ -87,7 +87,8 @@ private:
     void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars);
     void computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables & loopVars);
 
-    void outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream &energyTrajectoryFile, unsigned long simulationTime);
+    void outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime);
+    void outputSystemState(std::ofstream & outputTrajectoryFile, unsigned long simulationTime, std::ofstream &energyTrajectoryFile);
 
 
     // 3D boundary conditions enforcers

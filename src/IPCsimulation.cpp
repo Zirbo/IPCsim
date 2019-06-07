@@ -24,12 +24,11 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
   // print starting configuration and initialize output file
   outputFile<<"\nPlot evolution.out to check the evolution of the system.\n";
 
+  trajectoryFile<<std::scientific<<std::setprecision(24);
   energyTrajectoryFile<<std::scientific<<std::setprecision(10);
-  energyTrajectoryFile<<"#t\t\t\tT\t\t\tK\t\t\t\tU\t\t\tE\t\t\trmin\n";
-  energyTrajectoryFile<<simulationTime*dt_nonscaled<<"\t"<<kT<<"\t"<<K/nIPCs<<"\t"<<U/nIPCs<<"\t"<<E/nIPCs;
-  energyTrajectoryFile<<"\t"<<sqrt(rmin2)*L<<std::endl;
+  energyTrajectoryFile<<"#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
 
-  outputSystemState(trajectoryFile, energyTrajectoryFile, 0);
+  outputSystemTrajectory(trajectoryFile, 0);
 }
 
 //************************************************************************//
@@ -47,7 +46,7 @@ void IPCsimulation::run() {
         ++simulationTime;
 
         if( simulationTime%printingInterval == 0)
-            outputSystemState(trajectoryFile, energyTrajectoryFile, simulationTime);
+            outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
     }
 
     // check that total momentum is still zero and print final stuff
@@ -55,7 +54,7 @@ void IPCsimulation::run() {
     computeSystemMomentum(pcm);
 
     std::ofstream finalStateFile("startingstate.xyz");
-    outputSystemState(finalStateFile, energyTrajectoryFile, simulationTime);
+    outputSystemTrajectory(finalStateFile, simulationTime);
     finalStateFile.close();
 
     time(&simulationEndTime);
@@ -415,10 +414,8 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
 
 void IPCsimulation::finishVerletStep() {
     K = 0.;
-    int i = 0;
     for(IPC &ipc: particles) {
         finishVerletStepForIPC(ipc);
-        i++;
     }
     K *= .5*L*L;
     E = K + U;
@@ -465,9 +462,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 
 
 //************************************************************************//
-void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream & energyTrajectoryFile, unsigned long simulationTime)
-{
-    outputTrajectoryFile<<std::scientific<<std::setprecision(24);
+void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime) {
     outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*dt_nonscaled;
     for (IPC ipc: particles) {
         outputTrajectoryFile << "\n"
@@ -481,10 +476,13 @@ void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std:
                                          << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
     }
     outputTrajectoryFile << std::endl;
-
+}
+void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, unsigned long simulationTime, std::ofstream & energyTrajectoryFile)
+{
+    outputSystemTrajectory(outputTrajectoryFile, simulationTime);
     energyTrajectoryFile << simulationTime*dt_nonscaled << "\t" << kT << "\t"
                          << K/nIPCs << "\t" << U/nIPCs << "\t" << E/nIPCs << "\t"
-                         << sqrt(rmin2)*L << "\n";
+                         << sqrt(rmin2)*L << std::endl;
 }
 
 
@@ -630,7 +628,7 @@ void IPCsimulation::computeFreeForces() {
         }
     }
     U = 0.0;  rmin2 = 1.;
-
+/*
     for(int m=0; m<cells.M3; m++) {
         std::list<int> ipcsInNeighbouringCells, ipcsInCurrentCell;
         cells.neighbour_cells(m,ipcsInCurrentCell,ipcsInNeighbouringCells);
@@ -667,7 +665,7 @@ void IPCsimulation::computeFreeForces() {
                 }
             }
         }
-    }
+    }*/
 /*
     #pragma omp parallel
     {
@@ -698,14 +696,14 @@ void IPCsimulation::computeFreeForces() {
             if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
         }
     }
-
+*/
     for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
             ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
             ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
         }
     }
-*/
+
 /*
     for (IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
