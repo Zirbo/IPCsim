@@ -23,5 +23,6 @@ set(ALL_FILES
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
-#target_compile_options(${PROJECT_NAME} "-O2 -g")
+#target_compile_options(${PROJECT_NAME} PRIVATE "-O2 -g")
+target_compile_options(${PROJECT_NAME} PRIVATE "-fexceptions")
 set(CMAKE_BUILD_TYPE Debug)

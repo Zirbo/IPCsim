@@ -50,9 +50,19 @@ public:
   // Cell is the number of the cell you want to inquire, after the call
   // local will contain the indices of ALL the particles in cell Cell
   // neigh will contain the indices of ALL the particles in the neighbouring cells.
-  int M3;
+
+  int getNumberofCells() {
+      return M3;
+  }
+  const std::list<int> & getNeighbouringCells(int cell) {
+      return neighbouring_cells[cell];
+  }
+  const std::list<int> & getListOfNeighbours(int cell) {
+      return list_of_neighbours[cell];
+  }
+
 private:
-  int M, M2, N;
+  int M, M2, M3, N;
   double l;
   std::vector<std::list<int>> neighbouring_cells, list_of_neighbours;
 

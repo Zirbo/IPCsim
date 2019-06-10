@@ -47,10 +47,10 @@ void cell_lists::compilelists(std::vector<IPC> const& ipcs) {  // empty all the 
 void cell_lists::neighbour_cells(int cell, std::list<int> &local, std::list<int> &neigh)
 {
     local = list_of_neighbours[cell];
-    std::list<int> stampecullu;
+    //std::list<int> stampecullu;
+    neigh = neighbouring_cells[cell];
     for(auto it: neighbouring_cells[cell]) {
-      stampecullu = list_of_neighbours[it];
-      neigh.merge(stampecullu);
-      // check if merge is making a copy, this stampecullu variable is most likely unneeded...
+        std::copy(list_of_neighbours[it].begin(), list_of_neighbours[it].end(), std::back_inserter(neigh));
+        // check if merge is making a copy, this stampecullu variable is most likely unneeded...
     }
 }

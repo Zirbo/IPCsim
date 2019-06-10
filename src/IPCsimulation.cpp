@@ -165,7 +165,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
   inverseMass[2] = 1./mass[2];
   inverseMass[0] = 1./mass[0];
   // inverse of the I parameter from formulas!
-  double iI = 1./(PatchDistanceSquared*inverseMass[0] + ecc1*ecc1*inverseMass[2] + ecc2*ecc2*inverseMass[1]);
+  const double iI = 1./(PatchDistanceSquared*inverseMass[0] + ecc1*ecc1*inverseMass[2] + ecc2*ecc2*inverseMass[1]);
   cP11 = 1.-ecc2*ecc2*iI*inverseMass[1];
   cP12 = -ecc1*ecc2*iI*inverseMass[2];
   cP1c = PatchDistance*ecc2*iI*inverseMass[0];
@@ -187,7 +187,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
 
     // cell list compilation
     cells.initialize(1., PotRange, nIPCs);
-    outputFile<<"Total number of cells: "<<cells.M3<<std::endl;
+    outputFile<<"Total number of cells: "<<cells.getNumberofCells()<<std::endl;
     cells.compilelists(particles);
 
     // first computation of forces
@@ -375,7 +375,7 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - PatchDistanceSquared;
 
     // correct the positions and the velocities until the violation is less than the tollerance
-    while( std::abs(diff) > tollerance*PatchDistanceSquared )
+    while( std::fabs(diff) > tollerance*PatchDistanceSquared )
     {
         double dxOld[3], DX[3];
         for (unsigned short i: {0, 1, 2}) {
@@ -666,21 +666,27 @@ void IPCsimulation::computeFreeForces() {
             }
         }
     }*/
-/*
+
     #pragma omp parallel
     {
         loopVariables loopVars;
         loopVars.force.resize(3*nIPCs, {0.0, 0.0, 0.0});
 
         #pragma omp for
-        for(int m=0; m<cells.M3; m++)  // loop over all cells
+        for(int m=0; m<cells.getNumberofCells(); m++)  // loop over all cells
         {
+            /*
             std::list<int> ipcInNeighbouringCells, ipcInCurrentCell;
             cells.neighbour_cells(m,ipcInCurrentCell,ipcInNeighbouringCells);
 
             for(auto ipc = ipcInCurrentCell.cbegin(); ipc != ipcInCurrentCell.cend(); ++ipc) {
                 computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcInNeighbouringCells, loopVars);
                 computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
+            }
+            */
+            for(auto ipc = cells.getListOfNeighbours(m).cbegin(); ipc != cells.getListOfNeighbours(m).cend(); ++ipc) {
+                computeInteractionsWithIPCsInTheSameCell(ipc, cells.getListOfNeighbours(m), loopVars);
+                computeInteractionsWithIPCsInNeighbouringCells(ipc, cells.getNeighbouringCells(m), loopVars);
             }
         }
         #pragma omp critical
@@ -696,7 +702,7 @@ void IPCsimulation::computeFreeForces() {
             if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
         }
     }
-*/
+
     for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
             ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
