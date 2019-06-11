@@ -633,12 +633,33 @@ void IPCsimulation::computeFreeForces() {
         }
     }
     U = 0.0;  rmin2 = 1.;
-/*
-    for(int m=0; m<cells.M3; m++) {
-        std::list<int> ipcsInNeighbouringCells, ipcsInCurrentCell;
-        cells.neighbour_cells(m,ipcsInCurrentCell,ipcsInNeighbouringCells);
 
-        for(auto loc = ipcsInCurrentCell.cbegin(); loc != ipcsInCurrentCell.cend(); ++loc) {
+    for(int m=0; m<cells.getNumberofCells(); m++) {
+        const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
+        const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
+
+        for(auto loc = ipcsInCell.cbegin(); loc != ipcsInCell.cend(); ++loc) {
+            for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCell.cend(); ++ins) {
+                double r[3], rmod(0.);
+                for (unsigned short i: {0, 1, 2}) {
+                    r[i] = particles[*loc].ipcCenter.x[i] - particles[*ins].ipcCenter.x[i];
+                    lroundccp(r[i]);
+                    rmod += r[i]*r[i];
+                }
+                rmod *= L*L;
+                double Pmod = pow(rmod,-3);
+                U += Pmod*(Pmod-1);
+                double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
+                for (unsigned short i: {0, 1, 2}) {
+                    if (std::fabs(Fmod) > 1e3) {
+                        std::cout << "";
+                    }
+                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
+                    particles[*ins].ipcCenter.F[i] += Fmod*r[i];
+                }
+                if (rmod < rmin2)
+                    rmin2 = rmod;
+            }
             for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
                 double r[3], rmod(0.);
                 for (unsigned short i: {0, 1, 2}) {
@@ -646,6 +667,7 @@ void IPCsimulation::computeFreeForces() {
                     lroundccp(r[i]);
                     rmod += r[i]*r[i];
                 }
+                rmod *= L*L;
                 double Pmod = pow(rmod,-3);
                 U += Pmod*(Pmod-1);
                 double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
@@ -653,25 +675,12 @@ void IPCsimulation::computeFreeForces() {
                     particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
                     particles[*ext].ipcCenter.F[i] += Fmod*r[i];
                 }
-            }
-            for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
-                double r[3], rmod(0.);
-                for (unsigned short i: {0, 1, 2}) {
-                    r[i] = particles[*loc].ipcCenter.x[i] - particles[*ins].ipcCenter.x[i];
-                    lroundccp(r[i]);
-                    rmod += r[i]*r[i];
-                }
-                double Pmod = pow(rmod,-3);
-                U += Pmod*(Pmod-1);
-                double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
-                for (unsigned short i: {0, 1, 2}) {
-                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
-                    particles[*ins].ipcCenter.F[i] += Fmod*r[i];
-                }
+                if (rmod < rmin2)
+                    rmin2 = rmod;
             }
         }
-    }*/
-
+    }
+/*
     #pragma omp parallel
     {
         loopVariables loopVars;
@@ -680,15 +689,6 @@ void IPCsimulation::computeFreeForces() {
         #pragma omp for
         for(int m=0; m<cells.getNumberofCells(); m++)  // loop over all cells
         {
-            /*
-            std::list<int> ipcInNeighbouringCells, ipcInCurrentCell;
-            cells.neighbour_cells(m,ipcInCurrentCell,ipcInNeighbouringCells);
-
-            for(auto ipc = ipcInCurrentCell.cbegin(); ipc != ipcInCurrentCell.cend(); ++ipc) {
-                computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcInNeighbouringCells, loopVars);
-                computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
-            }
-            */
             const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
             const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
             for(auto ipc = ipcsInCell.cbegin(); ipc != ipcsInCell.cend(); ++ipc) {
@@ -708,7 +708,7 @@ void IPCsimulation::computeFreeForces() {
             U += loopVars.U;
             if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
         }
-    }
+    }*/
 
     for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
