@@ -4,6 +4,8 @@
 #include <iomanip>
 #include "IPCsimulation.hpp"
 
+#include <cfenv>
+
 //************************************************************************//
 IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
   // clean up old data and recreate output directory
@@ -616,6 +618,9 @@ void IPCsimulation::restorePreviousConfiguration() {
 }
 
 void IPCsimulation::computeFreeForces() {
+
+    feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+
     // Computes the force without accounting for constrains.
     // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
 
@@ -684,16 +689,18 @@ void IPCsimulation::computeFreeForces() {
                 computeInteractionsWithIPCsInTheSameCell(ipc, ipcInCurrentCell, loopVars);
             }
             */
-            for(auto ipc = cells.getListOfNeighbours(m).cbegin(); ipc != cells.getListOfNeighbours(m).cend(); ++ipc) {
-                computeInteractionsWithIPCsInTheSameCell(ipc, cells.getListOfNeighbours(m), loopVars);
-                computeInteractionsWithIPCsInNeighbouringCells(ipc, cells.getNeighbouringCells(m), loopVars);
+            const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
+            const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
+            for(auto ipc = ipcsInCell.cbegin(); ipc != ipcsInCell.cend(); ++ipc) {
+                computeInteractionsWithIPCsInTheSameCell(ipc, ipcsInCell, loopVars);
+                computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcsInNeighbouringCells, loopVars);
             }
         }
         #pragma omp critical
         {
             for (size_t j = 0; j < nIPCs; ++j) {
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[j].ipcCenter.F[i] += loopVars.force[j][i];
+                    particles[j].ipcCenter.F[i]  += loopVars.force[j][i];
                     particles[j].firstPatch.F[i] += loopVars.force[j+nIPCs][i];
                     particles[j].secndPatch.F[i] += loopVars.force[j+nIPCs+nIPCs][i];
                 }
@@ -737,12 +744,31 @@ void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::con
 }
 
 void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables &loopVars) {
+
+    feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+
     IPC const& first = particles[firstIPC];
     IPC const& second = particles[secndIPC];
     double siteSiteSeparation[9][3];
     // center-center
     for (unsigned short i: {0, 1, 2}) {
         siteSiteSeparation[0][i] = first.ipcCenter.x[i] - second.ipcCenter.x[i];
+        lround(siteSiteSeparation[0][i]);
+    }
+    double centerCenterSeparationModulus = siteSiteSeparation[0][0]*siteSiteSeparation[0][0]
+                                     + siteSiteSeparation[0][1]*siteSiteSeparation[0][1]
+                                     + siteSiteSeparation[0][2]*siteSiteSeparation[0][2];
+
+
+    if (centerCenterSeparationModulus < loopVars.minimumSquaredDistance)
+        loopVars.minimumSquaredDistance = centerCenterSeparationModulus;
+
+    // if the CENTERS are too far, no interactions, skip this couple of IPCs
+    if (centerCenterSeparationModulus >= PotRangeSquared)
+        return;
+
+    // we are in! compute all the other site-site separations
+    for (unsigned short i: {0, 1, 2}) {
         siteSiteSeparation[1][i] = first.ipcCenter.x[i] - second.firstPatch.x[i];
         siteSiteSeparation[2][i] = first.ipcCenter.x[i] - second.secndPatch.x[i];
         siteSiteSeparation[3][i] = first.firstPatch.x[i] - second.ipcCenter.x[i];
@@ -751,18 +777,25 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
         siteSiteSeparation[6][i] = first.secndPatch.x[i] - second.ipcCenter.x[i];
         siteSiteSeparation[7][i] = first.secndPatch.x[i] - second.firstPatch.x[i];
         siteSiteSeparation[8][i] = first.secndPatch.x[i] - second.secndPatch.x[i];
+        for (unsigned short j = 1; j < 9; ++j)
+            lround(siteSiteSeparation[j][i]);
     }
-    for (unsigned short j = 0; j < 9; ++j) {
+
+    // compute interaction between centers
+    centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
+    const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
+    loopVars.U += uBB[centerCenterDistance];
+    for (unsigned short i: {0, 1, 2}) {
+        const double modulus = fBB[centerCenterDistance]*siteSiteSeparation[0][i];
+        loopVars.force[firstIPC][i] -= modulus;
+        loopVars.force[secndIPC][i] += modulus;
+    }
+
+    // all the others
+    for (unsigned short j = 1; j < 9; ++j) {
         double siteSiteSeparationModulus = siteSiteSeparation[j][0]*siteSiteSeparation[j][0]
                                          + siteSiteSeparation[j][1]*siteSiteSeparation[j][1]
                                          + siteSiteSeparation[j][2]*siteSiteSeparation[j][2];
-
-        if (siteSiteSeparationModulus < loopVars.minimumSquaredDistance)
-            loopVars.minimumSquaredDistance = siteSiteSeparationModulus;
-
-        // if the CENTERS are too far, no interactions, skip this couple of IPCs
-        if (j == 0 && siteSiteSeparationModulus >= PotRangeSquared)
-            break;
 
         // if we are too far, no interaction, skip to the next site-site pair
         if (siteSiteSeparationModulus >= PotRangeSquared)
@@ -770,14 +803,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
 
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
-        if (j == 0) { // center - center
-            loopVars.U += uBB[dist];
-            for (unsigned short i: {0, 1, 2}) {
-                const double modulus = fBB[dist]*siteSiteSeparation[j][i];
-                loopVars.force[firstIPC][i] -= modulus;
-                loopVars.force[secndIPC][i] += modulus;
-            }
-        } else if (j == 1) { // center - patch1
+        if (j == 1) { // center - patch1
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[j][i];

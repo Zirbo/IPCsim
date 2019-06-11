@@ -34,8 +34,9 @@ void cell_lists::initialize(double Side, double InteractionRange, int Nparticles
         }
     }
 }
-void cell_lists::compilelists(std::vector<IPC> const& ipcs) {  // empty all the lists
-    for(auto m: list_of_neighbours)
+void cell_lists::compilelists(std::vector<IPC> const& ipcs) {
+    // empty all the lists
+    for(auto & m: list_of_neighbours)
         m.clear();
     // put every particle in the right list
     for(IPC ipc: ipcs) {
@@ -53,4 +54,11 @@ void cell_lists::neighbour_cells(int cell, std::list<int> &local, std::list<int>
         std::copy(list_of_neighbours[it].begin(), list_of_neighbours[it].end(), std::back_inserter(neigh));
         // check if merge is making a copy, this stampecullu variable is most likely unneeded...
     }
+}
+
+const std::list<int> cell_lists::getIPCsInNeighbouringCells(int cell) {
+    std::list<int> ipcsInNeighbouringCells;
+    for(auto it: neighbouring_cells[cell])
+        std::copy(list_of_neighbours[it].begin(), list_of_neighbours[it].end(), std::back_inserter(ipcsInNeighbouringCells));
+    return ipcsInNeighbouringCells;
 }

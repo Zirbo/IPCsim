@@ -54,12 +54,10 @@ public:
   int getNumberofCells() {
       return M3;
   }
-  const std::list<int> & getNeighbouringCells(int cell) {
-      return neighbouring_cells[cell];
-  }
-  const std::list<int> & getListOfNeighbours(int cell) {
+  const std::list<int> & getIPCsInCell(int cell) {
       return list_of_neighbours[cell];
   }
+  const std::list<int> getIPCsInNeighbouringCells(int cell);
 
 private:
   int M, M2, M3, N;
