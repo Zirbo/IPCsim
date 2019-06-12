@@ -650,10 +650,10 @@ void IPCsimulation::computeFreeForces() {
                 double Pmod = pow(rmod,-3);
                 U += Pmod*(Pmod-1);
                 double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
+                if (std::fabs(Fmod) > 1e1) {
+                    std::cout << "";
+                }
                 for (unsigned short i: {0, 1, 2}) {
-                    if (std::fabs(Fmod) > 1e3) {
-                        std::cout << "";
-                    }
                     particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
                     particles[*ins].ipcCenter.F[i] += Fmod*r[i];
                 }
@@ -671,6 +671,9 @@ void IPCsimulation::computeFreeForces() {
                 double Pmod = pow(rmod,-3);
                 U += Pmod*(Pmod-1);
                 double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
+                if (std::fabs(Fmod) > 1e1) {
+                    std::cout << "";
+                }
                 for (unsigned short i: {0, 1, 2}) {
                     particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
                     particles[*ext].ipcCenter.F[i] += Fmod*r[i];
