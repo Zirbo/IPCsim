@@ -470,12 +470,15 @@ void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile,
         outputTrajectoryFile << "\n"
                              << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
                                          << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2]
+                                         //<< "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2]
                              << "\n"
                              << 'P'      << "\t" << ipc.firstPatch.x[0] << "\t" << ipc.firstPatch.x[1] << "\t" << ipc.firstPatch.x[2]
                                          << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2]
+                                         //<< "\t" << ipc.firstPatch.F[0] << "\t" << ipc.firstPatch.F[1] << "\t" << ipc.firstPatch.F[2]
                              << "\n"
                              << 'Q'      << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
                                          << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
+                                         //<< "\t" << ipc.secndPatch.F[0] << "\t" << ipc.secndPatch.F[1] << "\t" << ipc.secndPatch.F[2];
     }
     outputTrajectoryFile << std::endl;
 }
@@ -484,7 +487,7 @@ void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, unsi
     outputSystemTrajectory(outputTrajectoryFile, simulationTime);
     energyTrajectoryFile << simulationTime*dt_nonscaled << "\t" << kT << "\t"
                          << K/nIPCs << "\t" << U/nIPCs << "\t" << E/nIPCs << "\t"
-                         << sqrt(rmin2)*L << std::endl;
+                         << std::sqrt(rmin2)*L << std::endl;
 }
 
 
@@ -498,8 +501,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     int N3 = N2*N1;
 
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
-    // 4 is to compensate that the average |x| from x=rand.getRandom55() is 0.25
-    double vel_scaling = 4.*std::sqrt(2.*kTimposed/3.1415)/L;
+    double vel_scaling = std::sqrt(2.*kTimposed/3.1415)/L;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
@@ -542,10 +544,10 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 
         // starting from random but ONLY TRANSLATIONAL speeds, for compatibility with rattle
         for (unsigned short j: {0, 1, 2}) {
-           particles[i].ipcCenter.v[j]          = rand.getRandom55()*vel_scaling;
-           particles[i+N3].ipcCenter.v[j]       = rand.getRandom55()*vel_scaling;
-           particles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom55()*vel_scaling;
-           particles[i+N3+N3+N3].ipcCenter.v[j] = rand.getRandom55()*vel_scaling;
+           particles[i].ipcCenter.v[j]          = rand.getRandom11()*vel_scaling;
+           particles[i+N3].ipcCenter.v[j]       = rand.getRandom11()*vel_scaling;
+           particles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom11()*vel_scaling;
+           particles[i+N3+N3+N3].ipcCenter.v[j] = rand.getRandom11()*vel_scaling;
         }
     }
     // initialize patches positions
@@ -590,36 +592,27 @@ void IPCsimulation::restorePreviousConfiguration() {
     for (IPC &ipc: particles) {
         IN >> ipc.type
            >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
-           >> ipc.ipcCenter.v[0] >> ipc.ipcCenter.v[1] >> ipc.ipcCenter.v[2]
-           >> ipc.ipcCenter.F[0] >> ipc.ipcCenter.F[1] >> ipc.ipcCenter.F[2];
+           >> ipc.ipcCenter.v[0] >> ipc.ipcCenter.v[1] >> ipc.ipcCenter.v[2];
         IN >> charJunk
            >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> ipc.firstPatch.x[2]
-           >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2]
-           >> ipc.firstPatch.F[0] >> ipc.firstPatch.F[1] >> ipc.firstPatch.F[2];
+           >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2];
         IN >> charJunk
            >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
-           >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2]
-           >> ipc.secndPatch.F[0] >> ipc.secndPatch.F[1] >> ipc.secndPatch.F[2];
+           >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2];
 
-        // scale velociteis -> move to another fct
-        ipc.ipcCenter.v[0] *= kTimposed;
-        ipc.ipcCenter.v[1] *= kTimposed;
-        ipc.ipcCenter.v[2] *= kTimposed;
-
-        ipc.firstPatch.v[0] *= kTimposed;
-        ipc.firstPatch.v[1] *= kTimposed;
-        ipc.firstPatch.v[2] *= kTimposed;
-
-        ipc.secndPatch.v[0] *= kTimposed;
-        ipc.secndPatch.v[1] *= kTimposed;
-        ipc.secndPatch.v[2] *= kTimposed;
+        // scale velocities -> move to another fct
+        for (unsigned short i: {0, 1, 2}) {
+            ipc.ipcCenter.v[i] *= kTimposed;
+            ipc.firstPatch.v[i] *= kTimposed;
+            ipc.secndPatch.v[i] *= kTimposed;
+        }
     }
     IN.close();
 }
 
 void IPCsimulation::computeFreeForces() {
 
-    feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+  ///  feenableexcept(FE_ALL_EXCEPT);
 
     // Computes the force without accounting for constrains.
     // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
@@ -633,7 +626,7 @@ void IPCsimulation::computeFreeForces() {
         }
     }
     U = 0.0;  rmin2 = 1.;
-
+/*
     for(int m=0; m<cells.getNumberofCells(); m++) {
         const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
         const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
@@ -650,12 +643,12 @@ void IPCsimulation::computeFreeForces() {
                 double Pmod = pow(rmod,-3);
                 U += Pmod*(Pmod-1);
                 double Fmod = 6*Pmod*(2*Pmod-1)/rmod;
-                if (std::fabs(Fmod) > 1e1) {
+                if (std::isnan(Fmod) > 1e1) {
                     std::cout << "";
                 }
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
-                    particles[*ins].ipcCenter.F[i] += Fmod*r[i];
+                    particles[*loc].ipcCenter.F[i] += Fmod*r[i];
+                    particles[*ins].ipcCenter.F[i] -= Fmod*r[i];
                 }
                 if (rmod < rmin2)
                     rmin2 = rmod;
@@ -675,15 +668,15 @@ void IPCsimulation::computeFreeForces() {
                     std::cout << "";
                 }
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[*loc].ipcCenter.F[i] -= Fmod*r[i];
-                    particles[*ext].ipcCenter.F[i] += Fmod*r[i];
+                    particles[*loc].ipcCenter.F[i] += Fmod*r[i];
+                    particles[*ext].ipcCenter.F[i] -= Fmod*r[i];
                 }
                 if (rmod < rmin2)
                     rmin2 = rmod;
             }
         }
-    }
-/*
+    }*/
+
     #pragma omp parallel
     {
         loopVariables loopVars;
@@ -711,7 +704,7 @@ void IPCsimulation::computeFreeForces() {
             U += loopVars.U;
             if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
         }
-    }*/
+    }
 
     for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
@@ -748,19 +741,22 @@ void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::con
 
 void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables &loopVars) {
 
-    feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+    //feenableexcept(FE_ALL_EXCEPT);
 
     IPC const& first = particles[firstIPC];
     IPC const& second = particles[secndIPC];
     double siteSiteSeparation[9][3];
     // center-center
-    for (unsigned short i: {0, 1, 2}) {
-        siteSiteSeparation[0][i] = first.ipcCenter.x[i] - second.ipcCenter.x[i];
+    for (auto i: {0, 1, 2}) {
+        double cacca = first.ipcCenter.x[i];
+        double cazzo = second.ipcCenter.x[i];
+        double culo = cacca - cazzo;
+        siteSiteSeparation[0][i] = culo;
         lround(siteSiteSeparation[0][i]);
     }
     double centerCenterSeparationModulus = siteSiteSeparation[0][0]*siteSiteSeparation[0][0]
-                                     + siteSiteSeparation[0][1]*siteSiteSeparation[0][1]
-                                     + siteSiteSeparation[0][2]*siteSiteSeparation[0][2];
+                                         + siteSiteSeparation[0][1]*siteSiteSeparation[0][1]
+                                         + siteSiteSeparation[0][2]*siteSiteSeparation[0][2];
 
 
     if (centerCenterSeparationModulus < loopVars.minimumSquaredDistance)
@@ -810,6 +806,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs][i] += modulus;
             }
@@ -817,6 +816,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
             }
@@ -824,6 +826,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC][i] += modulus;
             }
@@ -831,6 +836,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s1[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs][i] += modulus;
             }
@@ -838,6 +846,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
             }
@@ -845,6 +856,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC][i] += modulus;
             }
@@ -852,6 +866,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs][i] += modulus;
             }
@@ -859,6 +876,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us2s2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBB[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > 1e4) {
+                    std::cout << "";
+                }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
                 loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
             }

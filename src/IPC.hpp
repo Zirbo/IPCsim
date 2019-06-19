@@ -3,6 +3,7 @@
 
 struct Particle {
     double x[3], v[3], F[3];
+    // TODO: when all the sim is working, remove the forces from here and only keep the IPC effective forces
 };
 struct IPC {
     Particle ipcCenter, firstPatch, secndPatch;
