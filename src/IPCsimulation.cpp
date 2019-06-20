@@ -43,7 +43,7 @@ void IPCsimulation::run() {
 
     // simulation begins
     time(&simulationStartTime);
-    while(simulationTime <= simulationDurationInIterations) {
+    while(simulationTime < simulationDurationInIterations) {
         computeTrajectoryStep();
         ++simulationTime;
 
@@ -802,11 +802,12 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
 
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
+        double porcogiuda = 1e2;
         if (j == 1) { // center - patch1
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC][i] -= modulus;
@@ -816,7 +817,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC][i] -= modulus;
@@ -826,7 +827,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
@@ -836,7 +837,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s1[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s1[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
@@ -846,7 +847,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs][i] -= modulus;
@@ -856,7 +857,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += uBs2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
@@ -866,7 +867,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
             loopVars.U += us1s2[dist];
             for (unsigned short i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
@@ -875,8 +876,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
         } else if (j == 8) { // patch2 - patch2
             loopVars.U += us2s2[dist];
             for (unsigned short i: {0, 1, 2}) {
-                const double modulus = fBB[dist]*siteSiteSeparation[j][i];
-                if (std::fabs(modulus) > 1e4) {
+                const double modulus = fs1s2[dist]*siteSiteSeparation[j][i];
+                if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
                 loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
