@@ -617,15 +617,15 @@ void IPCsimulation::computeFreeForces() {
     // Computes the force without accounting for constrains.
     // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
 
-    // reset all forces
-    for(IPC &ipc: particles) {
+    // reset all forces --- not needed since we are overriding using the loop vars
+ /*   for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
             ipc.ipcCenter.F[i] = 0.;
             ipc.firstPatch.F[i] = 0.;
             ipc.secndPatch.F[i] = 0.;
         }
     }
-    U = 0.0;  rmin2 = 1.;
+    U = 0.0;  rmin2 = 1.;*/
 /*
     for(int m=0; m<cells.getNumberofCells(); m++) {
         const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
@@ -696,13 +696,13 @@ void IPCsimulation::computeFreeForces() {
         {
             for (size_t j = 0; j < nIPCs; ++j) {
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[j].ipcCenter.F[i]  += loopVars.force[j][i];
-                    particles[j].firstPatch.F[i] += loopVars.force[j+nIPCs][i];
-                    particles[j].secndPatch.F[i] += loopVars.force[j+nIPCs+nIPCs][i];
+                    particles[j].ipcCenter.F[i]  = loopVars.force[j][i];
+                    particles[j].firstPatch.F[i] = loopVars.force[j+nIPCs][i];
+                    particles[j].secndPatch.F[i] = loopVars.force[j+nIPCs+nIPCs][i];
                 }
             }
-            U += loopVars.U;
-            if(loopVars.minimumSquaredDistance < rmin2) rmin2 = loopVars.minimumSquaredDistance;
+            U = loopVars.U;
+            rmin2 = loopVars.minimumSquaredDistance;
         }
     }
 
@@ -742,6 +742,7 @@ void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::con
 void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables &loopVars) {
 
     //feenableexcept(FE_ALL_EXCEPT);
+    double porcogiuda = 1e1;
 
     IPC const& first = particles[firstIPC];
     IPC const& second = particles[secndIPC];
@@ -786,6 +787,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
     loopVars.U += uBB[centerCenterDistance];
     for (unsigned short i: {0, 1, 2}) {
         const double modulus = fBB[centerCenterDistance]*siteSiteSeparation[0][i];
+        if (std::fabs(modulus) > porcogiuda) {
+            std::cout << "";
+        }
         loopVars.force[firstIPC][i] -= modulus;
         loopVars.force[secndIPC][i] += modulus;
     }
@@ -802,7 +806,6 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
 
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
-        double porcogiuda = 1e2;
         if (j == 1) { // center - patch1
             loopVars.U += uBs1[dist];
             for (unsigned short i: {0, 1, 2}) {
