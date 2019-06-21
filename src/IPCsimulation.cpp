@@ -614,19 +614,20 @@ void IPCsimulation::computeFreeForces() {
 
   ///  feenableexcept(FE_ALL_EXCEPT);
 
-    // Computes the force without accounting for constrains.
-    // Force on i = sum over j of dU(r_ij)/dr * (x_j-x_i)/r_ij
 
-    // reset all forces --- not needed since we are overriding using the loop vars
- /*   for(IPC &ipc: particles) {
+    // reset all forces
+    for(IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
             ipc.ipcCenter.F[i] = 0.;
             ipc.firstPatch.F[i] = 0.;
             ipc.secndPatch.F[i] = 0.;
         }
     }
-    U = 0.0;  rmin2 = 1.;*/
+    U = 0.0;  rmin2 = 1.;
+
 /*
+  Lennard Jones for testing purposes
+
     for(int m=0; m<cells.getNumberofCells(); m++) {
         const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
         const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
@@ -679,11 +680,10 @@ void IPCsimulation::computeFreeForces() {
 
     #pragma omp parallel
     {
-        loopVariables loopVars;
-        loopVars.force.resize(3*nIPCs, {0.0, 0.0, 0.0});
+        loopVariables loopVars(nIPCs);
 
         #pragma omp for
-        for(int m=0; m<cells.getNumberofCells(); m++)  // loop over all cells
+        for(int m=0; m<cells.getNumberofCells(); ++m)  // loop over all cells
         {
             const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
             const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
@@ -694,15 +694,16 @@ void IPCsimulation::computeFreeForces() {
         }
         #pragma omp critical
         {
-            for (size_t j = 0; j < nIPCs; ++j) {
+            for (IPC &ipc: particles) {
                 for (unsigned short i: {0, 1, 2}) {
-                    particles[j].ipcCenter.F[i]  = loopVars.force[j][i];
-                    particles[j].firstPatch.F[i] = loopVars.force[j+nIPCs][i];
-                    particles[j].secndPatch.F[i] = loopVars.force[j+nIPCs+nIPCs][i];
+                    const size_t j = ipc.number;
+                    ipc.ipcCenter.F[i]  += loopVars.ipcCenterF[j][i];
+                    ipc.firstPatch.F[i] += loopVars.firstPatchF[j][i];
+                    ipc.secndPatch.F[i] += loopVars.secndPatchF[j][i];
                 }
             }
-            U = loopVars.U;
-            rmin2 = loopVars.minimumSquaredDistance;
+            U += loopVars.U;
+            rmin2 += loopVars.minimumSquaredDistance;
         }
     }
 
@@ -790,8 +791,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
         if (std::fabs(modulus) > porcogiuda) {
             std::cout << "";
         }
-        loopVars.force[firstIPC][i] -= modulus;
-        loopVars.force[secndIPC][i] += modulus;
+        loopVars.ipcCenterF[firstIPC][i] -= modulus;
+        loopVars.ipcCenterF[secndIPC][i] += modulus;
     }
 
     // all the others
@@ -813,8 +814,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs][i] += modulus;
+                loopVars.ipcCenterF[firstIPC][i] -= modulus;
+                loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 2) { // center - patch2
             loopVars.U += uBs2[dist];
@@ -823,8 +824,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+                loopVars.ipcCenterF[firstIPC][i] -= modulus;
+                loopVars.secndPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 3) { // patch1 - center
             loopVars.U += uBs1[dist];
@@ -833,8 +834,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC][i] += modulus;
+                loopVars.firstPatchF[firstIPC][i] -= modulus;
+                loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 4) { // patch1 - patch1
             loopVars.U += us1s1[dist];
@@ -843,8 +844,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs][i] += modulus;
+                loopVars.firstPatchF[firstIPC][i] -= modulus;
+                loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 5) { // patch1 - patch2
             loopVars.U += us1s2[dist];
@@ -853,8 +854,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+                loopVars.firstPatchF[firstIPC][i] -= modulus;
+                loopVars.secndPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 6) { // patch2 - center
             loopVars.U += uBs2[dist];
@@ -863,8 +864,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC][i] += modulus;
+                loopVars.secndPatchF[firstIPC][i] -= modulus;
+                loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 7) { // patch2 - patch1
             loopVars.U += us1s2[dist];
@@ -873,8 +874,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs][i] += modulus;
+                loopVars.secndPatchF[firstIPC][i] -= modulus;
+                loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 8) { // patch2 - patch2
             loopVars.U += us2s2[dist];
@@ -883,8 +884,8 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
                 }
-                loopVars.force[firstIPC+nIPCs+nIPCs][i] -= modulus;
-                loopVars.force[secndIPC+nIPCs+nIPCs][i] += modulus;
+                loopVars.secndPatchF[firstIPC][i] -= modulus;
+                loopVars.secndPatchF[secndIPC][i] += modulus;
             }
         }
     }

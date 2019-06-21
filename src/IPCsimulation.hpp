@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <vector>
+#include <array>
 #include <string>
 #include <cmath>
 #include "IPC.hpp"
@@ -79,9 +80,15 @@ private:
 
     void computeFreeForces();
     struct loopVariables {
-        std::vector<std::vector<double>> force;
+        std::vector<std::array<double, 3>> ipcCenterF;
+        std::vector<std::array<double, 3>> firstPatchF;
+        std::vector<std::array<double, 3>> secndPatchF;
         double U, minimumSquaredDistance;
-        loopVariables() : U{0.}, minimumSquaredDistance{1.} {}
+        loopVariables(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
+            ipcCenterF.resize(nIPCs, {0.0, 0.0, 0.0});
+            firstPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
+            secndPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
+        }
     };
     void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables & loopVars);
     void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars);
