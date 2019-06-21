@@ -43,13 +43,8 @@ class cell_lists
 public:
   cell_lists() {}
   void initialize(double Side, double InteractionRange, int Nparticles);
-  // BoxSide and IntRange have to be in the same units of the positions x,
-  // it is not supposed to have a 1-side box
+  // BoxSide and IntRange have to be in the same units of the positions x, it is not supposed to have a 1-side box
   void compilelists(std::vector<IPC> const& ipcs); // Only takes the first Nparticles coordinates!
-  void neighbour_cells(int cell, std::list<int> &local, std::list<int> &neigh);
-  // Cell is the number of the cell you want to inquire, after the call
-  // local will contain the indices of ALL the particles in cell Cell
-  // neigh will contain the indices of ALL the particles in the neighbouring cells.
 
   int getNumberofCells() {
       return M3;

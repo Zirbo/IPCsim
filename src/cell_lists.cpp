@@ -1,4 +1,5 @@
 #include "cell_lists.hpp"
+#include <iostream>
 
 void cell_lists::initialize(double Side, double InteractionRange, int Nparticles) {
     N = Nparticles;
@@ -39,26 +40,25 @@ void cell_lists::compilelists(std::vector<IPC> const& ipcs) {
     for(auto & m: list_of_neighbours)
         m.clear();
     // put every particle in the right list
-    for(IPC ipc: ipcs) {
-        int cacca = cell(ipc.ipcCenter) ;
-        list_of_neighbours[  cacca  ].push_back(ipc.number);
+    for(IPC const& ipc: ipcs) {
+        const int ipcCell = cell(ipc.ipcCenter) ;
+        list_of_neighbours[  ipcCell  ].push_back(ipc.number);
       }
     // now the list contains the indices of the particles inside its volume
-}
-void cell_lists::neighbour_cells(int cell, std::list<int> &local, std::list<int> &neigh)
-{
-    local = list_of_neighbours[cell];
-    //std::list<int> stampecullu;
-    neigh = neighbouring_cells[cell];
-    for(auto it: neighbouring_cells[cell]) {
-        std::copy(list_of_neighbours[it].begin(), list_of_neighbours[it].end(), std::back_inserter(neigh));
-        // check if merge is making a copy, this stampecullu variable is most likely unneeded...
+
+    // print neighbouring cells for debugging
+    std::cout << "compiling lists\n";
+    for(int i=0;i<M3;i++)
+    {
+        std::cout << "list nr " << i << ":   ";
+        for(auto it = list_of_neighbours[i].cbegin(); it!=list_of_neighbours[i].end(); it++)
+            std::cout<<*it<<"    ";
+        std::cout<<std::endl;
     }
 }
-
 const std::list<int> cell_lists::getIPCsInNeighbouringCells(int cell) {
     std::list<int> ipcsInNeighbouringCells;
-    for(auto it: neighbouring_cells[cell])
+    for(auto const& it: neighbouring_cells[cell])
         std::copy(list_of_neighbours[it].begin(), list_of_neighbours[it].end(), std::back_inserter(ipcsInNeighbouringCells));
     return ipcsInNeighbouringCells;
 }
