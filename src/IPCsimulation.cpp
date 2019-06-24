@@ -579,12 +579,13 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 }
 
 void IPCsimulation::restorePreviousConfiguration() {
-    kTimposed = sqrt(kTimposed);
-    char charJunk; double doubleJunk;
+    double reduceVelocities = std::sqrt(kTimposed);
+    char unusedPatchName;
+    double unusedTime;
     std::ifstream IN("startingstate.xyz");
-    IN>>nIPCs>>doubleJunk;
+    IN >> nIPCs >> unusedTime;
     nIPCs /= 3;
-    L = cbrt(nIPCs/rho);
+    L = std::cbrt(nIPCs/rho);
     kToverK = 2./(5.*nIPCs-3.);
 
     particles.resize(nIPCs);
@@ -593,18 +594,18 @@ void IPCsimulation::restorePreviousConfiguration() {
         IN >> ipc.type
            >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
            >> ipc.ipcCenter.v[0] >> ipc.ipcCenter.v[1] >> ipc.ipcCenter.v[2];
-        IN >> charJunk
+        IN >> unusedPatchName
            >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> ipc.firstPatch.x[2]
            >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2];
-        IN >> charJunk
+        IN >> unusedPatchName
            >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
            >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2];
 
         // scale velocities -> move to another fct
         for (unsigned short i: {0, 1, 2}) {
-            ipc.ipcCenter.v[i] *= kTimposed;
-            ipc.firstPatch.v[i] *= kTimposed;
-            ipc.secndPatch.v[i] *= kTimposed;
+            ipc.ipcCenter.v[i]  *= reduceVelocities;
+            ipc.firstPatch.v[i] *= reduceVelocities;
+            ipc.secndPatch.v[i] *= reduceVelocities;
         }
     }
     IN.close();
@@ -717,7 +718,7 @@ void IPCsimulation::computeFreeForces() {
 /*
     for (IPC &ipc: particles) {
         for (unsigned short i: {0, 1, 2}) {
-            ipc.center.F[i] += Ec[i];
+            ipc.ipcCenter.F[i]  += Ec[i];
             ipc.firstPatch.F[i] += Ep1[i];
             ipc.secndPatch.F[i] += Ep2[i];
           }
@@ -785,9 +786,11 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC
     // compute interaction between centers
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
-    loopVars.U += uBB[centerCenterDistance];
+    double cacca = uBB[centerCenterDistance];
+    loopVars.U += cacca;
     for (unsigned short i: {0, 1, 2}) {
-        const double modulus = fBB[centerCenterDistance]*siteSiteSeparation[0][i];
+        double cacca2 = fBB[centerCenterDistance];
+        const double modulus = cacca2*siteSiteSeparation[0][i];
         if (std::fabs(modulus) > porcogiuda) {
             std::cout << "";
         }
