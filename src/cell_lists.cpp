@@ -1,11 +1,12 @@
 #include "cell_lists.hpp"
 #include <iostream>
 
-void cell_lists::initialize(double Side, double InteractionRange, int Nparticles) {
-    numberOfParticles = Nparticles;
-    cellsPerSide = int( Side/InteractionRange);
-    cellsPerSideSquared = cellsPerSide*cellsPerSide;    totalCells = cellsPerSideSquared*cellsPerSide;
-    boxSide = Side/cellsPerSide;
+void cell_lists::initialize(double simulationBoxSide, double interactionRange, int howManyParticles) {
+    numberOfParticles = howManyParticles;
+    cellsPerSide = int( simulationBoxSide/interactionRange);
+    cellsPerSideSquared = cellsPerSide*cellsPerSide;
+    totalCells = cellsPerSideSquared*cellsPerSide;
+    cellSide = simulationBoxSide/cellsPerSide;
     list_of_neighbours.resize(totalCells);     // every element is a list with the identifying number of the particles in the list
     neighbouring_cells.resize(totalCells);     // every element is a list with the number of nearest neighbour cells to that cell
     // fill the list of neighbouring cells

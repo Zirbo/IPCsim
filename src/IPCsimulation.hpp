@@ -92,7 +92,7 @@ private:
     };
     void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables & loopVars);
     void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars);
-    void computeInteractionsBetweenTwoIPCs(int firstIPC, int secndIPC, loopVariables & loopVars);
+    void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables & loopVars);
 
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime);
     void outputSystemState(std::ofstream & outputTrajectoryFile, unsigned long simulationTime, std::ofstream &energyTrajectoryFile);
@@ -100,6 +100,7 @@ private:
 
     // 3D boundary conditions enforcers
     void computeSystemMomentum(double (&pcm) [3]);
+    void correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]);
     inline void floorccp(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }
     inline void floorccp(double & x)  {  x-=std::floor(x);  }
     inline void lroundccp(double & x, double & y, double &z) {  x-=std::lround(x);  y-=std::lround(y);  z-=std::lround(z);  }
