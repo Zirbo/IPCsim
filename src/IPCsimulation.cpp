@@ -348,8 +348,6 @@ void IPCsimulation::computeTrajectoryStep() {
     computeVerletHalfStep();
     cells.compileLists(particles);
     computeFreeForces();
-    if (simulationTime > 300)
-        outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
     finishVerletStep();
 }
 
