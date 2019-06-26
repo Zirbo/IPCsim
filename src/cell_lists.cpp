@@ -48,14 +48,14 @@ void cell_lists::compilelists(std::vector<IPC> const& ipcs) {
     // now the list contains the indices of the particles inside its volume
 
     // print neighbouring cells for debugging
-    std::cout << "compiling lists\n";
+  /*  std::cout << "compiling lists\n";
     for(int i=0;i<totalCells;i++)
     {
         std::cout << "list nr " << i << ":   ";
         for(auto it = list_of_neighbours[i].cbegin(); it!=list_of_neighbours[i].end(); it++)
             std::cout<<*it<<"    ";
         std::cout<<std::endl;
-    }
+    }*/
 }
 const std::list<int> cell_lists::getIPCsInNeighbouringCells(int cell) {
     std::list<int> ipcsInNeighbouringCells;

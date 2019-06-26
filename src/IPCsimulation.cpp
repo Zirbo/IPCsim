@@ -68,23 +68,23 @@ void IPCsimulation::run() {
 
 //************************************************************************//
 void IPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
-    for (unsigned short i: {0, 1, 2})
+    for (int i: {0, 1, 2})
         pcm[i] = 0.;
 
     for(IPC ipc: particles) {
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             pcm[i] += mass[0]*ipc.ipcCenter.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
         }
     }
 }
 void IPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]) {
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         pcmCorrected[i] = 0.;
         pcm[i] /= 3*nIPCs;
     }
 
     for(IPC ipc: particles) {
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipc.ipcCenter.v[i]  -= pcm[i];
             ipc.firstPatch.v[i] -= pcm[i];
             ipc.secndPatch.v[i] -= pcm[i];
@@ -364,7 +364,7 @@ void IPCsimulation::computeVerletHalfStep() {
 void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     double x1[3], x2[3];
     double dxNew[3];
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         // compute the half step velocities from the effective forces of the last step
         ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*inverseMass[1]);
         ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*inverseMass[2]);
@@ -386,13 +386,13 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     while( std::fabs(diff) > tollerance*PatchDistanceSquared )
     {
         double dxOld[3], DX[3];
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             dxOld[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
             lroundccp(dxOld[i]);
         }
         double g = diff/( 2.*(dxOld[0]*dxNew[0] + dxOld[1]*dxNew[1] + dxOld[2]*dxNew[2]) * alpha_sum*dt );
 
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             DX[i] = g*dxOld[i];
 
             ipc.firstPatch.v[i] -= alpha_1*DX[i];
@@ -412,7 +412,7 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - PatchDistanceSquared;
     }
 
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         ipc.firstPatch.x[i] = x1[i];
         ipc.secndPatch.x[i] = x2[i];
         ipc.ipcCenter.x[i] = x2[i] + dxNew[i]*ecc2/PatchDistance;
@@ -432,7 +432,10 @@ void IPCsimulation::finishVerletStep() {
 
 void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     double v1[3], v2[3], dx[3], dv[3];
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
+        if (std::fabs(ipc.eFp1[i]) > 1e5) {
+            return;
+        }
         // compute the the final velocities from the new effective forces
         v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*inverseMass[1]);
         v2[i] = ipc.secndPatch.v[i] + ipc.eFp2[i]*(.5*dt*inverseMass[2]);
@@ -447,7 +450,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
         double DX[3];
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             DX[i] = k*dx[i];
             v1[i] -= DX[i]*alpha_1;
             v2[i] += DX[i]*alpha_2;
@@ -457,7 +460,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
         k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*PatchDistanceSquared);
     }
 
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         ipc.firstPatch.v[i] = v1[i];
         ipc.secndPatch.v[i] = v2[i];
         ipc.ipcCenter.v[i] = (v1[i]*ecc2 + v2[i]*ecc1)/PatchDistance;
@@ -549,7 +552,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         floorccp(particles[i+N3+N3+N3].ipcCenter.x[2]);
 
         // starting from random but ONLY TRANSLATIONAL speeds, for compatibility with rattle
-        for (unsigned short j: {0, 1, 2}) {
+        for (int j: {0, 1, 2}) {
            particles[i].ipcCenter.v[j]          = rand.getRandom11()*vel_scaling;
            particles[i+N3].ipcCenter.v[j]       = rand.getRandom11()*vel_scaling;
            particles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom11()*vel_scaling;
@@ -569,7 +572,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         double scalarProductOfTheTwoAxes = ipcOrthogonalAxis[0]*ipcAxis[0] +
                 ipcOrthogonalAxis[1]*ipcAxis[1] + ipcOrthogonalAxis[2]*ipcAxis[2];
 
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipcOrthogonalAxis[i] *= normOfIpcOrthogonalAxis;
             ipcOrthogonalAxis[i] -= ipcAxis[i]*scalarProductOfTheTwoAxes;
 
@@ -608,7 +611,7 @@ void IPCsimulation::restorePreviousConfiguration() {
            >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2];
 
         // scale velocities -> move to another fct
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipc.ipcCenter.v[i]  *= reduceVelocities;
             ipc.firstPatch.v[i] *= reduceVelocities;
             ipc.secndPatch.v[i] *= reduceVelocities;
@@ -624,7 +627,7 @@ void IPCsimulation::computeFreeForces() {
 
     // reset all forces
     for(IPC &ipc: particles) {
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipc.ipcCenter.F[i] = 0.;
             ipc.firstPatch.F[i] = 0.;
             ipc.secndPatch.F[i] = 0.;
@@ -642,7 +645,7 @@ void IPCsimulation::computeFreeForces() {
         for(auto loc = ipcsInCell.cbegin(); loc != ipcsInCell.cend(); ++loc) {
             for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCell.cend(); ++ins) {
                 double r[3], rmod(0.);
-                for (unsigned short i: {0, 1, 2}) {
+                for (int i: {0, 1, 2}) {
                     r[i] = particles[*loc].ipcCenter.x[i] - particles[*ins].ipcCenter.x[i];
                     lroundccp(r[i]);
                     rmod += r[i]*r[i];
@@ -654,7 +657,7 @@ void IPCsimulation::computeFreeForces() {
                 if (std::isnan(Fmod) > 1e1) {
                     std::cout << "";
                 }
-                for (unsigned short i: {0, 1, 2}) {
+                for (int i: {0, 1, 2}) {
                     particles[*loc].ipcCenter.F[i] += Fmod*r[i];
                     particles[*ins].ipcCenter.F[i] -= Fmod*r[i];
                 }
@@ -663,7 +666,7 @@ void IPCsimulation::computeFreeForces() {
             }
             for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
                 double r[3], rmod(0.);
-                for (unsigned short i: {0, 1, 2}) {
+                for (int i: {0, 1, 2}) {
                     r[i] = particles[*loc].ipcCenter.x[i] - particles[*ext].ipcCenter.x[i];
                     lroundccp(r[i]);
                     rmod += r[i]*r[i];
@@ -675,7 +678,7 @@ void IPCsimulation::computeFreeForces() {
                 if (std::fabs(Fmod) > 1e1) {
                     std::cout << "";
                 }
-                for (unsigned short i: {0, 1, 2}) {
+                for (int i: {0, 1, 2}) {
                     particles[*loc].ipcCenter.F[i] += Fmod*r[i];
                     particles[*ext].ipcCenter.F[i] -= Fmod*r[i];
                 }
@@ -702,7 +705,7 @@ void IPCsimulation::computeFreeForces() {
         #pragma omp critical
         {
             for (IPC &ipc: particles) {
-                for (unsigned short i: {0, 1, 2}) {
+                for (int i: {0, 1, 2}) {
                     const size_t j = ipc.number;
                     ipc.ipcCenter.F[i]  += loopVars.ipcCenterF[j][i];
                     ipc.firstPatch.F[i] += loopVars.firstPatchF[j][i];
@@ -715,7 +718,7 @@ void IPCsimulation::computeFreeForces() {
     }
 
     for(IPC &ipc: particles) {
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
             ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
         }
@@ -723,7 +726,7 @@ void IPCsimulation::computeFreeForces() {
 
 /*
     for (IPC &ipc: particles) {
-        for (unsigned short i: {0, 1, 2}) {
+        for (int i: {0, 1, 2}) {
             ipc.ipcCenter.F[i]  += Ec[i];
             ipc.firstPatch.F[i] += Ep1[i];
             ipc.secndPatch.F[i] += Ep2[i];
@@ -757,9 +760,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
 
     // compute center-center distance
     double centerCenterSeparation[3];
-    for (auto i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         centerCenterSeparation[i] = first.ipcCenter.x[i] - secnd.ipcCenter.x[i];
-        lround(centerCenterSeparation[i]);
+        lroundccp(centerCenterSeparation[i]);
     }
     double centerCenterSeparationModulus = centerCenterSeparation[0]*centerCenterSeparation[0]
                                          + centerCenterSeparation[1]*centerCenterSeparation[1]
@@ -776,7 +779,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
     loopVars.U += uBB[centerCenterDistance];
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         const double modulus = fBB[centerCenterDistance]*centerCenterSeparation[i];
         if (std::fabs(modulus) > porcogiuda) {
             std::cout << "";
@@ -787,7 +790,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
 
     // compute all the other site-site separations
     double siteSiteSeparation[8][3];
-    for (unsigned short i: {0, 1, 2}) {
+    for (int i: {0, 1, 2}) {
         siteSiteSeparation[0][i] = first.ipcCenter.x[i] - secnd.firstPatch.x[i];
         siteSiteSeparation[1][i] = first.ipcCenter.x[i] - secnd.secndPatch.x[i];
         siteSiteSeparation[2][i] = first.firstPatch.x[i] - secnd.ipcCenter.x[i];
@@ -796,12 +799,12 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
         siteSiteSeparation[5][i] = first.secndPatch.x[i] - secnd.ipcCenter.x[i];
         siteSiteSeparation[6][i] = first.secndPatch.x[i] - secnd.firstPatch.x[i];
         siteSiteSeparation[7][i] = first.secndPatch.x[i] - secnd.secndPatch.x[i];
-        for (unsigned short j = 0; j < 8; ++j)
-            lround(siteSiteSeparation[j][i]);
+        for (int j = 0; j < 8; ++j)
+            lroundccp(siteSiteSeparation[j][i]);
     }
 
     // all the others
-    for (unsigned short j = 0; j < 8; ++j) {
+    for (int j = 0; j < 8; ++j) {
         double siteSiteSeparationModulus = siteSiteSeparation[j][0]*siteSiteSeparation[j][0]
                                          + siteSiteSeparation[j][1]*siteSiteSeparation[j][1]
                                          + siteSiteSeparation[j][2]*siteSiteSeparation[j][2];
@@ -814,7 +817,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
         if (j == 0) { // center - patch1
             loopVars.U += uBs1[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[0][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -824,7 +827,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 1) { // center - patch2
             loopVars.U += uBs2[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[1][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -834,7 +837,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 2) { // patch1 - center
             loopVars.U += uBs1[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fBs1[dist]*siteSiteSeparation[2][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -844,7 +847,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 3) { // patch1 - patch1
             loopVars.U += us1s1[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fs1s1[dist]*siteSiteSeparation[3][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -854,7 +857,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 4) { // patch1 - patch2
             loopVars.U += us1s2[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[4][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -864,7 +867,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 5) { // patch2 - center
             loopVars.U += uBs2[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fBs2[dist]*siteSiteSeparation[5][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -874,7 +877,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 6) { // patch2 - patch1
             loopVars.U += us1s2[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fs1s2[dist]*siteSiteSeparation[6][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
@@ -884,7 +887,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             }
         } else if (j == 7) { // patch2 - patch2
             loopVars.U += us2s2[dist];
-            for (unsigned short i: {0, 1, 2}) {
+            for (int i: {0, 1, 2}) {
                 const double modulus = fs2s2[dist]*siteSiteSeparation[7][i];
                 if (std::fabs(modulus) > porcogiuda) {
                     std::cout << "";
