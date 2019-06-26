@@ -7,25 +7,27 @@
 
 class cell_lists
 {
-  // cell lists
 public:
-  cell_lists() {}
-  void initialize(double simulationBoxSide, double interactionRange, int howManyParticles);
-  // BoxSide and IntRange have to be in the same units of the positions x, it is not supposed to have a 1-side box
-  void compilelists(std::vector<IPC> const& ipcs); // Only takes the first Nparticles coordinates!
+    cell_lists() {}
+    // initialize --- simulationBoxSide and interactionRange have to be in the same units of length that are used by the ipcs vector passed in compileLists
+    void initialize(double simulationBoxSide, double interactionRange, int howManyParticles);
+    void compileLists(std::vector<IPC> const& ipcs);
 
-  int getNumberofCells() {
-      return totalCells;
-  }
-  const std::list<int> & getIPCsInCell(int cell) {
-      return list_of_neighbours[cell];
-  }
-  const std::list<int> getIPCsInNeighbouringCells(int cell);
+    int getNumberofCells() {
+        return totalCells;
+    }
+    // getIPCsInCell --- returns a list containing the indices of all the particles of the cell
+    const std::list<int> & getIPCsInCell(int cell) {
+        return list_of_neighbours[cell];
+    }
+    // getIPCsInNeighbouringCells --- returns a list containing the indices of all the particles in the neighbouring cells
+    const std::list<int> getIPCsInNeighbouringCells(int cell);
 
 private:
   int cellsPerSide, cellsPerSideSquared, totalCells, numberOfParticles;
   double cellSide;
-  std::vector<std::list<int>> neighbouring_cells, list_of_neighbours;
+  std::vector<std::list<int>> neighbouring_cells,   // element n is a list containing the indices of the particles in cell n
+                              list_of_neighbours;   // element m is a list containing the indices of the cells that are nearest neighbour of cell m
 
   int cellNumberFromPosition(Particle const& ipc) {
       return int(ipc.x[0]/cellSide) + cellsPerSide*int(ipc.x[1]/cellSide) + cellsPerSideSquared*int(ipc.x[2]/cellSide);

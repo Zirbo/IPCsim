@@ -7,8 +7,8 @@ void cell_lists::initialize(double simulationBoxSide, double interactionRange, i
     cellsPerSideSquared = cellsPerSide*cellsPerSide;
     totalCells = cellsPerSideSquared*cellsPerSide;
     cellSide = simulationBoxSide/cellsPerSide;
-    list_of_neighbours.resize(totalCells);     // every element is a list with the identifying number of the particles in the list
-    neighbouring_cells.resize(totalCells);     // every element is a list with the number of nearest neighbour cells to that cell
+    list_of_neighbours.resize(totalCells);
+    neighbouring_cells.resize(totalCells);
     // fill the list of neighbouring cells
     for(int x=0; x<cellsPerSide; x++) {
         for(int y=0; y<cellsPerSide; y++) {
@@ -36,26 +36,14 @@ void cell_lists::initialize(double simulationBoxSide, double interactionRange, i
         }
     }
 }
-void cell_lists::compilelists(std::vector<IPC> const& ipcs) {
+void cell_lists::compileLists(std::vector<IPC> const& ipcs) {
     // empty all the lists
     for(auto & m: list_of_neighbours)
         m.clear();
-    // put every particle in the right list
+    // put each particle in the list of the volume it finds itself in
     for(IPC const& ipc: ipcs) {
-        const int ipcCell = cellNumberFromPosition(ipc.ipcCenter) ;
-        list_of_neighbours[  ipcCell  ].push_back(ipc.number);
+        list_of_neighbours[  cellNumberFromPosition(ipc.ipcCenter)  ].push_back(ipc.number);
       }
-    // now the list contains the indices of the particles inside its volume
-
-    // print neighbouring cells for debugging
-  /*  std::cout << "compiling lists\n";
-    for(int i=0;i<totalCells;i++)
-    {
-        std::cout << "list nr " << i << ":   ";
-        for(auto it = list_of_neighbours[i].cbegin(); it!=list_of_neighbours[i].end(); it++)
-            std::cout<<*it<<"    ";
-        std::cout<<std::endl;
-    }*/
 }
 const std::list<int> cell_lists::getIPCsInNeighbouringCells(int cell) {
     std::list<int> ipcsInNeighbouringCells;

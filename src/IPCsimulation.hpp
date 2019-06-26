@@ -101,10 +101,10 @@ private:
     // 3D boundary conditions enforcers
     void computeSystemMomentum(double (&pcm) [3]);
     void correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]);
-    inline void floorccp(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }
-    inline void floorccp(double & x)  {  x-=std::floor(x);  }
-    inline void lroundccp(double & x, double & y, double &z) {  x-=std::lround(x);  y-=std::lround(y);  z-=std::lround(z);  }
-    inline void lroundccp(double & x) {  x-=std::lround(x);  }
+    inline void absolutePBC(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }
+    inline void absolutePBC(double & x)  {  x-=std::floor(x);  }
+    inline void relativePBC(double & x, double & y, double &z) {  x-=std::lround(x);  y-=std::lround(y);  z-=std::lround(z);  }
+    inline void relativePBC(double & x) {  x-=std::lround(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
     void ranor(double (&a)[3], RandomNumberGenerator & r);
 
