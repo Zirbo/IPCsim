@@ -7,6 +7,10 @@ void cell_lists::initialize(double simulationBoxSide, double interactionRange, i
     cellsPerSideSquared = cellsPerSide*cellsPerSide;
     totalCells = cellsPerSideSquared*cellsPerSide;
     cellSide = simulationBoxSide/cellsPerSide;
+    if(cellsPerSide < 3) {
+      std::cerr << "The system is too small (only " << totalCells << " cell lists) and the list system would be degenerate. Quitting.";
+      exit(1);
+    }
     list_of_neighbours.resize(totalCells);
     neighbouring_cells.resize(totalCells);
     // fill the list of neighbouring cells
