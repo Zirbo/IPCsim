@@ -45,10 +45,10 @@ public:
         return std::uniform_real_distribution<double>(from, to)(randomNumberGenerator);
     }
     double getRandom55() {
-        getRandomDoubleInRange(-.5, .5);
+        return getRandomDoubleInRange(-.5, .5);
     }
     double getRandom11() {
-        getRandomDoubleInRange(-1., 1.);
+        return getRandomDoubleInRange(-1., 1.);
     }
 };
 

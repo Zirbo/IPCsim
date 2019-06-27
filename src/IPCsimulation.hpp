@@ -99,6 +99,7 @@ private:
 
 
     // 3D boundary conditions enforcers
+    void computeSystemEnergy();
     void computeSystemMomentum(double (&pcm) [3]);
     void correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]);
     inline void absolutePBC(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }

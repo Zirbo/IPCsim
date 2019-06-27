@@ -22,7 +22,18 @@ set(ALL_FILES
     ${MAIN_FILES}
 )
 
+
+find_package(OpenMP REQUIRED)
+
+#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
+
 add_executable(${PROJECT_NAME} ${ALL_FILES})
-#target_compile_options(${PROJECT_NAME} PRIVATE "-O2 -g")
-target_compile_options(${PROJECT_NAME} PRIVATE "-fexceptions")
-set(CMAKE_BUILD_TYPE Debug)
+target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
+
+#message(STATUS "COMMON FLAGS: ${CMAKE_CXX_FLAGS}")
+#message(STATUS "DEBUG FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}")
+#message(STATUS "RELEASE FLAGS: ${CMAKE_CXX_FLAGS_RELEASE}")
