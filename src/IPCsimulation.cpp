@@ -45,6 +45,7 @@ void IPCsimulation::run() {
     const size_t printingInterval = (size_t)printingIntervalDouble;
 
     double averageTemperature = 0.;
+    double averagePotentialEnergy = 0.;
     int prints = 0;
 
     // simulation begins
@@ -54,12 +55,15 @@ void IPCsimulation::run() {
         ++simulationTime;
 
         if( simulationTime%printingInterval == 0) {
+            computeSystemEnergy();
             outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
             averageTemperature += kT;
+            averagePotentialEnergy += U;
             ++prints;
         }
     }
     averageTemperature /= prints;
+    averagePotentialEnergy /= prints;
     // simulation ends
     time(&simulationEndTime);
     outputFile << "The simulation lasted " << difftime (simulationEndTime,simulationStartTime) << " seconds.\n";
@@ -75,6 +79,7 @@ void IPCsimulation::run() {
     computeSystemMomentum(pcm);
     outputFile << "Residual momentum of the whole system = ( " << pcm[0]*L << ", " << pcm[1]*L << ", " << pcm[2]*L << " ).\n" << std::endl;
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
+    outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy << std::endl;
 }
 
 
@@ -442,7 +447,6 @@ void IPCsimulation::finishVerletStep() {
     for(IPC &ipc: particles) {
         finishVerletStepForIPC(ipc);
     }
-    computeSystemEnergy();
 }
 
 void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
