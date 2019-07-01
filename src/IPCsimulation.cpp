@@ -40,9 +40,9 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
 void IPCsimulation::run() {
     time_t simulationStartTime, simulationEndTime;
 
-    const size_t simulationDurationInIterations = (size_t)SimLength/dt_nonscaled;
-    const double printingIntervalDouble = PrintEvery/dt_nonscaled;
-    const size_t printingInterval = (size_t)printingIntervalDouble;
+    const size_t simulationDurationInIterations = (size_t)simulationTotalDuration/simulationTimeStep;
+    const double printingIntervalDouble = printingInterval/simulationTimeStep;
+    const size_t printingIntervalInIterations = (size_t)printingIntervalDouble;
 
     double averageTemperature = 0.;
     double averagePotentialEnergy = 0.;
@@ -54,11 +54,11 @@ void IPCsimulation::run() {
         computeTrajectoryStep();
         ++simulationTime;
 
-        if( simulationTime%printingInterval == 0) {
+        if( simulationTime%printingIntervalInIterations == 0) {
             computeSystemEnergy();
             outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
-            averageTemperature += kT;
-            averagePotentialEnergy += U;
+            averageTemperature += temperature;
+            averagePotentialEnergy += potentialEnergy;
             ++prints;
         }
     }
@@ -66,7 +66,7 @@ void IPCsimulation::run() {
     averagePotentialEnergy /= prints;
     // simulation ends
     time(&simulationEndTime);
-    outputFile << "The simulation lasted " << difftime (simulationEndTime,simulationStartTime) << " seconds.\n";
+    outputFile << "The simulation lasted " << difftime (simulationEndTime, simulationStartTime) << " seconds.\n";
 
     // output final state
     std::ofstream finalStateFile("startingstate.xyz");
@@ -77,9 +77,9 @@ void IPCsimulation::run() {
     // check that total momentum is still zero and print final stuff
     double pcm [3];
     computeSystemMomentum(pcm);
-    outputFile << "Residual momentum of the whole system = ( " << pcm[0]*L << ", " << pcm[1]*L << ", " << pcm[2]*L << " ).\n" << std::endl;
+    outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
-    outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy << std::endl;
+    outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 }
 
 
@@ -124,32 +124,40 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     int N1;
     // read input.in file
     std::ifstream IN("input.in");
-    IN >> N1 >> rho >> kTimposed;
-    IN >> dt_nonscaled >> PrintEvery >> SimLength;
+    IN >> N1 >> density >> desiredTemperature;
+    IN >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
     IN >> e_BB >> e_Bs1 >> e_Bs2;
     IN >> e_s1s1 >> e_s2s2 >> e_s1s2;
     IN >> e_min;
-    IN >> ecc1 >> s1Radius;
-    IN >> ecc2 >> s2Radius;
+    IN >> firstPatchEccentricity >> firstPatchRadius;
+    IN >> secndPatchEccentricity >> secndPatchRadius;
     IN >> mass[1] >> mass[2] >> mass[0];
-    IN >> fakeHScoef >> fakeHSexp;
+    IN >> fakeHScoefficient >> fakeHSexponent;
     IN >> forceAndEnergySamplingStep >> tollerance;
-    //IN >> Ec.x >> Ec.y >> Ec.z;
-    //IN >> qc >> qp1 >> qp2;
+    IN >> isFieldEnabled;
+    if(isFieldEnabled) {
+        IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeFirstPatchOverIpcCenter;
+        IN >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
+        // compute external fields
+        for (int i: {0, 1, 2}) {
+            externalFieldFirstPatch[i] = ratioChargeFirstPatchOverIpcCenter*externalFieldIpcCenter[i];
+            externalFieldSecndPatch[i] = ratioChargeSecndPatchOverIpcCenter*externalFieldIpcCenter[i];
+        }
+    }
     IN.close();
 
     // processing the data
     nIPCs = 4*N1*N1*N1;
-    if ( abs( (ecc1+s1Radius)-(ecc2+s2Radius) ) >= 1e-10 ) {
-        std::cerr << ecc1 << "+" << s1Radius << "=" << ecc1+s1Radius << "-";
-        std::cerr << ecc2 << "+" << s2Radius << "=" << ecc2+s2Radius << "=\n";
-        std::cerr << (ecc1+s1Radius)-(ecc2+s2Radius) << std::endl;
+    if ( abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
+        std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
+        std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
+        std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
         std::cerr << "eccentricities and radii are not consistent!\n";
         exit(1);
     }
-    bigRadius = ecc1 + s1Radius;
-    L = std::cbrt(nIPCs/rho);
-    kToverK = 2./(5.*nIPCs-3.);
+    ipcRadius = firstPatchEccentricity + firstPatchRadius;
+    simulationBoxSide = std::cbrt(nIPCs/density);
+    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
 
     if(restoreprevious)
     {
@@ -158,28 +166,26 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     }
 
     // output the data for future checks
-    outputFile << N1 << "\t" << rho << "\t" << kTimposed << "\n";
-    outputFile << dt_nonscaled << "\t" << PrintEvery << "\t" << SimLength << "\n";
+    outputFile << N1 << "\t" << density << "\t" << desiredTemperature << "\n";
+    outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
     outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
     outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
     outputFile << e_min << "\n";
-    outputFile << ecc1 << "\t" << s1Radius << "\n";
-    outputFile << ecc2 << "\t" << s2Radius << "\n";
+    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
+    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
     outputFile << mass[1] << "\t" << mass[2] << "\t" << mass[0] << "\n";
-    outputFile << fakeHScoef << "\t" << fakeHSexp << "\n";
+    outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
     outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
-    //outputFile << Ec.x << "\t" << Ec.y << "\t" << Ec.z << "\n";
-    //outputFile << qc << "\t" << qp1 << "\t" << qp2 << "\n";
-
-    // computing fields
-    /*Ep1 = Ec*qp1;
-    Ep2 = Ec*qp2;
-    Ec *= qc;*/
+    outputFile << isFieldEnabled << "\n";
+    if(isFieldEnabled) {
+        outputFile << ratioChargeFirstPatchOverIpcCenter << "\t" << ratioChargeFirstPatchOverIpcCenter << "\n";
+        outputFile << externalFieldIpcCenter[0] << "\t" << externalFieldIpcCenter[1] << "\t" << externalFieldIpcCenter[2] << "\n";
+    }
 
     outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(L,3) << " = ";
-    outputFile << nIPCs/std::pow(L,3) << " = " << rho;
-    outputFile << "\nSide = " << L << ", patch size in reduced units: " << 1./L << std::endl;
+    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
+    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
+    outputFile << "\nSide = " << simulationBoxSide << ", patch size in reduced units: " << 1./simulationBoxSide << std::endl;
     outputFile << "Total number of simulated atoms: " << 3*nIPCs << std::endl;
 
     // potential sampling
@@ -187,30 +193,30 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     make_table(true);
 
     // scaling of lenghts for [0.0:1.0] simulation box
-    bigRadius /= L;
-    s1Radius /= L;
-    ecc1 /= L;
-    s2Radius /= L;
-    ecc2 /= L;
-    dt = dt_nonscaled/L;
-    forceAndEnergySamplingStep /= L;
-    PotRange = 2*bigRadius;
-    PotRangeSquared = PotRange*PotRange;
-    PatchDistance = ecc1+ecc2;
-    PatchDistanceSquared = PatchDistance*PatchDistance;
+    ipcRadius /= simulationBoxSide;
+    firstPatchRadius /= simulationBoxSide;
+    firstPatchEccentricity /= simulationBoxSide;
+    secndPatchRadius /= simulationBoxSide;
+    secndPatchEccentricity /= simulationBoxSide;
+    dt = simulationTimeStep/simulationBoxSide;
+    forceAndEnergySamplingStep /= simulationBoxSide;
+    interactionRange = 2*ipcRadius;
+    squaredInteractionRange = interactionRange*interactionRange;
+    patchDistance = firstPatchEccentricity+secndPatchEccentricity;
+    squaredPatchDistance = patchDistance*patchDistance;
     inverseMass[1] = 1./mass[1];
     inverseMass[2] = 1./mass[2];
     inverseMass[0] = 1./mass[0];
     // inverse of the I parameter from formulas!
-    const double iI = 1./(PatchDistanceSquared*inverseMass[0] + ecc1*ecc1*inverseMass[2] + ecc2*ecc2*inverseMass[1]);
-    cP11 = 1.-ecc2*ecc2*iI*inverseMass[1];
-    cP12 = -ecc1*ecc2*iI*inverseMass[2];
-    cP1c = PatchDistance*ecc2*iI*inverseMass[0];
+    const double iI = 1./(squaredPatchDistance*inverseMass[0] + firstPatchEccentricity*firstPatchEccentricity*inverseMass[2] + secndPatchEccentricity*secndPatchEccentricity*inverseMass[1]);
+    cP11 = 1.-secndPatchEccentricity*secndPatchEccentricity*iI*inverseMass[1];
+    cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*inverseMass[2];
+    cP1c = patchDistance*secndPatchEccentricity*iI*inverseMass[0];
     cP21 = cP12;
-    cP22 = 1.-ecc1*ecc1*iI*inverseMass[2];
-    cP2c = PatchDistance*ecc1*iI*inverseMass[0];
-    alpha_1 = 1. - ecc2*iI*(ecc2*inverseMass[1]-ecc1*inverseMass[2]);
-    alpha_2 = 1. + ecc1*iI*(ecc2*inverseMass[1]-ecc1*inverseMass[2]);
+    cP22 = 1.-firstPatchEccentricity*firstPatchEccentricity*iI*inverseMass[2];
+    cP2c = patchDistance*firstPatchEccentricity*iI*inverseMass[0];
+    alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
+    alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_sum = alpha_1 + alpha_2;
     /*Ec  /= L;
     Ep1 /= L;
@@ -223,7 +229,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     }
 
     // cell list compilation
-    cells.initialize(1., PotRange, nIPCs);
+    cells.initialize(1., interactionRange, nIPCs);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
     cells.compileLists(particles);
 
@@ -234,18 +240,18 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     double pcm [3];
     computeSystemMomentum(pcm);
     outputFile << "P whole system = ( "
-               << pcm[0]*L << ", "
-               << pcm[1]*L << ", "
-               << pcm[2]*L << " )." << std::endl;
+               << pcm[0]*simulationBoxSide << ", "
+               << pcm[1]*simulationBoxSide << ", "
+               << pcm[2]*simulationBoxSide << " )." << std::endl;
 
     // if not restoring, correct the total momentum to be zero
    // if(!restoreprevious) { // TODO: apply this also if restoring??
         double pcmCorrected [3];
         correctTotalMomentumToZero(pcm, pcmCorrected);
         outputFile << "P whole system corrected = ( "
-                   << pcmCorrected[0]*L << ", "
-                   << pcmCorrected[1]*L << ", "
-                   << pcmCorrected[2]*L << " )." << std::endl;
+                   << pcmCorrected[0]*simulationBoxSide << ", "
+                   << pcmCorrected[1]*simulationBoxSide << ", "
+                   << pcmCorrected[2]*simulationBoxSide << " )." << std::endl;
     //}
 
     // first computation of the kinetic energy
@@ -303,7 +309,7 @@ double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
 
 void IPCsimulation::make_table(bool printPotentials)
 {
-    const size_t potentialRangeSamplingSize = size_t( 2.*bigRadius/forceAndEnergySamplingStep ) + 1;
+    const size_t potentialRangeSamplingSize = size_t( 2.*ipcRadius/forceAndEnergySamplingStep ) + 1;
 
     uBB   = new double [potentialRangeSamplingSize];
     uBs1  = new double [potentialRangeSamplingSize];
@@ -330,26 +336,26 @@ void IPCsimulation::make_table(bool printPotentials)
     for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
     {
         double r = i*forceAndEnergySamplingStep;
-        uBB[i]   = (e_BB  /e_min) * omega(bigRadius, bigRadius, r);
-        uBs1[i]  = (e_Bs1 /e_min) * omega(bigRadius, s1Radius,  r);
-        uBs2[i]  = (e_Bs2 /e_min) * omega(bigRadius, s2Radius,  r);
-        us1s2[i] = (e_s1s2/e_min) * omega(s1Radius,  s2Radius,  r);
-        us2s2[i] = (e_s2s2/e_min) * omega(s2Radius,  s2Radius,  r);
-        us1s1[i] = (e_s1s1/e_min) * omega(s1Radius,  s1Radius,  r);
+        uBB[i]   = (e_BB  /e_min) * omega(ipcRadius, ipcRadius, r);
+        uBs1[i]  = (e_Bs1 /e_min) * omega(ipcRadius, firstPatchRadius,  r);
+        uBs2[i]  = (e_Bs2 /e_min) * omega(ipcRadius, secndPatchRadius,  r);
+        us1s2[i] = (e_s1s2/e_min) * omega(firstPatchRadius,  secndPatchRadius,  r);
+        us2s2[i] = (e_s2s2/e_min) * omega(secndPatchRadius,  secndPatchRadius,  r);
+        us1s1[i] = (e_s1s1/e_min) * omega(firstPatchRadius,  firstPatchRadius,  r);
 
-        fBB[i]   = (e_BB  /e_min) * d_dr_omega(bigRadius, bigRadius, r);
-        fBs1[i]  = (e_Bs1 /e_min) * d_dr_omega(bigRadius, s1Radius,  r);
-        fBs2[i]  = (e_Bs2 /e_min) * d_dr_omega(bigRadius, s2Radius,  r);
-        fs1s2[i] = (e_s1s2/e_min) * d_dr_omega(s1Radius,  s2Radius,  r);
-        fs2s2[i] = (e_s2s2/e_min) * d_dr_omega(s2Radius,  s2Radius,  r);
-        fs1s1[i] = (e_s1s1/e_min) * d_dr_omega(s1Radius,  s1Radius,  r);
+        fBB[i]   = (e_BB  /e_min) * d_dr_omega(ipcRadius, ipcRadius, r);
+        fBs1[i]  = (e_Bs1 /e_min) * d_dr_omega(ipcRadius, firstPatchRadius,  r);
+        fBs2[i]  = (e_Bs2 /e_min) * d_dr_omega(ipcRadius, secndPatchRadius,  r);
+        fs1s2[i] = (e_s1s2/e_min) * d_dr_omega(firstPatchRadius,  secndPatchRadius,  r);
+        fs2s2[i] = (e_s2s2/e_min) * d_dr_omega(secndPatchRadius,  secndPatchRadius,  r);
+        fs1s1[i] = (e_s1s1/e_min) * d_dr_omega(firstPatchRadius,  firstPatchRadius,  r);
 
         if ( r <= 1.0 )
         {
             // setting up a Fake Hard Sphere Core
-            double rm = pow(r, -fakeHSexp);
-            uBB[i]   += fakeHScoef*((rm-2.)*rm+1.);
-            fBB[i]   += -2.*fakeHSexp*fakeHScoef*(rm-1.)*rm/r;
+            double rm = pow(r, -fakeHSexponent);
+            uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
+            fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
         }
         if ( printPotentials && int( (1000.*i)/potentialRangeSamplingSize ) == potOutputPrintCount )
         {
@@ -403,10 +409,10 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         relativePBC(dxNew[i]);
     }
     // compute the (squared) violation of the constraint
-    double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - PatchDistanceSquared;
+    double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchDistance;
 
     // correct the positions and the velocities until the violation is less than the tollerance
-    while( std::fabs(diff) > tollerance*PatchDistanceSquared )
+    while( std::fabs(diff) > tollerance*squaredPatchDistance )
     {
         double dxOld[3], DX[3];
         for (int i: {0, 1, 2}) {
@@ -432,13 +438,13 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
             relativePBC(dxNew[i]);
         }
 
-        diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - PatchDistanceSquared;
+        diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchDistance;
     }
 
     for (int i: {0, 1, 2}) {
         ipc.firstPatch.x[i] = x1[i];
         ipc.secndPatch.x[i] = x2[i];
-        ipc.ipcCenter.x[i] = x2[i] + dxNew[i]*ecc2/PatchDistance;
+        ipc.ipcCenter.x[i] = x2[i] + dxNew[i]*secndPatchEccentricity/patchDistance;
         absolutePBC(ipc.ipcCenter.x[i]);
     }
 }
@@ -465,7 +471,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
         dv[i] = v1[i] - v2[i];
     }
     // check how much the constraints are being violated
-    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*PatchDistanceSquared);
+    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
     while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
         double DX[3];
@@ -476,31 +482,31 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
             dv[i] = v1[i] - v2[i];
         }
         // recompute the violation of the constraints
-        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*PatchDistanceSquared);
+        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
     }
 
     for (int i: {0, 1, 2}) {
         ipc.firstPatch.v[i] = v1[i];
         ipc.secndPatch.v[i] = v2[i];
-        ipc.ipcCenter.v[i] = (v1[i]*ecc2 + v2[i]*ecc1)/PatchDistance;
+        ipc.ipcCenter.v[i] = (v1[i]*secndPatchEccentricity + v2[i]*firstPatchEccentricity)/patchDistance;
     }
 }
 
 void IPCsimulation::computeSystemEnergy() {
-    K = 0.;
+    kineticEnergy = 0.;
     for(IPC ipc: particles) {
-        K += mass[1]*(std::pow(ipc.firstPatch.v[0],2) + std::pow(ipc.firstPatch.v[1],2) + std::pow(ipc.firstPatch.v[2],2))
+        kineticEnergy += mass[1]*(std::pow(ipc.firstPatch.v[0],2) + std::pow(ipc.firstPatch.v[1],2) + std::pow(ipc.firstPatch.v[2],2))
            + mass[2]*(std::pow(ipc.secndPatch.v[0],2) + std::pow(ipc.secndPatch.v[1],2) + std::pow(ipc.secndPatch.v[2],2))
            + mass[0]*(std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2));
     }
-    K *= .5*L*L;
-    E = K + U;
-    kT = kToverK*K;
+    kineticEnergy *= .5*simulationBoxSide*simulationBoxSide;
+    totalEnergy = kineticEnergy + potentialEnergy;
+    temperature = ratioBetweenTemperatureAndKineticEnergy*kineticEnergy;
 }
 
 //************************************************************************//
 void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime) {
-    outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*dt_nonscaled;
+    outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*simulationTimeStep;
     for (IPC ipc: particles) {
         outputTrajectoryFile << "\n"
                              << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
@@ -520,9 +526,9 @@ void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile,
 void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, unsigned long simulationTime, std::ofstream & energyTrajectoryFile)
 {
     outputSystemTrajectory(outputTrajectoryFile, simulationTime);
-    energyTrajectoryFile << simulationTime*dt_nonscaled << "\t" << kT << "\t"
-                         << K/nIPCs << "\t" << U/nIPCs << "\t" << E/nIPCs << "\t"
-                         << std::sqrt(rmin2)*L << std::endl;
+    energyTrajectoryFile << simulationTime*simulationTimeStep << "\t" << temperature << "\t"
+                         << kineticEnergy/nIPCs << "\t" << potentialEnergy/nIPCs << "\t" << totalEnergy/nIPCs << "\t"
+                         << std::sqrt(squaredMinimumDistanceBetweenParticles)*simulationBoxSide << std::endl;
 }
 
 
@@ -536,7 +542,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     int N3 = N2*N1;
 
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
-    double vel_scaling = std::sqrt(2.*kTimposed/3.1415)/L;
+    double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
@@ -602,9 +608,9 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
             ipcOrthogonalAxis[i] *= normOfIpcOrthogonalAxis;
             ipcOrthogonalAxis[i] -= ipcAxis[i]*scalarProductOfTheTwoAxes;
 
-            ipc.firstPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*ecc1;
+            ipc.firstPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*firstPatchEccentricity;
             absolutePBC(ipc.firstPatch.x[i]);
-            ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] - ipcAxis[i]*ecc2;
+            ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] - ipcAxis[i]*secndPatchEccentricity;
             absolutePBC(ipc.secndPatch.x[i]);
 
             ipc.firstPatch.v[i] = ipc.ipcCenter.v[i] + ipcOrthogonalAxis[i]*vel_scaling;
@@ -614,14 +620,14 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 }
 
 void IPCsimulation::restorePreviousConfiguration() {
-    double reduceVelocities = std::sqrt(kTimposed);
+    double reduceVelocities = std::sqrt(desiredTemperature);
     char unusedPatchName;
     double unusedTime;
     std::ifstream IN("startingstate.xyz");
     IN >> nIPCs >> unusedTime;
     nIPCs /= 3;
-    L = std::cbrt(nIPCs/rho);
-    kToverK = 2./(5.*nIPCs-3.);
+    simulationBoxSide = std::cbrt(nIPCs/density);
+    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
 
     particles.resize(nIPCs);
     int counter = 0;
@@ -661,7 +667,7 @@ void IPCsimulation::computeFreeForces() {
             ipc.secndPatch.F[i] = 0.;
         }
     }
-    U = 0.0;  rmin2 = 1.;
+    potentialEnergy = 0.0;  squaredMinimumDistanceBetweenParticles = 1.;
 
     #pragma omp parallel
     {
@@ -687,8 +693,18 @@ void IPCsimulation::computeFreeForces() {
                     ipc.secndPatch.F[i] += loopVars.secndPatchF[j][i];
                 }
             }
-            U += loopVars.U;
-            rmin2 += loopVars.minimumSquaredDistance;
+            potentialEnergy += loopVars.U;
+            squaredMinimumDistanceBetweenParticles += loopVars.minimumSquaredDistance;
+        }
+    }
+
+    if(isFieldEnabled) {
+        for (IPC &ipc: particles) {
+            for (int i: {0, 1, 2}) {
+                ipc.ipcCenter.F[i]  += externalFieldIpcCenter[i];
+                ipc.firstPatch.F[i] += externalFieldFirstPatch[i];
+                ipc.secndPatch.F[i] += externalFieldSecndPatch[i];
+              }
         }
     }
 
@@ -698,16 +714,6 @@ void IPCsimulation::computeFreeForces() {
             ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
         }
     }
-
-/*
-    for (IPC &ipc: particles) {
-        for (int i: {0, 1, 2}) {
-            ipc.ipcCenter.F[i]  += Ec[i];
-            ipc.firstPatch.F[i] += Ep1[i];
-            ipc.secndPatch.F[i] += Ep2[i];
-          }
-    }
-*/
 }
 
 void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars) {
@@ -744,7 +750,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
         loopVars.minimumSquaredDistance = centerCenterSeparationModulus;
 
     // if the CENTERS are too far, no interactions, skip this couple of IPCs
-    if (centerCenterSeparationModulus >= PotRangeSquared)
+    if (centerCenterSeparationModulus >= squaredInteractionRange)
         return;
 
     // we are inside the interaction range; compute the interaction between centers
@@ -779,7 +785,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
                                          + siteSiteSeparation[j][2]*siteSiteSeparation[j][2];
 
         // if we are too far, no interaction, skip to the next site-site pair
-        if (siteSiteSeparationModulus >= PotRangeSquared)
+        if (siteSiteSeparationModulus >= squaredInteractionRange)
             continue;
 
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);

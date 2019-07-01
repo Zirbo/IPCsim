@@ -40,26 +40,30 @@ private:
 
     // state point
     int nIPCs;
-    double rho;
-    double kT, kTimposed;
+    double density;
+    double temperature, desiredTemperature;
     // potential
     double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
-    double bigRadius, s1Radius, ecc1, s2Radius, ecc2;
-    double fakeHSexp, fakeHScoef;
+    double ipcRadius, firstPatchRadius, firstPatchEccentricity, secndPatchRadius, secndPatchEccentricity;
+    double fakeHSexponent, fakeHScoefficient;
     double forceAndEnergySamplingStep, tollerance;
     // masses and inverse masses
     double mass[3], inverseMass[3];
     // simulation
-    double dt_nonscaled;
-    double SimLength;
-    double PrintEvery;
+    double simulationTimeStep;
+    double simulationTotalDuration;
+    double printingInterval;
     // work parameters
-    double kToverK, E, U, K, L, dt;
-    double rmin2;
-    double PotRange, PotRangeSquared;
-    double PatchDistance, PatchDistanceSquared;
+    double ratioBetweenTemperatureAndKineticEnergy, totalEnergy, potentialEnergy, kineticEnergy, simulationBoxSide, dt;
+    double squaredMinimumDistanceBetweenParticles;
+    double interactionRange, squaredInteractionRange;
+    double patchDistance, squaredPatchDistance;
     double cP11, cP12, cP1c, cP21, cP22, cP2c, alpha_1, alpha_2, alpha_sum;
     int nPrints;
+    // external electric field
+    bool isFieldEnabled;
+    double ratioChargeFirstPatchOverIpcCenter, ratioChargeSecndPatchOverIpcCenter;
+    double externalFieldIpcCenter[3], externalFieldFirstPatch[3], externalFieldSecndPatch[3];
     // particles
     std::vector<IPC> particles;
     cell_lists cells;

@@ -1,33 +1,38 @@
 5         0.65      1.0
-2.5e-3    20        20
-3.18802   -24.3562  -24.3562
-58.9717   58.9717   58.9717
-1.02726
+2.5e-3    10        500
+.245728   -3.11694  -3.11694
+21.2298   21.2298   21.2298
+.142495
 0.22      0.38
 0.22      0.38
 1.        1.        1.
 500       15
 1e-6      1e-12
-0.        0.        0.
+0
+0.        0.
 2.        -1.       -1.
 ________________________________________________________________
 |               explanation                                     |
 |                                                               |
-  IN>>N1>>par.rho>>par.kTimposed;
-  IN>>par.dt_nonscaled>>par.PrintEvery>>par.SimLength;
-  IN>>par.e_BB>>par.e_Bs1>>par.e_Bs2;
-  IN>>par.e_s1s1>>par.e_s2s2>>par.e_s1s2;
-  IN>>par.e_min;
-  IN>>par.ecc1>>par.s1Radius;
-  IN>>par.ecc2>>par.s2Radius;
-  IN>>par.m1>>par.m2>>par.mc;
-  IN>>par.FakeHScoef>>par.FakeHSexp;
-  IN>>par.FUsamplingDeltar>>par.Tollerance;
-  IN>>par.Ec.x>>par.Ec.y>>par.Ec.z;
-  IN>>par.qc>>par.qp1>>par.qp2;
-  
-  kTimposed is the tentative temperature for a new simulation,
-  and the ratio by which to multiply velocities for a restore.S
+
+IN >> N1 >> density >> desiredTemperature;
+IN >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
+IN >> e_BB >> e_Bs1 >> e_Bs2;
+IN >> e_s1s1 >> e_s2s2 >> e_s1s2;
+IN >> e_min;
+IN >> firstPatchEccentricity >> firstPatchRadius;
+IN >> secndPatchEccentricity >> secndPatchRadius;
+IN >> mass[1] >> mass[2] >> mass[0];
+IN >> fakeHScoefficient >> fakeHSexponent;
+IN >> forceAndEnergySamplingStep >> tollerance;
+IN >> isFieldEnabled;
+if(isFieldEnabled) {
+    IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeFirstPatchOverIpcCenter;
+    IN >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
+}
+
+kTimposed is the tentative temperature for a new simulation,
+and the ratio by which to multiply velocities for a restore.S
   
   
   30n
