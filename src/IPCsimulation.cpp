@@ -136,7 +136,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     IN >> forceAndEnergySamplingStep >> tollerance;
     IN >> isFieldEnabled;
     if(isFieldEnabled) {
-        IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeFirstPatchOverIpcCenter;
+        IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
         IN >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
         // compute external fields
         for (int i: {0, 1, 2}) {
