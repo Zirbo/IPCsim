@@ -664,10 +664,12 @@ void IPCsimulation::computeFreeForces() {
     U = 0.0;  rmin2 = 1.;
 
     #pragma omp parallel
+    #pragma acc parallel
     {
         loopVariables loopVars(nIPCs);
 
         #pragma omp for
+        #pragma acc loop private(loopVars) reduction(+:ipc.ipcCenter.F, ipc.firstPatch.F, ipc.secndPatch.F)
         for(int m=0; m<cells.getNumberofCells(); ++m)  // loop over all cells
         {
             const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
