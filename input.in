@@ -30,10 +30,6 @@ if(isFieldEnabled) {
     IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeFirstPatchOverIpcCenter;
     IN >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
 }
-
-kTimposed is the tentative temperature for a new simulation,
-and the ratio by which to multiply velocities for a restore.S
-  
   
   30n
 .817244   -25.2095  228.967   .946876
