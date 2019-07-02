@@ -311,26 +311,26 @@ void IPCsimulation::make_table(bool printPotentials)
 {
     const size_t potentialRangeSamplingSize = size_t( 2.*ipcRadius/forceAndEnergySamplingStep ) + 1;
 
-    uBB   = new double [potentialRangeSamplingSize];
-    uBs1  = new double [potentialRangeSamplingSize];
-    uBs2  = new double [potentialRangeSamplingSize];
-    us1s2 = new double [potentialRangeSamplingSize];
-    us1s1 = new double [potentialRangeSamplingSize];
-    us2s2 = new double [potentialRangeSamplingSize];
-    fBB   = new double [potentialRangeSamplingSize];
-    fBs1  = new double [potentialRangeSamplingSize];
-    fBs2  = new double [potentialRangeSamplingSize];
-    fs1s2 = new double [potentialRangeSamplingSize];
-    fs1s1 = new double [potentialRangeSamplingSize];
-    fs2s2 = new double [potentialRangeSamplingSize];
+    uBB.resize(potentialRangeSamplingSize);
+    uBs1.resize(potentialRangeSamplingSize);
+    uBs2.resize(potentialRangeSamplingSize);
+    us1s2.resize(potentialRangeSamplingSize);
+    us1s1.resize(potentialRangeSamplingSize);
+    us2s2.resize(potentialRangeSamplingSize);
+    fBB.resize(potentialRangeSamplingSize);
+    fBs1.resize(potentialRangeSamplingSize);
+    fBs2.resize(potentialRangeSamplingSize);
+    fs1s2.resize(potentialRangeSamplingSize);
+    fs1s1.resize(potentialRangeSamplingSize);
+    fs2s2.resize(potentialRangeSamplingSize);
 
     std::ofstream POT_OUTPUT;
     int potOutputPrintCount = 1;
     if (printPotentials) {
         POT_OUTPUT.open("siml/potentials.out");
-        POT_OUTPUT<<std::scientific<<std::setprecision(6);
-        POT_OUTPUT<<"#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
-        POT_OUTPUT<<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
+        POT_OUTPUT << std::scientific << std::setprecision(6);
+        POT_OUTPUT << "#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
+        POT_OUTPUT <<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
     }
 
     for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
@@ -360,15 +360,15 @@ void IPCsimulation::make_table(bool printPotentials)
         if ( printPotentials && int( (1000.*i)/potentialRangeSamplingSize ) == potOutputPrintCount )
         {
             potOutputPrintCount++;
-            POT_OUTPUT<<r<<"\t"<<uBB[i]<<"\t"<<uBs1[i]<<"\t"<<uBs2[i]<<"\t"<<us1s2[i]<<"\t"<<us2s2[i]<<"\t"<<us1s1[i]<<"\t";
-            POT_OUTPUT<<r<<"\t"<<fBB[i]<<"\t"<<fBs1[i]<<"\t"<<fBs2[i]<<"\t"<<fs1s2[i]<<"\t"<<fs2s2[i]<<"\t"<<fs1s1[i]<<"\n";
+            POT_OUTPUT << r << "\t" << uBB[i] << "\t" << uBs1[i] << "\t" << uBs2[i] << "\t" << us1s2[i] << "\t" << us2s2[i] << "\t" << us1s1[i] << "\t";
+            POT_OUTPUT << r << "\t" << fBB[i] << "\t" << fBs1[i] << "\t" << fBs2[i] << "\t" << fs1s2[i] << "\t" << fs2s2[i] << "\t" << fs1s1[i] << "\n";
         }
         // this division is done here to save a division during runtime;
         // it's only done now not to be seen in the plots
         const double x = 1./(r);
-        fBB[i] *= x;
-        fBs1[i] *= x;
-        fBs2[i] *= x;
+        fBB[i]   *= x;
+        fBs1[i]  *= x;
+        fBs2[i]  *= x;
         fs1s2[i] *= x;
         fs1s1[i] *= x;
         fs2s2[i] *= x;

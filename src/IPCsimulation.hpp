@@ -28,15 +28,11 @@ private:
     std::ofstream trajectoryFile;
 
     // force and potential tables computation
-    //struct FU_table
-    //{
-        double *uBB, *uBs1, *uBs2, *us1s2, *us1s1, *us2s2;
-        double *fBB, *fBs1, *fBs2, *fs1s2, *fs1s1, *fs2s2;
-        void make_table(bool printPotentials);
-    //private:
-        double omega(double Ra, double Rb, double rab);
-        double d_dr_omega(double Ra, double Rb, double rab);
-   // } tab;
+    std::vector<double> uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
+    std::vector<double> fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
+    void make_table(bool printPotentials);
+    double omega(double Ra, double Rb, double rab);
+    double d_dr_omega(double Ra, double Rb, double rab);
 
     // state point
     int nIPCs;
