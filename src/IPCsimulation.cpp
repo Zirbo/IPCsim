@@ -159,10 +159,13 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     simulationBoxSide = std::cbrt(nIPCs/density);
     ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
 
-    if(restoreprevious)
-    {
+    // initialize particles positions
+    if(restoreprevious) {
         outputFile << "Reading " << nIPCs <<  " particles positions and velocities from file.\n";
         restorePreviousConfiguration();
+    } else {
+        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n";
+        initializeNewConfiguration(N1);
     }
 
     // output the data for future checks
@@ -218,15 +221,6 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_sum = alpha_1 + alpha_2;
-    /*Ec  /= L;
-    Ep1 /= L;
-    Ep2 /= L;*/
-
-    // initialize positions of the particles
-    if(!restoreprevious) {
-        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n";
-        initializeNewConfiguration(N1);
-    }
 
     // cell list compilation
     cells.initialize(1., interactionRange, nIPCs);
@@ -245,17 +239,24 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
                << pcm[2]*simulationBoxSide << " )." << std::endl;
 
     // if not restoring, correct the total momentum to be zero
-   // if(!restoreprevious) { // TODO: apply this also if restoring??
-        double pcmCorrected [3];
-        correctTotalMomentumToZero(pcm, pcmCorrected);
-        outputFile << "P whole system corrected = ( "
-                   << pcmCorrected[0]*simulationBoxSide << ", "
-                   << pcmCorrected[1]*simulationBoxSide << ", "
-                   << pcmCorrected[2]*simulationBoxSide << " )." << std::endl;
-    //}
+    double pcmCorrected [3];
+    correctTotalMomentumToZero(pcm, pcmCorrected);
+    outputFile << "P whole system corrected = ( "
+               << pcmCorrected[0]*simulationBoxSide << ", "
+               << pcmCorrected[1]*simulationBoxSide << ", "
+               << pcmCorrected[2]*simulationBoxSide << " )." << std::endl;
 
     // first computation of the kinetic energy
     computeSystemEnergy();
+
+    if(restoreprevious && desiredTemperature > 0) {
+        // scale velocities to obtain the desired temperature
+        double scalingFactor = std::sqrt(desiredTemperature/temperature);
+        scaleVelocities(scalingFactor);
+
+        // update energies to include the correction
+        computeSystemEnergy();
+    }
 }
 
 
@@ -275,9 +276,6 @@ void IPCsimulation::ranor(double (&a)[3], RandomNumberGenerator & r) {
     }
     double norm = 2.*sqrt(1.-quad);  a[0]=x*norm;  a[1]=y*norm;  a[2]=1.-2.*quad;
 }
-
-
-
 
 
 
@@ -492,6 +490,8 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     }
 }
 
+
+
 void IPCsimulation::computeSystemEnergy() {
     kineticEnergy = 0.;
     for(IPC ipc: particles) {
@@ -503,6 +503,19 @@ void IPCsimulation::computeSystemEnergy() {
     totalEnergy = kineticEnergy + potentialEnergy;
     temperature = ratioBetweenTemperatureAndKineticEnergy*kineticEnergy;
 }
+
+
+
+void IPCsimulation::scaleVelocities(const double scalingFactor) {
+    for (IPC &ipc: particles) {
+        for (int i: {0, 1, 2}) {
+            ipc.ipcCenter.v[i]  *= scalingFactor;
+            ipc.firstPatch.v[i] *= scalingFactor;
+            ipc.secndPatch.v[i] *= scalingFactor;
+        }
+    }
+}
+
 
 //************************************************************************//
 void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime) {
@@ -620,7 +633,6 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 }
 
 void IPCsimulation::restorePreviousConfiguration() {
-    double reduceVelocities = std::sqrt(desiredTemperature);
     char unusedPatchName;
     double unusedTime;
     std::ifstream IN("startingstate.xyz");
@@ -643,20 +655,16 @@ void IPCsimulation::restorePreviousConfiguration() {
         IN >> unusedPatchName
            >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
            >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2];
-
-        // scale velocities -> move to another fct
-        for (int i: {0, 1, 2}) {
-            ipc.ipcCenter.v[i]  *= reduceVelocities;
-            ipc.firstPatch.v[i] *= reduceVelocities;
-            ipc.secndPatch.v[i] *= reduceVelocities;
-        }
     }
     if (counter != nIPCs) {
         std::cerr << "Placed " << counter << " IPCs, expected " << nIPCs << ", quitting.\n";
         exit(1);
     }
+
     IN.close();
 }
+
+
 
 void IPCsimulation::computeFreeForces() {
     // reset all forces
