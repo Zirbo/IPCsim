@@ -37,7 +37,7 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled
 }
 
 //************************************************************************//
-void IPCsimulation::run() {
+double IPCsimulation::run() {
     time_t simulationStartTime, simulationEndTime;
 
     const size_t simulationDurationInIterations = (size_t)simulationTotalDuration/simulationTimeStep;
@@ -85,6 +85,8 @@ void IPCsimulation::run() {
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
     outputFile << "Variance of kT during the simulation run = " << temperatureVariance << std::endl;
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
+
+    return averageTemperature;
 }
 
 
@@ -225,11 +227,11 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     ipcCenterInverseMass = 1./ipcCenterMass;
     // inverse of the I parameter from formulas!
     const double iI = 1./(squaredPatchDistance*ipcCenterInverseMass + secndPatchInverseMass*std::pow(firstPatchEccentricity,2) + firstPatchInverseMass*std::pow(secndPatchEccentricity,2));
-    cP11 = 1.-std::pow(secndPatchEccentricity,2)*iI*firstPatchInverseMass;
+    cP11 = 1. - std::pow(secndPatchEccentricity,2)*iI*firstPatchInverseMass;
     cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*secndPatchInverseMass;
     cP1c = patchDistance*secndPatchEccentricity*iI*ipcCenterInverseMass;
     cP21 = -firstPatchEccentricity*secndPatchEccentricity*iI*firstPatchInverseMass;
-    cP22 = 1.-std::pow(firstPatchEccentricity,2)*iI*secndPatchInverseMass;
+    cP22 = 1. - std::pow(firstPatchEccentricity,2)*iI*secndPatchInverseMass;
     cP2c = patchDistance*firstPatchEccentricity*iI*ipcCenterInverseMass;
     alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
     alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);

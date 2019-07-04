@@ -17,7 +17,7 @@
 class IPCsimulation {
 public:
     IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled = false, std::pair<double,int> stage = std::pair<double,int>{0.,0});
-    void run();
+    double run();
 
 
 private:
