@@ -48,7 +48,8 @@ private:
     double fakeHSexponent, fakeHScoefficient;
     double forceAndEnergySamplingStep, tollerance;
     // masses and inverse masses
-    double mass[3], inverseMass[3];
+    double ipcCenterMass, firstPatchMass, secndPatchMass;
+    double ipcCenterInverseMass, firstPatchInverseMass, secndPatchInverseMass;
     // work parameters
     double ratioBetweenTemperatureAndKineticEnergy, totalEnergy, potentialEnergy, kineticEnergy, simulationBoxSide, dt;
     double squaredMinimumDistanceBetweenParticles;

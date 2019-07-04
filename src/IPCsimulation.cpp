@@ -96,7 +96,7 @@ void IPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
 
     for(IPC ipc: particles) {
         for (int i: {0, 1, 2}) {
-            pcm[i] += mass[0]*ipc.ipcCenter.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
+            pcm[i] += ipcCenterMass*ipc.ipcCenter.v[i] + firstPatchMass*ipc.firstPatch.v[i] + secndPatchMass*ipc.secndPatch.v[i];
         }
     }
 }
@@ -112,7 +112,7 @@ void IPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCor
             ipc.firstPatch.v[i] -= pcm[i];
             ipc.secndPatch.v[i] -= pcm[i];
 
-            pcmCorrected[i] += mass[0]*ipc.ipcCenter.v[i] + mass[1]*ipc.firstPatch.v[i] + mass[2]*ipc.secndPatch.v[i];
+            pcmCorrected[i] += ipcCenterMass*ipc.ipcCenter.v[i] + firstPatchMass*ipc.firstPatch.v[i] + secndPatchMass*ipc.secndPatch.v[i];
         }
     }
 }
@@ -144,7 +144,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     inputFile >> e_min;
     inputFile >> firstPatchEccentricity >> firstPatchRadius;
     inputFile >> secndPatchEccentricity >> secndPatchRadius;
-    inputFile >> mass[1] >> mass[2] >> mass[0];
+    inputFile >> firstPatchMass >> secndPatchMass >> ipcCenterMass;
     inputFile >> fakeHScoefficient >> fakeHSexponent;
     inputFile >> forceAndEnergySamplingStep >> tollerance;
     inputFile >> isFieldEnabled;
@@ -189,7 +189,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     outputFile << e_min << "\n";
     outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
     outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
-    outputFile << mass[1] << "\t" << mass[2] << "\t" << mass[0] << "\n";
+    outputFile << firstPatchMass << "\t" << secndPatchMass << "\t" << ipcCenterMass << "\n";
     outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
     outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
     outputFile << isFieldEnabled << "\n";
@@ -218,21 +218,21 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     forceAndEnergySamplingStep /= simulationBoxSide;
     interactionRange = 2*ipcRadius;
     squaredInteractionRange = std::pow(interactionRange,2);
-    patchDistance = firstPatchEccentricity+secndPatchEccentricity;
+    patchDistance = firstPatchEccentricity + secndPatchEccentricity;
     squaredPatchDistance = patchDistance*patchDistance;
-    inverseMass[1] = 1./mass[1];
-    inverseMass[2] = 1./mass[2];
-    inverseMass[0] = 1./mass[0];
+    firstPatchInverseMass = 1./firstPatchMass;
+    secndPatchInverseMass = 1./secndPatchMass;
+    ipcCenterInverseMass = 1./ipcCenterMass;
     // inverse of the I parameter from formulas!
-    const double iI = 1./(squaredPatchDistance*inverseMass[0] + inverseMass[2]*std::pow(firstPatchEccentricity,2) + inverseMass[1]*std::pow(secndPatchEccentricity,2));
-    cP11 = 1.-std::pow(secndPatchEccentricity,2)*iI*inverseMass[1];
-    cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*inverseMass[2];
-    cP1c = patchDistance*secndPatchEccentricity*iI*inverseMass[0];
-    cP21 = -firstPatchEccentricity*secndPatchEccentricity*iI*inverseMass[1];
-    cP22 = 1.-std::pow(firstPatchEccentricity,2)*iI*inverseMass[2];
-    cP2c = patchDistance*firstPatchEccentricity*iI*inverseMass[0];
-    alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
-    alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
+    const double iI = 1./(squaredPatchDistance*ipcCenterInverseMass + secndPatchInverseMass*std::pow(firstPatchEccentricity,2) + firstPatchInverseMass*std::pow(secndPatchEccentricity,2));
+    cP11 = 1.-std::pow(secndPatchEccentricity,2)*iI*firstPatchInverseMass;
+    cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*secndPatchInverseMass;
+    cP1c = patchDistance*secndPatchEccentricity*iI*ipcCenterInverseMass;
+    cP21 = -firstPatchEccentricity*secndPatchEccentricity*iI*firstPatchInverseMass;
+    cP22 = 1.-std::pow(firstPatchEccentricity,2)*iI*secndPatchInverseMass;
+    cP2c = patchDistance*firstPatchEccentricity*iI*ipcCenterInverseMass;
+    alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
+    alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
     alpha_sum = alpha_1 + alpha_2;
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
@@ -413,8 +413,8 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     double dxNew[3];
     for (int i: {0, 1, 2}) {
         // compute the half step velocities from the effective forces of the last step
-        ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*inverseMass[1]);
-        ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*inverseMass[2]);
+        ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
+        ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
 
         // compute the new positions from the half step velocities
         x1[i] = ipc.firstPatch.x[i] + ipc.firstPatch.v[i]*dt;
@@ -480,8 +480,8 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
             return;
         }
         // compute the the final velocities from the new effective forces
-        v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*inverseMass[1]);
-        v2[i] = ipc.secndPatch.v[i] + ipc.eFp2[i]*(.5*dt*inverseMass[2]);
+        v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
+        v2[i] = ipc.secndPatch.v[i] + ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
 
         // compute the patch-patch distance
         dx[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
@@ -515,9 +515,9 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 void IPCsimulation::computeSystemEnergy() {
     kineticEnergy = 0.;
     for(IPC ipc: particles) {
-        kineticEnergy += mass[1]*(std::pow(ipc.firstPatch.v[0],2) + std::pow(ipc.firstPatch.v[1],2) + std::pow(ipc.firstPatch.v[2],2))
-           + mass[2]*(std::pow(ipc.secndPatch.v[0],2) + std::pow(ipc.secndPatch.v[1],2) + std::pow(ipc.secndPatch.v[2],2))
-           + mass[0]*(std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2));
+        kineticEnergy += firstPatchMass*(std::pow(ipc.firstPatch.v[0],2) + std::pow(ipc.firstPatch.v[1],2) + std::pow(ipc.firstPatch.v[2],2))
+           + secndPatchMass*(std::pow(ipc.secndPatch.v[0],2) + std::pow(ipc.secndPatch.v[1],2) + std::pow(ipc.secndPatch.v[2],2))
+           + ipcCenterMass*(std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2));
     }
     kineticEnergy *= .5*simulationBoxSide*simulationBoxSide;
     totalEnergy = kineticEnergy + potentialEnergy;
