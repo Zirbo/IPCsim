@@ -6,7 +6,7 @@
 
 
 //************************************************************************//
-IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
+IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled, std::pair<double,int> stage) {
   // clean up old data and recreate output directory
     if(system("rm -rf siml") != 0) {
         std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
@@ -24,7 +24,7 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation) {
     energyTrajectoryFile.open("siml/evolution.out");
 
     // initialize system
-    initializeSystem(restorePreviousSimulation);
+    initializeSystem(restorePreviousSimulation, stagingEnabled, stage);
 
     // print starting configuration and initialize output file
     outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
@@ -45,6 +45,7 @@ void IPCsimulation::run() {
     const size_t printingIntervalInIterations = (size_t)printingIntervalDouble;
 
     double averageTemperature = 0.;
+    double averageSquaredTemperature = 0.;
     double averagePotentialEnergy = 0.;
     int prints = 0;
 
@@ -58,12 +59,15 @@ void IPCsimulation::run() {
             computeSystemEnergy();
             outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
             averageTemperature += temperature;
+            averageSquaredTemperature += temperature*temperature;
             averagePotentialEnergy += potentialEnergy;
             ++prints;
         }
     }
     averageTemperature /= prints;
     averagePotentialEnergy /= prints;
+    averageSquaredTemperature /= prints;
+    double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
     // simulation ends
     time(&simulationEndTime);
     outputFile << "The simulation lasted " << difftime (simulationEndTime, simulationStartTime) << " seconds.\n";
@@ -79,6 +83,7 @@ void IPCsimulation::run() {
     computeSystemMomentum(pcm);
     outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
+    outputFile << "Variance of kT during the simulation run = " << temperatureVariance << std::endl;
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 }
 
@@ -117,37 +122,44 @@ void IPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCor
 
 
 /*****************************************************************************************/
-void IPCsimulation::initializeSystem(bool restoreprevious)
+void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage)
 {
     simulationTime = 0;
 
     int N1;
     // read input.in file
-    std::ifstream IN("input.in");
-    IN >> N1 >> density >> desiredTemperature;
-    IN >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
-    IN >> e_BB >> e_Bs1 >> e_Bs2;
-    IN >> e_s1s1 >> e_s2s2 >> e_s1s2;
-    IN >> e_min;
-    IN >> firstPatchEccentricity >> firstPatchRadius;
-    IN >> secndPatchEccentricity >> secndPatchRadius;
-    IN >> mass[1] >> mass[2] >> mass[0];
-    IN >> fakeHScoefficient >> fakeHSexponent;
-    IN >> forceAndEnergySamplingStep >> tollerance;
-    IN >> isFieldEnabled;
+    std::ifstream inputFile("input.in");
+    if(inputFile.fail()) {
+        std::cerr << "File input.in could not be opened. Aborting.";
+        exit(1);
+    }
+    inputFile >> N1 >> density >> desiredTemperature;
+    inputFile >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
+    if (stagingEnabled) {
+        desiredTemperature = stage.first;
+        simulationTotalDuration = stage.second;
+    }
+    inputFile >> e_BB >> e_Bs1 >> e_Bs2;
+    inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
+    inputFile >> e_min;
+    inputFile >> firstPatchEccentricity >> firstPatchRadius;
+    inputFile >> secndPatchEccentricity >> secndPatchRadius;
+    inputFile >> mass[1] >> mass[2] >> mass[0];
+    inputFile >> fakeHScoefficient >> fakeHSexponent;
+    inputFile >> forceAndEnergySamplingStep >> tollerance;
+    inputFile >> isFieldEnabled;
     if(isFieldEnabled) {
-        IN >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
-        IN >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
+        inputFile >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
+        inputFile >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
         // compute external fields
         for (int i: {0, 1, 2}) {
             externalFieldFirstPatch[i] = ratioChargeFirstPatchOverIpcCenter*externalFieldIpcCenter[i];
             externalFieldSecndPatch[i] = ratioChargeSecndPatchOverIpcCenter*externalFieldIpcCenter[i];
         }
     }
-    IN.close();
+    inputFile.close();
 
-    // processing the data
-    nIPCs = 4*N1*N1*N1;
+    // patch geometry integrity check
     if ( abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
         std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
         std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
@@ -155,21 +167,22 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
         std::cerr << "eccentricities and radii are not consistent!\n";
         exit(1);
     }
+
+    // processing the data
+    nIPCs = 4*N1*N1*N1;
     ipcRadius = firstPatchEccentricity + firstPatchRadius;
     simulationBoxSide = std::cbrt(nIPCs/density);
     ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
 
-    // initialize particles positions
+    // if restoring, read state, so we get access to the number of IPCs
     if(restoreprevious) {
-        outputFile << "Reading " << nIPCs <<  " particles positions and velocities from file.\n";
+        outputFile << "Resuming a previous simulation.\n";
+        outputFile << "Reading " << nIPCs <<  " particles positions and velocities from file.\n\n";
         restorePreviousConfiguration();
-    } else {
-        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n";
-        initializeNewConfiguration(N1);
     }
 
     // output the data for future checks
-    outputFile << N1 << "\t" << density << "\t" << desiredTemperature << "\n";
+    outputFile << nIPCs << "\t" << density << "\t" << desiredTemperature << "\n";
     outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
     outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
     outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
@@ -221,6 +234,13 @@ void IPCsimulation::initializeSystem(bool restoreprevious)
     alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_sum = alpha_1 + alpha_2;
+
+    // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
+    if(!restoreprevious) {
+        outputFile << "Starting a new simulation.\n";
+        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
+        initializeNewConfiguration(N1);
+    }
 
     // cell list compilation
     cells.initialize(1., interactionRange, nIPCs);
@@ -555,7 +575,9 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     int N3 = N2*N1;
 
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
-    double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
+    //double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
+
+    double vel_scaling = std::sqrt(1.6*desiredTemperature)/simulationBoxSide;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
@@ -626,8 +648,9 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
             ipc.secndPatch.x[i] = ipc.ipcCenter.x[i] - ipcAxis[i]*secndPatchEccentricity;
             absolutePBC(ipc.secndPatch.x[i]);
 
-            ipc.firstPatch.v[i] = ipc.ipcCenter.v[i] + ipcOrthogonalAxis[i]*vel_scaling;
-            ipc.secndPatch.v[i] = ipc.ipcCenter.v[i] - ipcOrthogonalAxis[i]*vel_scaling;
+            double temp = rand.getRandom11()*ipcOrthogonalAxis[i]*vel_scaling;
+            ipc.firstPatch.v[i] = ipc.ipcCenter.v[i] + temp;
+            ipc.secndPatch.v[i] = ipc.ipcCenter.v[i] - temp;
         }
     }
 }
@@ -635,8 +658,12 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 void IPCsimulation::restorePreviousConfiguration() {
     char unusedPatchName;
     double unusedTime;
-    std::ifstream IN("startingstate.xyz");
-    IN >> nIPCs >> unusedTime;
+    std::ifstream startingConfigurationFile("startingstate.xyz");
+    if(startingConfigurationFile.fail()) {
+        std::cerr << "File startingstate.xyz could not be opened. Aborting.";
+        exit(1);
+    }
+    startingConfigurationFile >> nIPCs >> unusedTime;
     nIPCs /= 3;
     simulationBoxSide = std::cbrt(nIPCs/density);
     ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
@@ -646,13 +673,13 @@ void IPCsimulation::restorePreviousConfiguration() {
 
     for (IPC &ipc: particles) {
         ipc.number = counter++;
-        IN >> ipc.type
+        startingConfigurationFile >> ipc.type
            >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
            >> ipc.ipcCenter.v[0] >> ipc.ipcCenter.v[1] >> ipc.ipcCenter.v[2];
-        IN >> unusedPatchName
+        startingConfigurationFile >> unusedPatchName
            >> ipc.firstPatch.x[0] >> ipc.firstPatch.x[1] >> ipc.firstPatch.x[2]
            >> ipc.firstPatch.v[0] >> ipc.firstPatch.v[1] >> ipc.firstPatch.v[2];
-        IN >> unusedPatchName
+        startingConfigurationFile >> unusedPatchName
            >> ipc.secndPatch.x[0] >> ipc.secndPatch.x[1] >> ipc.secndPatch.x[2]
            >> ipc.secndPatch.v[0] >> ipc.secndPatch.v[1] >> ipc.secndPatch.v[2];
     }
@@ -661,7 +688,7 @@ void IPCsimulation::restorePreviousConfiguration() {
         exit(1);
     }
 
-    IN.close();
+    startingConfigurationFile.close();
 }
 
 

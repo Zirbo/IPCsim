@@ -16,8 +16,9 @@
 
 class IPCsimulation {
 public:
-    IPCsimulation(bool restorePreviousSimulation);
+    IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled = false, std::pair<double,int> stage = std::pair<double,int>{0.,0});
     void run();
+
 
 private:
     IPCsimulation();
@@ -36,8 +37,11 @@ private:
 
     // state point
     int nIPCs;
-    double density;
-    double temperature, desiredTemperature;
+    double density, temperature;
+    double desiredTemperature;
+    // simulation duration
+    double simulationTotalDuration;
+    double simulationTimeStep, printingInterval;
     // potential
     double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
     double ipcRadius, firstPatchRadius, firstPatchEccentricity, secndPatchRadius, secndPatchEccentricity;
@@ -45,10 +49,6 @@ private:
     double forceAndEnergySamplingStep, tollerance;
     // masses and inverse masses
     double mass[3], inverseMass[3];
-    // simulation
-    double simulationTimeStep;
-    double simulationTotalDuration;
-    double printingInterval;
     // work parameters
     double ratioBetweenTemperatureAndKineticEnergy, totalEnergy, potentialEnergy, kineticEnergy, simulationBoxSide, dt;
     double squaredMinimumDistanceBetweenParticles;
@@ -65,7 +65,7 @@ private:
     cell_lists cells;
 
     // selfexplanatory
-    void initializeSystem(bool restoreprevious);
+    void initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage);
     void restorePreviousConfiguration();
     void initializeNewConfiguration(int N1);
 
