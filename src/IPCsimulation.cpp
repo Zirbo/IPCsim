@@ -33,7 +33,7 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled
     energyTrajectoryFile <<std::scientific << std::setprecision(10);
     energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
 
-    outputSystemState(trajectoryFile, 0, energyTrajectoryFile);
+    outputSystemState(trajectoryFile, energyTrajectoryFile);
 }
 
 //************************************************************************//
@@ -57,7 +57,7 @@ void IPCsimulation::run() {
 
         if( simulationTime%printingIntervalInIterations == 0) {
             computeSystemEnergy();
-            outputSystemState(trajectoryFile, simulationTime, energyTrajectoryFile);
+            outputSystemState(trajectoryFile, energyTrajectoryFile);
             averageTemperature += temperature;
             averageSquaredTemperature += temperature*temperature;
             averagePotentialEnergy += potentialEnergy;
@@ -75,7 +75,7 @@ void IPCsimulation::run() {
     // output final state
     std::ofstream finalStateFile("startingstate.xyz");
     finalStateFile << std::scientific << std::setprecision(24);
-    outputSystemTrajectory(finalStateFile, simulationTime);
+    outputSystemTrajectory(finalStateFile);
     finalStateFile.close();
 
     // check that total momentum is still zero and print final stuff
@@ -217,19 +217,19 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     dt = simulationTimeStep/simulationBoxSide;
     forceAndEnergySamplingStep /= simulationBoxSide;
     interactionRange = 2*ipcRadius;
-    squaredInteractionRange = interactionRange*interactionRange;
+    squaredInteractionRange = std::pow(interactionRange,2);
     patchDistance = firstPatchEccentricity+secndPatchEccentricity;
     squaredPatchDistance = patchDistance*patchDistance;
     inverseMass[1] = 1./mass[1];
     inverseMass[2] = 1./mass[2];
     inverseMass[0] = 1./mass[0];
     // inverse of the I parameter from formulas!
-    const double iI = 1./(squaredPatchDistance*inverseMass[0] + firstPatchEccentricity*firstPatchEccentricity*inverseMass[2] + secndPatchEccentricity*secndPatchEccentricity*inverseMass[1]);
-    cP11 = 1.-secndPatchEccentricity*secndPatchEccentricity*iI*inverseMass[1];
+    const double iI = 1./(squaredPatchDistance*inverseMass[0] + inverseMass[2]*std::pow(firstPatchEccentricity,2) + inverseMass[1]*std::pow(secndPatchEccentricity,2));
+    cP11 = 1.-std::pow(secndPatchEccentricity,2)*iI*inverseMass[1];
     cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*inverseMass[2];
     cP1c = patchDistance*secndPatchEccentricity*iI*inverseMass[0];
-    cP21 = cP12;
-    cP22 = 1.-firstPatchEccentricity*firstPatchEccentricity*iI*inverseMass[2];
+    cP21 = -firstPatchEccentricity*secndPatchEccentricity*iI*inverseMass[1];
+    cP22 = 1.-std::pow(firstPatchEccentricity,2)*iI*inverseMass[2];
     cP2c = patchDistance*firstPatchEccentricity*iI*inverseMass[0];
     alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
     alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*inverseMass[1]-firstPatchEccentricity*inverseMass[2]);
@@ -538,7 +538,7 @@ void IPCsimulation::scaleVelocities(const double scalingFactor) {
 
 
 //************************************************************************//
-void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile, unsigned long simulationTime) {
+void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
     outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*simulationTimeStep;
     for (IPC ipc: particles) {
         outputTrajectoryFile << "\n"
@@ -556,9 +556,9 @@ void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile,
     }
     outputTrajectoryFile << std::endl;
 }
-void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, unsigned long simulationTime, std::ofstream & energyTrajectoryFile)
+void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream & energyTrajectoryFile)
 {
-    outputSystemTrajectory(outputTrajectoryFile, simulationTime);
+    outputSystemTrajectory(outputTrajectoryFile);
     energyTrajectoryFile << simulationTime*simulationTimeStep << "\t" << temperature << "\t"
                          << kineticEnergy/nIPCs << "\t" << potentialEnergy/nIPCs << "\t" << totalEnergy/nIPCs << "\t"
                          << std::sqrt(squaredMinimumDistanceBetweenParticles)*simulationBoxSide << std::endl;
