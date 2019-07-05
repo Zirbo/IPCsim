@@ -136,6 +136,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
         exit(1);
     }
     inputFile >> N1 >> density >> desiredTemperature;
+    nIPCs = 4*N1*N1*N1;
     inputFile >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
     if (stagingEnabled) {
         desiredTemperature = stage.first;
@@ -170,18 +171,18 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
         exit(1);
     }
 
-    // processing the data
-    nIPCs = 4*N1*N1*N1;
-    ipcRadius = firstPatchEccentricity + firstPatchRadius;
-    simulationBoxSide = std::cbrt(nIPCs/density);
-    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
-
-    // if restoring, read state, so we get access to the number of IPCs
+    // if restoring, read state, so we get access to the real number of IPCs
     if(restoreprevious) {
         outputFile << "Resuming a previous simulation.\n";
-        outputFile << "Reading " << nIPCs <<  " particles positions and velocities from file.\n\n";
         restorePreviousConfiguration();
+        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n\n";
     }
+
+    // process data
+    simulationBoxSide = std::cbrt(nIPCs/density);
+    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
+    ipcRadius = firstPatchEccentricity + firstPatchRadius;
+    interactionRange = 2*ipcRadius;
 
     // output the data for future checks
     outputFile << nIPCs << "\t" << density << "\t" << desiredTemperature << "\n";
@@ -203,22 +204,24 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
     outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
     outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
-    outputFile << "\nSide = " << simulationBoxSide << ", patch size in reduced units: " << 1./simulationBoxSide << std::endl;
-    outputFile << "Total number of simulated atoms: " << 3*nIPCs << std::endl;
+    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
+    outputFile << "Total number of sites being simulated: " << 3*nIPCs << std::endl;
 
     // potential sampling
     outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
     make_table(true);
 
-    // scaling of lenghts for [0.0:1.0] simulation box
+    // scale the lenghts to be in a [0.0:1.0] simulation box
     ipcRadius /= simulationBoxSide;
+    interactionRange /= simulationBoxSide;
     firstPatchRadius /= simulationBoxSide;
     firstPatchEccentricity /= simulationBoxSide;
     secndPatchRadius /= simulationBoxSide;
     secndPatchEccentricity /= simulationBoxSide;
     dt = simulationTimeStep/simulationBoxSide;
+
+    // finish processing data
     forceAndEnergySamplingStep /= simulationBoxSide;
-    interactionRange = 2*ipcRadius;
     squaredInteractionRange = std::pow(interactionRange,2);
     patchDistance = firstPatchEccentricity + secndPatchEccentricity;
     squaredPatchDistance = patchDistance*patchDistance;
@@ -329,7 +332,7 @@ double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
 
 void IPCsimulation::make_table(bool printPotentials)
 {
-    const size_t potentialRangeSamplingSize = size_t( 2.*ipcRadius/forceAndEnergySamplingStep ) + 1;
+    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
 
     uBB.resize(potentialRangeSamplingSize);
     uBs1.resize(potentialRangeSamplingSize);
@@ -667,8 +670,6 @@ void IPCsimulation::restorePreviousConfiguration() {
     }
     startingConfigurationFile >> nIPCs >> unusedTime;
     nIPCs /= 3;
-    simulationBoxSide = std::cbrt(nIPCs/density);
-    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
 
     particles.resize(nIPCs);
     int counter = 0;
@@ -733,22 +734,19 @@ void IPCsimulation::computeFreeForces() {
             potentialEnergy += loopVars.U;
             squaredMinimumDistanceBetweenParticles += loopVars.minimumSquaredDistance;
         }
-    }
-
-    if(isFieldEnabled) {
-        for (IPC &ipc: particles) {
+//        #pragma omp for
+//        for(int n=0; n < nIPCs; ++n) {
+//            IPC& ipc = particles[n];
+        for(IPC &ipc: particles) {
             for (int i: {0, 1, 2}) {
-                ipc.ipcCenter.F[i]  += externalFieldIpcCenter[i];
-                ipc.firstPatch.F[i] += externalFieldFirstPatch[i];
-                ipc.secndPatch.F[i] += externalFieldSecndPatch[i];
-              }
-        }
-    }
-
-    for(IPC &ipc: particles) {
-        for (int i: {0, 1, 2}) {
-            ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
-            ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
+                if(isFieldEnabled) {
+                    ipc.ipcCenter.F[i]  += externalFieldIpcCenter[i];
+                    ipc.firstPatch.F[i] += externalFieldFirstPatch[i];
+                    ipc.secndPatch.F[i] += externalFieldSecndPatch[i];
+                }
+                ipc.eFp1[i] = ipc.firstPatch.F[i]*cP11 + ipc.secndPatch.F[i]*cP12 + ipc.ipcCenter.F[i]*cP1c;
+                ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
+            }
         }
     }
 }
