@@ -6,13 +6,16 @@
 
 int main ( int argc, char *argv[] ) {
     std::stringstream helpMessage;
-    helpMessage << "USAGE\nYou need to specify a usage mode. You have three options:\n"
+    helpMessage << "USAGE\nYou need to specify a usage mode. You have four options:\n"
                 << " * \"new\": start a new simulation, that will follow the parameters specified in input.in\n"
                 << " * \"old\": resume an old simulation, that will follow the parameters specified in input.in,\n"
                 << "   except the number of particles, which, together with the positions and velocities, will be read\n"
                 << "   from a startingstate.xyz file; the velocities will be scaled so that the initial temperature will\n"
                 << "   assume the value that you specify in the input.in --- or unchanged if this value is negative\n"
-                << " * \"staged\": start a new simulation that will follow the parameters specified in input.in,\n"
+                << " * \"newstaged\": start a new simulation that will follow the parameters specified in input.in,\n"
+                << "   expect temperature and simulation duration, and that will be restarted as many times as needed,\n"
+                << "   following the temperatures and simulation durations defined in staging.in\n"
+                << " * \"oldstaged\": start a new simulation that will follow the parameters specified in input.in,\n"
                 << "   expect temperature and simulation duration, and that will be restarted as many times as needed,\n"
                 << "   following the temperatures and simulation durations defined in staging.in\n\n";
 
@@ -25,7 +28,7 @@ int main ( int argc, char *argv[] ) {
     } else if(std::string(argv[1])=="old") {
         IPCsimulation simulation(true);
         simulation.run();
-    } else if (std::string(argv[1])=="staged") {
+    } else if (std::string(argv[1]) == "newstaged" || std::string(argv[1]) == "oldstaged") {
 
         // open staging.in file
         std::ifstream stagingFile("staging.in");
@@ -36,7 +39,7 @@ int main ( int argc, char *argv[] ) {
 
         // simulate numberOfStages times :P
         std::pair<double,int> currentStage;
-        bool resumingSimulation = false;
+        bool resumingSimulation = (std::string(argv[1]) == "oldstaged");
         int counter = 0;
         double tollerance {0.}, temperature{0.};
         bool repeatStage{false}, recordStage{false};
