@@ -83,7 +83,7 @@ double IPCsimulation::run() {
     computeSystemMomentum(pcm);
     outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
-    outputFile << "Variance of kT during the simulation run = " << temperatureVariance << std::endl;
+    outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 
     return averageTemperature;
