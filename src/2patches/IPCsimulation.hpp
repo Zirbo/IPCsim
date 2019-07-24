@@ -10,6 +10,7 @@
 #include "../IPC.hpp"
 #include "../helpers/cell_lists.hpp"
 #include "../helpers/randomNumberGenerator.hpp"
+#include "../helpers/pair_correlation_function.hpp"
 
 
 
@@ -65,6 +66,8 @@ private:
     std::vector<IPC> particles;
     cell_lists cells;
 
+    PairCorrelationFunction pairCorrelation;
+
     // selfexplanatory
     void initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage);
     void restorePreviousConfiguration();
@@ -104,9 +107,7 @@ private:
     void computeSystemMomentum(double (&pcm) [3]);
     void correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]);
     void scaleVelocities(const double scalingFactor);
-    inline void absolutePBC(double & x, double & y, double &z)  {  x-=std::floor(x);   y-=std::floor(y);   z-=std::floor(z);   }
     inline void absolutePBC(double & x)  {  x-=std::floor(x);  }
-    inline void relativePBC(double & x, double & y, double &z) {  x-=std::lround(x);  y-=std::lround(y);  z-=std::lround(z);  }
     inline void relativePBC(double & x) {  x-=std::lround(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
     void ranor(double (&a)[3], RandomNumberGenerator & r);

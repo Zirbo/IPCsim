@@ -23,6 +23,9 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled
     trajectoryFile.open("siml/trajectory.xyz");
     energyTrajectoryFile.open("siml/evolution.out");
 
+    // initialize g(r)
+    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
+
     // initialize system
     initializeSystem(restorePreviousSimulation, stagingEnabled, stage);
 
@@ -56,18 +59,18 @@ double IPCsimulation::run() {
         ++simulationTime;
 
         if( simulationTime%printingIntervalInIterations == 0) {
+            ++prints;
+            //energies
             computeSystemEnergy();
             outputSystemState(trajectoryFile, energyTrajectoryFile);
+            // g(r)
+            pairCorrelation.compute(particles);
+            // other averages
             averageTemperature += temperature;
             averageSquaredTemperature += temperature*temperature;
             averagePotentialEnergy += potentialEnergy;
-            ++prints;
         }
     }
-    averageTemperature /= prints;
-    averagePotentialEnergy /= prints;
-    averageSquaredTemperature /= prints;
-    double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
     // simulation ends
     time(&simulationEndTime);
     outputFile << "The simulation lasted " << difftime (simulationEndTime, simulationStartTime) << " seconds.\n";
@@ -82,9 +85,17 @@ double IPCsimulation::run() {
     double pcm [3];
     computeSystemMomentum(pcm);
     outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
+    averageTemperature /= prints;
+    averagePotentialEnergy /= prints;
+    averageSquaredTemperature /= prints;
+    double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
     outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
+
+    // output g(r);
+    const double g_r_integral = pairCorrelation.print("g_r");
+    outputFile << "The integral of g000(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
 
     return averageTemperature;
 }

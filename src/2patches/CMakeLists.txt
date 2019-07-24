@@ -7,6 +7,7 @@ set(HELPERS
     ../helpers/cell_lists.hpp
     ../helpers/cell_lists.cpp
     ../helpers/randomNumberGenerator.hpp
+    ../helpers/pair_correlation_function.hpp
 )
 set(COMMON_FILES
     ${HELPERS}
