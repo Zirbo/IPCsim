@@ -3,25 +3,25 @@ set (CMAKE_CXX_STANDARD 11)
 
 project(IPCsim)
 
-set(HELPERS_FILES
+set(HELPERS
     src/cell_lists.hpp
     src/cell_lists.cpp
     src/randomNumberGenerator.hpp
 )
-set(IPC_CLASS_FILES
+set(COMMON_FILES
+    ${HELPERS}
     src/IPC.hpp
+)
+set(IPC
     src/IPCsimulation.cpp
     src/IPCsimulation.hpp
-)
-set(MAIN_FILES
     src/main.cpp
 )
-set(ALL_FILES
-    ${HELPERS_FILES}
-    ${IPC_CLASS_FILES}
-    ${MAIN_FILES}
+set(JANUS
+    src/JanusIPCsimulation.cpp
+    src/JanusIPCsimulation.hpp
+    src/mainJanus.cpp
 )
-
 
 find_package(OpenMP REQUIRED)
 
@@ -30,10 +30,13 @@ set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} bld)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} bld)
 
-add_executable(${PROJECT_NAME} ${ALL_FILES})
-target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
+add_executable(IPCsim ${COMMON_FILES} ${IPC})
+target_link_libraries(IPCsim ${OpenMP_CXX_LIBRARIES})
+
+add_executable(JanusIPCsim ${COMMON_FILES} ${JANUS})
+target_link_libraries(JanusIPCsim ${OpenMP_CXX_LIBRARIES})
 
 message(STATUS "COMMON FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "DEBUG FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}")

@@ -40,15 +40,7 @@ void cell_lists::initialize(double simulationBoxSide, double interactionRange, i
         }
     }
 }
-void cell_lists::compileLists(std::vector<IPC> const& ipcs) {
-    // empty all the lists
-    for(auto & m: list_of_neighbours)
-        m.clear();
-    // put each particle in the list of the volume it finds itself in
-    for(IPC const& ipc: ipcs) {
-        list_of_neighbours[  cellNumberFromPosition(ipc.ipcCenter)  ].push_back(ipc.number);
-      }
-}
+
 const std::list<int> cell_lists::getIPCsInNeighbouringCells(int cell) {
     std::list<int> ipcsInNeighbouringCells;
     for(auto const& it: neighbouring_cells[cell])

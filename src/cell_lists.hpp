@@ -11,7 +11,16 @@ public:
     cell_lists() {}
     // initialize --- simulationBoxSide and interactionRange have to be in the same units of length that are used by the ipcs vector passed in compileLists
     void initialize(double simulationBoxSide, double interactionRange, int howManyParticles);
-    void compileLists(std::vector<IPC> const& ipcs);
+    template <typename IPCtype>
+    void compileLists(std::vector<IPCtype> const& ipcs) {
+        // empty all the lists
+        for(auto & m: list_of_neighbours)
+            m.clear();
+        // put each particle in the list of the volume it finds itself in
+        for(IPCtype const& ipc: ipcs) {
+            list_of_neighbours[  cellNumberFromPosition(ipc.ipcCenter)  ].push_back(ipc.number);
+          }
+    }
 
     int getNumberofCells() {
         return totalCells;
