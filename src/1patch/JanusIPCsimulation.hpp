@@ -7,9 +7,9 @@
 #include <array>
 #include <string>
 #include <cmath>
-#include "IPC.hpp"
-#include "cell_lists.hpp"
-#include "randomNumberGenerator.hpp"
+#include "../IPC.hpp"
+#include "../helpers/cell_lists.hpp"
+#include "../helpers/randomNumberGenerator.hpp"
 
 
 
