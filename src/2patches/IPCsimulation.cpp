@@ -23,11 +23,11 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled
     trajectoryFile.open("siml/trajectory.xyz");
     energyTrajectoryFile.open("siml/evolution.out");
 
-    // initialize g(r)
-    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
-
     // initialize system
     initializeSystem(restorePreviousSimulation, stagingEnabled, stage);
+
+    // initialize g(r)
+    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
 
     // print starting configuration and initialize output file
     outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
@@ -94,7 +94,7 @@ double IPCsimulation::run() {
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 
     // output g(r);
-    const double g_r_integral = pairCorrelation.print("g_r");
+    const double g_r_integral = pairCorrelation.print("siml/g_r");
     outputFile << "The integral of g000(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
 
     return averageTemperature;

@@ -46,7 +46,9 @@ public:
         binsBetweenZeroAndOne = pSamplesBetweenZeroAndOne;
         totalBinsInSimulationBoxSide = binsBetweenZeroAndOne * simulationBoxSide;
         paircorrelationTotalBins = int( .5*std::sqrt(3.)*totalBinsInSimulationBoxSide ) + 1; // half a diagonal times the sampling in a unit
+        paircorrelationTotalSamplings = 0;
 
+        g.resize(maxOrder);
         for(int i = 0; i < maxOrder ; ++i )
         {
             g[i].resize(paircorrelationTotalBins);
