@@ -10,7 +10,7 @@
 #include "../IPC.hpp"
 #include "../helpers/cell_lists.hpp"
 #include "../helpers/randomNumberGenerator.hpp"
-#include "../helpers/pair_correlation_function.hpp"
+#include "../helpers/isotropic_pair_correlation_function.hpp"
 
 
 
@@ -66,7 +66,7 @@ private:
     std::vector<IPC> particles;
     cell_lists cells;
 
-    PairCorrelationFunction pairCorrelation;
+    IsotropicPairCorrelationFunction pairCorrelation;
 
     // selfexplanatory
     void initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage);

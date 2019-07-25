@@ -7,7 +7,7 @@ set(HELPERS
     ../helpers/cell_lists.hpp
     ../helpers/cell_lists.cpp
     ../helpers/randomNumberGenerator.hpp
-    ../helpers/pair_correlation_function.hpp
+    ../helpers/isotropic_pair_correlation_function.hpp
 )
 set(COMMON_FILES
     ${HELPERS}
@@ -21,7 +21,7 @@ set(IPC
 
 find_package(OpenMP REQUIRED)
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
