@@ -1,0 +1,5 @@
+git clone https://github.com/Zirbo/IPCsim.git
+cd IPCsim
+module load gcc/7.2 cmake/3.9.6
+cmake .
+make .
