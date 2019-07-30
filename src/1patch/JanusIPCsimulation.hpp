@@ -102,7 +102,7 @@ private:
     void correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]);
     void scaleVelocities(const double scalingFactor);
     inline void absolutePBC(double & x) {  x -= std::floor(x);  }
-    inline void relativePBC(double & x) {  x -= std::lround(x);  }
+    inline void relativePBC(double & x) {  x -= std::round(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
     void ranor(double (&a)[3], RandomNumberGenerator & r);
 
