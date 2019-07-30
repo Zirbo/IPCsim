@@ -170,6 +170,12 @@ void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnab
         outputFile << "Resuming a previous simulation.\n";
         restorePreviousConfiguration();
         outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n\n";
+        // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
+        density = double(nIPCs)/std::pow(simulationBoxSide, 3);
+    }
+    else {
+        // we read nIPCs and density from the input file, so we need to compute the simulationBoxSide from them
+        simulationBoxSide = std::cbrt(nIPCs/density);
     }
 
     // process data
@@ -497,7 +503,7 @@ void JanusIPCsimulation::scaleVelocities(const double scalingFactor) {
 
 //************************************************************************//
 void JanusIPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
-    outputTrajectoryFile<<3*nIPCs<<"\n"<<simulationTime*simulationTimeStep;
+    outputTrajectoryFile << 3*nIPCs << "\n" << simulationBoxSide << "\t" << simulationTime*simulationTimeStep;
     for (JanusIPC ipc: particles) {
         outputTrajectoryFile << "\n"
                              << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
@@ -614,7 +620,7 @@ void JanusIPCsimulation::restorePreviousConfiguration() {
         std::cerr << "File startingstate.xyz could not be opened. Aborting.";
         exit(1);
     }
-    startingConfigurationFile >> nIPCs >> unusedTime;
+    startingConfigurationFile >> nIPCs >> simulationBoxSide >> unusedTime;
     nIPCs /= 3;
 
     particles.resize(nIPCs);
