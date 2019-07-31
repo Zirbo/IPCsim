@@ -52,7 +52,7 @@ patchy:  $(modules_patchy)
 #%.o: %.c
 #	$(gc) $< -c -o $@
 
-%.o: src/%.f90
+%.o: %.f90
 	$(fc) $(optflags) $< -c -o $@
 
 #%.o: %.f
