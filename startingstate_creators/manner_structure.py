@@ -16,7 +16,7 @@ ecc = 0.22         # eccentricity
 ecc /= L
 cos30 = sqrt(3)*.5
 
-outputFile.write(str(N)+'\n0.0000\n')
+outputFile.write(str(N) + '\n' + str(L) + '\t0.0000\n')
 
 vm = sqrt(.3)
 def vel():
