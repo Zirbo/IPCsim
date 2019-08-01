@@ -16,17 +16,17 @@ Programs and scripts for Inverse Patchy Colloid simulations.
 
 
 ## How to build
-To build any of 1patch or 2patches, you need to have a c++ compiler that supports c++11, and CMake 3.5 or higher. Please follow the instructions below:
+To build any of the versions (Janus or two-patches IPCs), you need to have a c++ compiler that supports c++11, and CMake 3.5 or higher. Please follow the instructions below:
 * create a new directory where the program will be built;
 * navigate to the build directory that you just created, then run cmake pointing to the directory of the CMakeLists.txt of the version of the program that you want to build;
 * run make in your build directory.
 
-For example, you might do
+For example, to build the two-patches version, you might do
 ```bash
-user@machine:~/gitrepos/IPCsim$ mkdir IPCsim-build
-user@machine:~/gitrepos/IPCsim$ cd IPCsim-build
-user@machine:~/gitrepos/IPCsim$ cmake ../src/2patches/
-user@machine:~/gitrepos/IPCsim$ make -j6
+user@machine:~/gitrepos/IPCsim$ mkdir 2P-bld
+user@machine:~/gitrepos/IPCsim$ cd 2P-bld
+user@machine:~/gitrepos/IPCsim/2P-bld$ cmake ../src/2patches/
+user@machine:~/gitrepos/IPCsim/2P-bld$ make -j6
 ```
 If when compiling you have issues with stringstream::swap, please check your g++ version, there is a bug in some versions (4.something) of the compiler: even tough c++11 is officially supported, that method is not there.
 
