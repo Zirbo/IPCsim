@@ -2,7 +2,7 @@
 Programs and scripts for Inverse Patchy Colloid simulations.
 
 ## Versions
-* Starting with version 1, the .xyz need to have the simulationBoxSide in the second line of every snapshot, below the total number of particles and before the time (which).
+* Starting with version 1, the .xyz need to have the simulationBoxSide in the second line of every snapshot, below the total number of particles and before the time (which breaks bacwards compatibility :( but you can just add the boxSide manually to old startingstates!).
 * Starting with version 0, the program works. It's not parallalized, it still has some bugs, and asymmetric masses are out question ;)
 
 
