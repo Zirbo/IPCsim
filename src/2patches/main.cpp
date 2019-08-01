@@ -44,6 +44,8 @@ int main ( int argc, char *argv[] ) {
         double tollerance {0.}, temperature{0.};
         bool repeatStage{false}, recordStage{false};
 
+        std::cout << std::boolalpha;
+
         //while(stagingFile >> currentStage.first && stagingFile >> tollerance && stagingFile >> currentStage.second) {
         while(stagingFile >> currentStage.first >> tollerance >> recordStage >> currentStage.second) {
             do {
