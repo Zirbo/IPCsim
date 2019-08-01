@@ -1,11 +1,19 @@
 # IPCsim
 Programs and scripts for Inverse Patchy Colloid simulations.
 
+## Versions
+* Starting with version 1, the .xyz need to have the simulationBoxSide in the second line of every snapshot, below the total number of particles and before the time (which).
+* Starting with version 0, the program works. It's not parallalized, it still has some bugs, and asymmetric masses are out question ;)
+
+
+
 ## The main simulation program...
 ...is found in the src directory. Inside it are a file, IPC.hpp, which contains the data structure for IPCs that is used in all the other files, and three directories:
 * helpers: containing useful classes for random number generation, cell lists, pair correlation functions... that are used by all the simulation programs
 * 1patch: containing the JanusIPCsim project
 * 2patches: containing the IPCsim project, main tool that I am using.
+
+
 
 ## How to build
 To build any of 1patch or 2patches, you need to have a c++ compiler that supports c++11, and CMake 3.5 or higher. Please follow the instructions below:
@@ -22,6 +30,8 @@ user@machine:~/gitrepos/IPCsim$ make -j6
 ```
 If when compiling you have issues with stringstream::swap, please check your g++ version, there is a bug in some versions (4.something) of the compiler: even tough c++11 is officially supported, that method is not there.
 
+
+
 ## How to run
 You need the executable (IPCsim or JanusIPCsim), and in the same directory you must have
 * a file called input.in, of which you find commented examples in src/1patch and src/2patches;
@@ -34,6 +44,8 @@ The third is 1 if you want the simulation output (trajectory.xyt, energies, g(r)
 The fourth is the duration of the stage.
 
 Call the program without parameters and the inline help will explain you how to run.
+
+
 
 ## Other directories with useful things:
 * 2016version:
