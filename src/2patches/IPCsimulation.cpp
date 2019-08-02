@@ -117,7 +117,7 @@ void IPCsimulation::printPotentials() {
     potentialOutputFile <<  "forBB      \tforBs1      \tforBs2      \tfors1s2     \tfors2s2     \tfors1s1\n";
 
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
-    for ( size_t i = 0; i < potentialRangeSamplingSize; ++i) {
+    for ( size_t i = 1; i < potentialRangeSamplingSize; ++i) {
         const double r = i*forceAndEnergySamplingStep;
         potentialOutputFile << r << "\t" << uBB[i]*r << "\t" << uBs1[i]*r << "\t" << uBs2[i]*r << "\t" << us1s2[i]*r << "\t" << us2s2[i]*r << "\t" << us1s1[i]*r << "\t";
         potentialOutputFile              << fBB[i]*r << "\t" << fBs1[i]*r << "\t" << fBs2[i]*r << "\t" << fs1s2[i]*r << "\t" << fs2s2[i]*r << "\t" << fs1s1[i]*r << "\n";
