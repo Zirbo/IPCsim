@@ -364,12 +364,11 @@ void IPCsimulation::make_table(bool printPotentials)
     fs2s2.resize(potentialRangeSamplingSize);
 
     std::ofstream POT_OUTPUT;
-    int potOutputPrintCount = 1;
     if (printPotentials) {
         POT_OUTPUT.open("siml/potentials.out");
         POT_OUTPUT << std::scientific << std::setprecision(6);
-        POT_OUTPUT << "#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
-        POT_OUTPUT <<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
+        POT_OUTPUT << "#r          \tpotBB       \tpotBs1      \tpotBs2      \tpots1s2     \tpots2s2     \tpots1s1     \t";
+        POT_OUTPUT <<  "r          \tforBB      \tforBs1      \tforBs2      \tfors1s2     \tfors2s2     \tfors1s1\n";
     }
 
     for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
@@ -396,9 +395,8 @@ void IPCsimulation::make_table(bool printPotentials)
             uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
             fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
         }
-        if ( printPotentials && int( (1000.*i)/potentialRangeSamplingSize ) == potOutputPrintCount )
+        if ( printPotentials && i > 0 && (i%1000 == 0) )
         {
-            potOutputPrintCount++;
             POT_OUTPUT << r << "\t" << uBB[i] << "\t" << uBs1[i] << "\t" << uBs2[i] << "\t" << us1s2[i] << "\t" << us2s2[i] << "\t" << us1s1[i] << "\t";
             POT_OUTPUT << r << "\t" << fBB[i] << "\t" << fBs1[i] << "\t" << fBs2[i] << "\t" << fs1s2[i] << "\t" << fs2s2[i] << "\t" << fs1s1[i] << "\n";
         }
