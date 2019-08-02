@@ -100,6 +100,31 @@ double IPCsimulation::run() {
     return averageTemperature;
 }
 
+void IPCsimulation::printPotentials() {
+    // clean up unneeded shit
+    outputFile.close();
+    trajectoryFile.close();
+    energyTrajectoryFile.close();
+    if(system("rm -rf siml") != 0) {
+        std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
+                  << "Most likely you have it open somewhere or some program is running in it.\n";
+        exit(1);
+    }
+
+    std::ofstream potentialOutputFile("potentials.out");
+    potentialOutputFile << std::scientific << std::setprecision(6);
+    potentialOutputFile << "#r          \tpotBB       \tpotBs1      \tpotBs2      \tpots1s2     \tpots2s2     \tpots1s1     \t";
+    potentialOutputFile <<  "forBB      \tforBs1      \tforBs2      \tfors1s2     \tfors2s2     \tfors1s1\n";
+
+    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
+    for ( size_t i = 0; i < potentialRangeSamplingSize; ++i) {
+        const double r = i*forceAndEnergySamplingStep;
+        potentialOutputFile << r << "\t" << uBB[i]*r << "\t" << uBs1[i]*r << "\t" << uBs2[i]*r << "\t" << us1s2[i]*r << "\t" << us2s2[i]*r << "\t" << us1s1[i]*r << "\t";
+        potentialOutputFile              << fBB[i]*r << "\t" << fBs1[i]*r << "\t" << fBs2[i]*r << "\t" << fs1s2[i]*r << "\t" << fs2s2[i]*r << "\t" << fs1s1[i]*r << "\n";
+    }
+    potentialOutputFile.close();
+}
+
 
 
 //************************************************************************//
@@ -225,7 +250,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
 
     // potential sampling
     outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
-    make_table(true);
+    make_table();
 
     // scale the lenghts to be in a [0.0:1.0] simulation box
     ipcRadius /= simulationBoxSide;
@@ -346,7 +371,7 @@ double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
     }
 }
 
-void IPCsimulation::make_table(bool printPotentials)
+void IPCsimulation::make_table()
 {
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
 
@@ -363,17 +388,9 @@ void IPCsimulation::make_table(bool printPotentials)
     fs1s1.resize(potentialRangeSamplingSize);
     fs2s2.resize(potentialRangeSamplingSize);
 
-    std::ofstream POT_OUTPUT;
-    if (printPotentials) {
-        POT_OUTPUT.open("siml/potentials.out");
-        POT_OUTPUT << std::scientific << std::setprecision(6);
-        POT_OUTPUT << "#r          \tpotBB       \tpotBs1      \tpotBs2      \tpots1s2     \tpots2s2     \tpots1s1     \t";
-        POT_OUTPUT <<  "r          \tforBB      \tforBs1      \tforBs2      \tfors1s2     \tfors2s2     \tfors1s1\n";
-    }
-
     for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
     {
-        double r = i*forceAndEnergySamplingStep;
+        const double r = i*forceAndEnergySamplingStep;
         uBB[i]   = (e_BB  /e_min) * omega(ipcRadius, ipcRadius, r);
         uBs1[i]  = (e_Bs1 /e_min) * omega(ipcRadius, firstPatchRadius,  r);
         uBs2[i]  = (e_Bs2 /e_min) * omega(ipcRadius, secndPatchRadius,  r);
@@ -395,22 +412,16 @@ void IPCsimulation::make_table(bool printPotentials)
             uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
             fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
         }
-        if ( printPotentials && i > 0 && (i%1000 == 0) )
-        {
-            POT_OUTPUT << r << "\t" << uBB[i] << "\t" << uBs1[i] << "\t" << uBs2[i] << "\t" << us1s2[i] << "\t" << us2s2[i] << "\t" << us1s1[i] << "\t";
-            POT_OUTPUT << r << "\t" << fBB[i] << "\t" << fBs1[i] << "\t" << fBs2[i] << "\t" << fs1s2[i] << "\t" << fs2s2[i] << "\t" << fs1s1[i] << "\n";
-        }
-        // this division is done here to save a division during runtime;
-        // it's only done now not to be seen in the plots
-        const double x = 1./(r);
-        fBB[i]   *= x;
-        fBs1[i]  *= x;
-        fBs2[i]  *= x;
-        fs1s2[i] *= x;
-        fs1s1[i] *= x;
-        fs2s2[i] *= x;
+        // and finally, this division is done here so we don't have to do it during runtime.
+        // it comes from the force being Fx = -du/dr dr/dx = -du/dr (x/r)
+        const double ir = 1./(r);
+        fBB[i]   *= ir;
+        fBs1[i]  *= ir;
+        fBs2[i]  *= ir;
+        fs1s2[i] *= ir;
+        fs1s1[i] *= ir;
+        fs2s2[i] *= ir;
     }
-    POT_OUTPUT.close();
 }
 
 

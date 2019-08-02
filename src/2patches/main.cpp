@@ -6,7 +6,7 @@
 
 int main ( int argc, char *argv[] ) {
     std::stringstream helpMessage;
-    helpMessage << "USAGE\nYou need to specify a usage mode. You have four options:\n"
+    helpMessage << "USAGE\nYou need to specify a usage mode. You have five options:\n"
                 << " * \"new\": start a new simulation, that will follow the parameters specified in input.in\n"
                 << " * \"old\": resume an old simulation, that will follow the parameters specified in input.in,\n"
                 << "   except the number of particles, which, together with the positions and velocities, will be read\n"
@@ -17,11 +17,15 @@ int main ( int argc, char *argv[] ) {
                 << "   following the temperatures and simulation durations defined in staging.in\n"
                 << " * \"oldstaged\": start a new simulation that will follow the parameters specified in input.in,\n"
                 << "   expect temperature and simulation duration, and that will be restarted as many times as needed,\n"
-                << "   following the temperatures and simulation durations defined in staging.in\n\n";
+                << "   following the temperatures and simulation durations defined in staging.in\n"
+                << " * \"printpot\": print potentials in potentials.out, then exit.\n";
 
     if(argc != 2) {
         std::cerr << helpMessage.str();
         exit(1);
+    } else if(std::string(argv[1])=="printpot") {
+        IPCsimulation simulation(false);
+        simulation.printPotentials();
     } else if(std::string(argv[1])=="new") {
         IPCsimulation simulation(false);
         simulation.run();

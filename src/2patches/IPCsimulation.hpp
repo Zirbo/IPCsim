@@ -18,6 +18,7 @@
 class IPCsimulation {
 public:
     IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled = false, std::pair<double,int> stage = std::pair<double,int>{0.,0});
+    void printPotentials();
     double run();
 
 
@@ -32,7 +33,7 @@ private:
     // force and potential tables computation
     std::vector<double> uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
     std::vector<double> fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
-    void make_table(bool printPotentials);
+    void make_table();
     double omega(double Ra, double Rb, double rab);
     double d_dr_omega(double Ra, double Rb, double rab);
 
