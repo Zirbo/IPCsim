@@ -100,7 +100,16 @@ double IPCsimulation::run() {
     return averageTemperature;
 }
 
+//************************************************************************//
 void IPCsimulation::printPotentials() {
+    int potentialPrintingStep;
+
+    std::cout << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
+              << " and until " << interactionRange*simulationBoxSide << ".\n";
+    std::cout << "How often do you want to print, in integer multiples of "
+              << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
+    std::cin >> potentialPrintingStep;
+
     // clean up unneeded shit
     outputFile.close();
     trajectoryFile.close();
@@ -110,23 +119,73 @@ void IPCsimulation::printPotentials() {
                   << "Most likely you have it open somewhere or some program is running in it.\n";
         exit(1);
     }
-
-    std::ofstream potentialOutputFile("potentials.out");
-    potentialOutputFile << std::scientific << std::setprecision(6);
-    potentialOutputFile << "#r          \tpotBB       \tpotBs1      \tpotBs2      \tpots1s2     \tpots2s2     \tpots1s1     \t";
-    potentialOutputFile <<  "forBB      \tforBs1      \tforBs2      \tfors1s2     \tfors2s2     \tfors1s1\n";
-
-    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
-    for ( size_t i = 1; i < potentialRangeSamplingSize; ++i) {
-        const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
-        potentialOutputFile << r << "\t" << uBB[i]*r << "\t" << uBs1[i]*r << "\t" << uBs2[i]*r << "\t" << us1s2[i]*r << "\t" << us2s2[i]*r << "\t" << us1s1[i]*r << "\t";
-        potentialOutputFile              << fBB[i]*r << "\t" << fBs1[i]*r << "\t" << fBs2[i]*r << "\t" << fs1s2[i]*r << "\t" << fs2s2[i]*r << "\t" << fs1s1[i]*r << "\n";
+    if(system("rm -rf potentials_for_lammps") != 0) {
+        std::cerr << "Unable to delete the old 'potentials_for_lammps/' directory with rm -rf. "
+                  << "Most likely you have it open somewhere or some program is running in it.\n";
+        exit(1);
     }
-    potentialOutputFile.close();
+
+    // create the new directory
+    if(system("mkdir potentials_for_lammps") != 0) {
+        std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
+        exit(1);
+    }
+
+    // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
+    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
+    const size_t numberOfPrints = potentialRangeSamplingSize/potentialPrintingStep;
+
+    const std::string dirName("potentials_for_lammps/");
+    const std::string extension(".table");
+    std::string interactionType [6];
+    interactionType[0] = "BB";      interactionType[1] = "Bs1";     interactionType[2] = "Bs2";
+    interactionType[3] = "s1s2";    interactionType[4] = "s1s1";    interactionType[5] = "s2s2";
+
+    for (int type = 0; type < 6; ++type) {
+        std::string fileName = dirName + interactionType[type] + extension;
+        std::ofstream potentialOutputFile(fileName.c_str());
+        potentialOutputFile << "# potentials for lammps\n\n" << interactionType[type] << "\nN " << numberOfPrints << "\n";
+        potentialOutputFile << std::scientific << std::setprecision(6);
+
+        int printCounter = 0;
+        for ( size_t i = potentialPrintingStep; i < potentialRangeSamplingSize; i += potentialPrintingStep) {
+            const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
+            printCounter++;
+            potentialOutputFile << printCounter << "\t" << r << "\t";
+            if( type == 0) {
+                potentialOutputFile << uBB[i]*r << "\t" << fBB[i]*r << "\n";
+            } else if ( type == 1) {
+                potentialOutputFile << uBs1[i]*r << "\t" << fBs1[i]*r << "\n";
+            } else if ( type == 2) {
+                potentialOutputFile << uBs2[i]*r << "\t" << fBs2[i]*r << "\n";
+            } else if ( type == 3) {
+                potentialOutputFile << us1s2[i]*r << "\t" << fs1s2[i]*r << "\n";
+            } else if ( type == 4) {
+                potentialOutputFile << us1s1[i]*r << "\t" << fs1s1[i]*r << "\n";
+            } else if ( type == 5) {
+                potentialOutputFile << us2s2[i]*r << "\t" << fs2s2[i]*r << "\n";
+            }
+        }
+        potentialOutputFile.close();
+    }
 }
 
 
-
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
+//************************************************************************//
 //************************************************************************//
 void IPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
     for (int i: {0, 1, 2})
@@ -260,9 +319,9 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     secndPatchRadius /= simulationBoxSide;
     secndPatchEccentricity /= simulationBoxSide;
     dt = simulationTimeStep/simulationBoxSide;
+    forceAndEnergySamplingStep /= simulationBoxSide;
 
     // finish processing data
-    forceAndEnergySamplingStep /= simulationBoxSide;
     squaredInteractionRange = std::pow(interactionRange,2);
     patchDistance = firstPatchEccentricity + secndPatchEccentricity;
     squaredPatchDistance = patchDistance*patchDistance;
