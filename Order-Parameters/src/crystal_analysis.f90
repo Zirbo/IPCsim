@@ -97,7 +97,7 @@ OPEN(3,file='startingstate.xyz',status='old')
  global%rc(2)=0._dp
  global%rc(3)=simulationBoxSide
 
-WRITE(*,*) global%nr_particles
+WRITE(*,*) global%nr_particles, "IPCs in a box whose side is", simulationBoxSide
 
  DO ip=1,global%nr_particles
     READ(3,*) dummyType,cmx,cmy,cmz,dummyVelX,dummyVelY,dummyVelZ
