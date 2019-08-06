@@ -52,5 +52,7 @@ Call the program without parameters and the inline help will explain you how to 
    The old version of the program, written in 2013. Not very efficient, don't use it. It's still here because most of the correlation functions have never been converted to the new version.
 * Order-Parameters:
    A program written by either Julia Fonleitner or Gernot Pauschenwein, and refined by Günther Doppelbauer, to compute the phi-4 and phi-6 order parameters. It is in Fortran, I have no idea what it does, I just adapted it to use .xyz files and use it.
-* startingstate_creators
+* startingstate_creators:
    Python scripts that create starting configurations in .xyz formats to be used by the main program.
+* lammps:
+   LAMMPS scripts to use the IPC potential in LAMMPS. You need a tabulated version of the IPC potential, which is given by the main program if run with the "printpot" flag (see the help)

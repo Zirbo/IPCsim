@@ -1,0 +1,48 @@
+#################################
+#                               #
+# script for lammps to create   #
+# a 3D simulation of IPCs!      #
+#                               #
+#                               #
+#                               #
+#################################
+
+variable inputfile index startingConfiguration.txt
+variable outputfile index outputFile.txt
+variable trajectoryfile index trajectory_from_lammps.xyz
+
+# 3d system
+dimension       3
+units           lj
+atom_style      atomic
+boundary        p p p
+
+# read starting configuration
+read_data       ${inputfile}
+velocity        all create 3.0 123456
+
+# LJ potential
+pair_style	table linear 120000
+pair_coeff	1 1 potentials_for_lammps/BB.table BB
+pair_coeff	1 2 potentials_for_lammps/Bs1table BB
+pair_coeff	2 2 potentials_for_lammps/s1s1.table BB
+# neighbor lists
+neighbor        0.3   bin
+
+# set conditions
+# fix ID affected-types-of-particle fix-name fix-specific-params 
+fix             1ens all nve # this is always needed for langevin...
+#fix             1ens all nvt temp 0.3 0.3 .1 # temp startT endT derivative (ignored if startT=endT)
+#fix             2lgv all langevin 0.3 0.3 0.1 123456 
+#fix             2lgv all langevin 0.3 0.3 10000.0 123456
+
+fix             2dim all enforce2d # this is crucial if you are in 2D. always use it after all the fixes but before the run command
+
+# print logs and trajectory
+log             ${outputfile}
+# dump ID particle-type format print-interval file
+dump            dumpcommand all xyz 25 ${trajectoryfile}
+
+# run simulation
+timestep	0.0025
+run             80000

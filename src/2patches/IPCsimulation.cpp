@@ -144,7 +144,7 @@ void IPCsimulation::printPotentials() {
     for (int type = 0; type < 6; ++type) {
         std::string fileName = dirName + interactionType[type] + extension;
         std::ofstream potentialOutputFile(fileName.c_str());
-        potentialOutputFile << "# potentials for lammps\n\n" << interactionType[type] << "\nN " << numberOfPrints << "\n";
+        potentialOutputFile << "# potentials for lammps\n\n" << interactionType[type] << "\nN " << numberOfPrints << "\n\n";
         potentialOutputFile << std::scientific << std::setprecision(6);
 
         int printCounter = 0;
