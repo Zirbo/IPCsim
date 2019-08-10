@@ -6,8 +6,8 @@
 
 
 //************************************************************************//
-IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled, std::pair<double,int> stage) {
-  // clean up old data and recreate output directory
+IPCsimulation::IPCsimulation(SimulationStage const& stage) {
+    // clean up old data and recreate output directory
     if(system("rm -rf siml") != 0) {
         std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
                   << "Most likely you have it open somewhere or some program is running in it.\n";
@@ -20,23 +20,27 @@ IPCsimulation::IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled
 
     // open output files
     outputFile.open("siml/output.out");
-    trajectoryFile.open("siml/trajectory.xyz");
     energyTrajectoryFile.open("siml/evolution.out");
-
-    // initialize system
-    initializeSystem(restorePreviousSimulation, stagingEnabled, stage);
-
-    // initialize g(r)
-    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
-
-    // print starting configuration and initialize output file
-    outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
-
-    trajectoryFile << std::scientific << std::setprecision(24);
     energyTrajectoryFile <<std::scientific << std::setprecision(10);
     energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
 
-    outputSystemState(trajectoryFile, energyTrajectoryFile);
+    // initialize system
+    initializeSystem(stage);
+
+    // print starting configuration and initialize output file
+    outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
+    outputSystemEnergies(energyTrajectoryFile);
+
+
+    if (printTrajectoryAndCorrelations) {
+        // initialize g(r)
+        pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
+
+        // initialize trajectory output file
+        trajectoryFile.open("siml/trajectory.xyz");
+        trajectoryFile << std::scientific << std::setprecision(24);
+        outputSystemTrajectory(trajectoryFile);
+    }
 }
 
 //************************************************************************//
@@ -62,9 +66,12 @@ double IPCsimulation::run() {
             ++prints;
             //energies
             computeSystemEnergy();
-            outputSystemState(trajectoryFile, energyTrajectoryFile);
-            // g(r)
-            pairCorrelation.compute(particles);
+            outputSystemEnergies(energyTrajectoryFile);
+            if (printTrajectoryAndCorrelations) {
+                // g(r)
+                pairCorrelation.compute(particles);
+                outputSystemTrajectory(trajectoryFile);
+            }
             // other averages
             averageTemperature += temperature;
             averageSquaredTemperature += temperature*temperature;
@@ -219,7 +226,7 @@ void IPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCor
 
 
 /*****************************************************************************************/
-void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage)
+void IPCsimulation::initializeSystem(const SimulationStage &stage)
 {
     simulationTime = 0;
 
@@ -230,13 +237,12 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
         std::cerr << "File input.in could not be opened. Aborting.";
         exit(1);
     }
-    inputFile >> N1 >> density >> desiredTemperature;
+    initialTemperature = stage.inputStartingTemperature;
+    simulationTotalDuration = stage.inputStageTotalDuration;
+    printTrajectoryAndCorrelations = stage.inputPrintTrajectoryAndCorrelations;
+    inputFile >> N1 >> density;
     nIPCs = 4*N1*N1*N1;
-    inputFile >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
-    if (stagingEnabled) {
-        desiredTemperature = stage.first;
-        simulationTotalDuration = stage.second;
-    }
+    inputFile >> simulationTimeStep >> printingInterval;
     inputFile >> e_BB >> e_Bs1 >> e_Bs2;
     inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
     inputFile >> e_min;
@@ -267,7 +273,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     }
 
     // if restoring, read state, so we get access to the real number of IPCs
-    if(restoreprevious) {
+    if(stage.inputRestoringPreviousSimulation) {
         outputFile << "Resuming a previous simulation.\n";
         restorePreviousConfiguration();
         outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n\n";
@@ -285,7 +291,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     interactionRange = 2*ipcRadius;
 
     // output the data for future checks
-    outputFile << nIPCs << "\t" << density << "\t" << desiredTemperature << "\n";
+    outputFile << nIPCs << "\t" << density << "\t" << initialTemperature << "\n";
     outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
     outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
     outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
@@ -341,7 +347,7 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     alpha_sum = alpha_1 + alpha_2;
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
-    if(!restoreprevious) {
+    if(!stage.inputRestoringPreviousSimulation) {
         outputFile << "Starting a new simulation.\n";
         outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration(N1);
@@ -374,9 +380,9 @@ void IPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, 
     // first computation of the kinetic energy
     computeSystemEnergy();
 
-    if(restoreprevious && desiredTemperature > 0) {
+    if(stage.inputRestoringPreviousSimulation && initialTemperature > 0) {
         // scale velocities to obtain the desired temperature
-        double scalingFactor = std::sqrt(desiredTemperature/temperature);
+        double scalingFactor = std::sqrt(initialTemperature/temperature);
         scaleVelocities(scalingFactor);
 
         // update energies to include the correction
@@ -640,9 +646,7 @@ void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile)
     }
     outputTrajectoryFile << std::endl;
 }
-void IPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream & energyTrajectoryFile)
-{
-    outputSystemTrajectory(outputTrajectoryFile);
+void IPCsimulation::outputSystemEnergies(std::ofstream & energyTrajectoryFile) {
     energyTrajectoryFile << simulationTime*simulationTimeStep << "\t" << temperature << "\t"
                          << kineticEnergy/nIPCs << "\t" << potentialEnergy/nIPCs << "\t" << totalEnergy/nIPCs << "\t"
                          << std::sqrt(squaredMinimumDistanceBetweenParticles)*simulationBoxSide << std::endl;
@@ -661,7 +665,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
     //double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
 
-    double vel_scaling = std::sqrt(1.6*desiredTemperature)/simulationBoxSide;
+    double vel_scaling = std::sqrt(1.6*initialTemperature)/simulationBoxSide;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {

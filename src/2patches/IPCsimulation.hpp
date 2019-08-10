@@ -14,10 +14,20 @@
 
 
 
+struct SimulationStage {
+    double inputStartingTemperature;
+    double inputStageTotalDuration;
+    bool inputRestoringPreviousSimulation;
+    bool inputPrintTrajectoryAndCorrelations;
+
+    SimulationStage() : inputStartingTemperature{0.}, inputStageTotalDuration{0.},
+                        inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false}
+                    {}
+ };
 
 class IPCsimulation {
 public:
-    IPCsimulation(bool restorePreviousSimulation, bool stagingEnabled = false, std::pair<double,int> stage = std::pair<double,int>{0.,0});
+    IPCsimulation(SimulationStage const& stage = SimulationStage());
     void printPotentials();
     double run();
 
@@ -37,10 +47,11 @@ private:
     double omega(double Ra, double Rb, double rab);
     double d_dr_omega(double Ra, double Rb, double rab);
 
+    bool printTrajectoryAndCorrelations;
     // state point
     int nIPCs;
     double density, temperature;
-    double desiredTemperature;
+    double initialTemperature;
     // simulation duration
     double simulationTotalDuration;
     double simulationTimeStep, printingInterval;
@@ -70,7 +81,7 @@ private:
     IsotropicPairCorrelationFunction pairCorrelation;
 
     // selfexplanatory
-    void initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage);
+    void initializeSystem(SimulationStage const& stage);
     void restorePreviousConfiguration();
     void initializeNewConfiguration(int N1);
 
@@ -100,7 +111,7 @@ private:
     void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables & loopVars);
 
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
-    void outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream &energyTrajectoryFile);
+    void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
 
     // 3D boundary conditions enforcers
