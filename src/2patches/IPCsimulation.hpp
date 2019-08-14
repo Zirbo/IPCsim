@@ -27,7 +27,7 @@ struct SimulationStage {
 
 class IPCsimulation {
 public:
-    IPCsimulation(SimulationStage const& stage = SimulationStage());
+    IPCsimulation(SimulationStage const& stage);
     void printPotentials();
     double run();
 
