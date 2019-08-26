@@ -6,64 +6,66 @@
 
 int main ( int argc, char *argv[] ) {
     std::stringstream helpMessage;
-    helpMessage << "USAGE\nYou need to specify a usage mode. You have five options:\n"
-                << " * \"new\": start a new simulation; you need the files input.in and staging.in;\n"
-                << " * \"old\": resume an old simulation; you need the files input.in, staging.in, and a startingstate.xyz;\n"
+    helpMessage << "USAGE\nYou need to specify a usage mode. You have 3 options:\n"
+                << " * \"new\": start a new simulation; you need the files input.in and stages.in;\n"
+                << " * \"old\": resume an old simulation; you need the files input.in, stages.in, and a startingstate.xyz;\n"
                 << " * \"printpot\": print potentials in potentials.out, then exit.\n";
 
     if(argc != 2) {
         std::cerr << helpMessage.str();
         exit(1);
     } else if(std::string(argv[1]) == "printpot") {
-        const SimulationStage stage;
-        IPCsimulation simulation(stage);
+        const SimulationStage emptyStage;
+        IPCsimulation simulation(emptyStage);
         simulation.printPotentials();
     } else if (std::string(argv[1]) == "new" || std::string(argv[1]) == "old") {
 
         // open staging.in file
-        std::ifstream stagingFile("staging.in");
-        if(stagingFile.fail()) {
-            std::cerr << "File staging.in could not be opened. Aborting.";
+        std::ifstream stagesFile("stages.in");
+        if(stagesFile.fail()) {
+            std::cerr << "File staging.in could not be opened. Aborting.\n";
             exit(1);
         }
 
-        // simulate numberOfStages times :P
         SimulationStage currentStage;
         currentStage.inputRestoringPreviousSimulation = (std::string(argv[1]) == "old");
-        int counter = 0;
-        double tollerance {0.}, averageTemperature{0.};
-        bool repeatStage{false};
-
+        int simulatedStages = 0;
+        double tollerance = 0.;
         std::cout << std::boolalpha;
 
-        while(stagingFile >> currentStage.inputStartingTemperature >> tollerance >> currentStage.inputPrintTrajectoryAndCorrelations >> currentStage.inputStageTotalDuration) {
+        // read each line of the stagesFile and run a simulation with its temperature and duration
+        while(stagesFile >> currentStage.inputStartingTemperature >> tollerance
+                         >> currentStage.inputPrintTrajectoryAndCorrelations >> currentStage.inputStageTotalDuration) {
+            // if a tollerance is given, repeat each stage until the average temperature of the run is inside the tollerance.
+            bool repeatStage{false};
             do {
-                std::cout << "Simulation stage " << ++counter << " starting; set temperature: " << currentStage.inputStartingTemperature << std::endl;
+                ++simulatedStages;
+                std::cout << "Simulation stage " << simulatedStages << " starting; set temperature: " << currentStage.inputStartingTemperature << std::endl;
                 // run the simulation stage
                 IPCsimulation simulation(currentStage);
-                averageTemperature = simulation.run();
+                const double averageTemperatureinTheRun = simulation.run();
                 currentStage.inputRestoringPreviousSimulation = true;
-                std::cout << "Simulation stage " << counter << " is finished; average temperature: " << averageTemperature << std::endl;
+                std::cout << "Simulation stage " << simulatedStages << " is finished; average temperature: " << averageTemperatureinTheRun << std::endl;
                 // copy files
                 if (currentStage.inputPrintTrajectoryAndCorrelations) {
                     std::stringstream command;
-                    command << "mv siml siml_stage-" << counter << "_T-" << averageTemperature;
+                    command << "mv siml siml_stage-" << simulatedStages << "_T-" << averageTemperatureinTheRun;
                     if(system(command.str().c_str()) != 0) {
-                        std::cerr << "Could not move siml/* between simulation stages. Aborting.";
+                        std::cerr << "Could not move siml/* between simulation stages. Aborting.\n";
                         exit(1);
                     }
                     std::stringstream().swap(command);
-                    command << "cp startingstate.xyz siml_stage-" << counter << "_T-" << averageTemperature << "/startingstate.xyz";
+                    command << "cp startingstate.xyz siml_stage-" << simulatedStages << "_T-" << averageTemperatureinTheRun << "/startingstate.xyz";
                     if(system(command.str().c_str()) != 0) {
-                        std::cerr << "Could not copy startingstate.xyz between simulation stages. Aborting.";
+                        std::cerr << "Could not copy startingstate.xyz between simulation stages. Aborting.\n";
                         exit(1);
                     }
                 }
 
                 if(tollerance > 0.) {
-                    double relativeDifference = std::fabs(   (averageTemperature-currentStage.inputStartingTemperature)/averageTemperature   );
+                    double relativeDifference = std::fabs(   (averageTemperatureinTheRun-currentStage.inputStartingTemperature)/averageTemperatureinTheRun   );
                     repeatStage = relativeDifference > tollerance;
-                    std::cout << "Simulation stage " << counter << ", relative temperature difference: " << relativeDifference << std::endl;
+                    std::cout << "Simulation stage " << simulatedStages << ", relative temperature difference: " << relativeDifference << std::endl;
                     std::cout << "Repeat? " << repeatStage << std::endl;
                 }
             } while(repeatStage);

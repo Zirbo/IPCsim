@@ -21,7 +21,7 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
     // open output files
     outputFile.open("siml/output.out");
     energyTrajectoryFile.open("siml/evolution.out");
-    energyTrajectoryFile <<std::scientific << std::setprecision(10);
+    energyTrajectoryFile << std::scientific << std::setprecision(10);
     energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
 
     // initialize system
@@ -54,7 +54,7 @@ double IPCsimulation::run() {
     double averageTemperature = 0.;
     double averageSquaredTemperature = 0.;
     double averagePotentialEnergy = 0.;
-    int prints = 0;
+    int sampleSizeForAverages = 0;
 
     // simulation begins
     time(&simulationStartTime);
@@ -63,16 +63,17 @@ double IPCsimulation::run() {
         ++simulationTime;
 
         if( simulationTime%printingIntervalInIterations == 0) {
-            ++prints;
-            //energies
+            // compute and output energies
             computeSystemEnergy();
             outputSystemEnergies(energyTrajectoryFile);
+            // output trajectory and compute g(r)
             if (printTrajectoryAndCorrelations) {
                 // g(r)
                 pairCorrelation.compute(particles);
                 outputSystemTrajectory(trajectoryFile);
             }
-            // other averages
+            // compute averages
+            ++sampleSizeForAverages;
             averageTemperature += temperature;
             averageSquaredTemperature += temperature*temperature;
             averagePotentialEnergy += potentialEnergy;
@@ -92,9 +93,9 @@ double IPCsimulation::run() {
     double pcm [3];
     computeSystemMomentum(pcm);
     outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
-    averageTemperature /= prints;
-    averagePotentialEnergy /= prints;
-    averageSquaredTemperature /= prints;
+    averageTemperature /= sampleSizeForAverages;
+    averagePotentialEnergy /= sampleSizeForAverages;
+    averageSquaredTemperature /= sampleSizeForAverages;
     double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
     outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
     outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
@@ -234,7 +235,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     // read input.in file
     std::ifstream inputFile("input.in");
     if(inputFile.fail()) {
-        std::cerr << "File input.in could not be opened. Aborting.";
+        std::cerr << "File input.in could not be opened. Aborting.\n";
         exit(1);
     }
     initialTemperature = stage.inputStartingTemperature;
@@ -315,7 +316,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
     // potential sampling
     outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
-    make_table();
+    compileForceAndPotentialTables();
 
     // scale the lenghts to be in a [0.0:1.0] simulation box
     ipcRadius /= simulationBoxSide;
@@ -398,7 +399,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
 
 // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-void IPCsimulation::ranor(double (&a)[3], RandomNumberGenerator & r) {
+void IPCsimulation::generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r) {
     double x,y,quad=2.;
     while ( quad > 1. ) {
         x = r.getRandom11();
@@ -411,7 +412,7 @@ void IPCsimulation::ranor(double (&a)[3], RandomNumberGenerator & r) {
 
 
 //************************************************************************//
-double IPCsimulation::omega(double Ra, double Rb, double rab) {
+double IPCsimulation::computeOmega(double Ra, double Rb, double rab) {
     // BKL paper, formula 18
     if ( rab > Ra+Rb )
         return 0.;
@@ -424,7 +425,7 @@ double IPCsimulation::omega(double Ra, double Rb, double rab) {
     }
 }
 //************************************************************************//
-double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
+double IPCsimulation::computeOmegaRadialDerivative(double Ra, double Rb, double rab) {
     // BKL paper, derivative of formula 18
     if ( rab >= Ra+Rb || rab <= fabs(Ra-Rb) )
         return 0.;
@@ -436,7 +437,7 @@ double IPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
     }
 }
 
-void IPCsimulation::make_table()
+void IPCsimulation::compileForceAndPotentialTables()
 {
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
 
@@ -456,19 +457,19 @@ void IPCsimulation::make_table()
     for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
     {
         const double r = i*forceAndEnergySamplingStep;
-        uBB[i]   = (e_BB  /e_min) * omega(ipcRadius, ipcRadius, r);
-        uBs1[i]  = (e_Bs1 /e_min) * omega(ipcRadius, firstPatchRadius,  r);
-        uBs2[i]  = (e_Bs2 /e_min) * omega(ipcRadius, secndPatchRadius,  r);
-        us1s2[i] = (e_s1s2/e_min) * omega(firstPatchRadius,  secndPatchRadius,  r);
-        us2s2[i] = (e_s2s2/e_min) * omega(secndPatchRadius,  secndPatchRadius,  r);
-        us1s1[i] = (e_s1s1/e_min) * omega(firstPatchRadius,  firstPatchRadius,  r);
+        uBB[i]   = (e_BB  /e_min) * computeOmega(ipcRadius, ipcRadius, r);
+        uBs1[i]  = (e_Bs1 /e_min) * computeOmega(ipcRadius, firstPatchRadius,  r);
+        uBs2[i]  = (e_Bs2 /e_min) * computeOmega(ipcRadius, secndPatchRadius,  r);
+        us1s2[i] = (e_s1s2/e_min) * computeOmega(firstPatchRadius,  secndPatchRadius,  r);
+        us2s2[i] = (e_s2s2/e_min) * computeOmega(secndPatchRadius,  secndPatchRadius,  r);
+        us1s1[i] = (e_s1s1/e_min) * computeOmega(firstPatchRadius,  firstPatchRadius,  r);
 
-        fBB[i]   = (e_BB  /e_min) * d_dr_omega(ipcRadius, ipcRadius, r);
-        fBs1[i]  = (e_Bs1 /e_min) * d_dr_omega(ipcRadius, firstPatchRadius,  r);
-        fBs2[i]  = (e_Bs2 /e_min) * d_dr_omega(ipcRadius, secndPatchRadius,  r);
-        fs1s2[i] = (e_s1s2/e_min) * d_dr_omega(firstPatchRadius,  secndPatchRadius,  r);
-        fs2s2[i] = (e_s2s2/e_min) * d_dr_omega(secndPatchRadius,  secndPatchRadius,  r);
-        fs1s1[i] = (e_s1s1/e_min) * d_dr_omega(firstPatchRadius,  firstPatchRadius,  r);
+        fBB[i]   = (e_BB  /e_min) * computeOmegaRadialDerivative(ipcRadius, ipcRadius, r);
+        fBs1[i]  = (e_Bs1 /e_min) * computeOmegaRadialDerivative(ipcRadius, firstPatchRadius,  r);
+        fBs2[i]  = (e_Bs2 /e_min) * computeOmegaRadialDerivative(ipcRadius, secndPatchRadius,  r);
+        fs1s2[i] = (e_s1s2/e_min) * computeOmegaRadialDerivative(firstPatchRadius,  secndPatchRadius,  r);
+        fs2s2[i] = (e_s2s2/e_min) * computeOmegaRadialDerivative(secndPatchRadius,  secndPatchRadius,  r);
+        fs1s1[i] = (e_s1s1/e_min) * computeOmegaRadialDerivative(firstPatchRadius,  firstPatchRadius,  r);
 
         if ( r <= 1.0 )
         {
@@ -717,8 +718,8 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     // initialize patches positions
     for(IPC &ipc: particles) {
         double ipcAxis[3], ipcOrthogonalAxis[3];
-        ranor(ipcAxis,rand);
-        ranor(ipcOrthogonalAxis, rand);
+        generateRandomOrientation(ipcAxis,rand);
+        generateRandomOrientation(ipcOrthogonalAxis, rand);
         double normOfIpcOrthogonalAxis = std::sqrt( .5*
                 (std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2))
                 /
@@ -748,7 +749,7 @@ void IPCsimulation::restorePreviousConfiguration() {
     double unusedTime;
     std::ifstream startingConfigurationFile("startingstate.xyz");
     if(startingConfigurationFile.fail()) {
-        std::cerr << "File startingstate.xyz could not be opened. Aborting.";
+        std::cerr << "File startingstate.xyz could not be opened. Aborting.\n";
         exit(1);
     }
     startingConfigurationFile >> nIPCs >> simulationBoxSide >> unusedTime;

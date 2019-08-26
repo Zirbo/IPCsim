@@ -43,9 +43,9 @@ private:
     // force and potential tables computation
     std::vector<double> uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
     std::vector<double> fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
-    void make_table();
-    double omega(double Ra, double Rb, double rab);
-    double d_dr_omega(double Ra, double Rb, double rab);
+    void compileForceAndPotentialTables();
+    double computeOmega(double Ra, double Rb, double rab);
+    double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
 
     bool printTrajectoryAndCorrelations;
     // state point
@@ -122,7 +122,7 @@ private:
     inline void absolutePBC(double & x) {  x -= std::floor(x);  }
     inline void relativePBC(double & x) {  x -= std::round(x);  }
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-    void ranor(double (&a)[3], RandomNumberGenerator & r);
+    void generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r);
 
 
 };
