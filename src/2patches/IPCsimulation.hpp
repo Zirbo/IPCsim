@@ -1,6 +1,30 @@
 #ifndef __IPCSIMULATOR_HEADER_INCLUDED__
 #define __IPCSIMULATOR_HEADER_INCLUDED__
 
+/*----------------------------------------------------------------------------------
+ * Simulation of Inverse Patchy Colloids with two asymmetric patches.
+ *
+ * It reads the system variables from a file called input.in expected in the same
+ * directory of the executable (for the format of the file, peep in function
+ * "initializeSystem"). Temperature and duration are to be given to the constructor
+ * as parameters (peep structure "SimulationStage").
+ *
+ * Each IPC is represented as a center of mass plus two patches, all on a line.
+ * This linear geometry makes most constraint algorithms singular, so IPCs had
+ * to be reproduced using the Ciccotti reduction algorithm [1], according two which
+ * only the patches are really moved according to effective forces that
+ * take into account the inertia of the center of mass, which then is always
+ * found in the middle point between the patches (or wherever it should be, if
+ * the patches are not symmetric).
+ *
+ * The equation of motion for the two patches are integrated using the
+ * well-known Velocity-Verlet algorithm, and the patch-patch distance is
+ * constrained using the RATTLE algorithm [2]
+ *
+ * [1] Ciccotti, Ferrario and Ryckaert, Mol. Phys. 47-6, 1253-1264 (1982).
+ * [2] Andersen, J. Comp. Phys. 52, 24-34 (1983)
+ *----------------------------------------------------------------------------------*/
+
 
 #include <fstream>
 #include <vector>
