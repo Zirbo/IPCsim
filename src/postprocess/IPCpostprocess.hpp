@@ -1,21 +1,34 @@
+#ifndef __IPCPOSTPROCESS_HEADER_INCLUDED__
+#define __IPCPOSTPROCESS_HEADER_INCLUDED__
+
+/*---------------------------------------------------------------------------------------
+ * Postprocess for Inverse Patchy Colloids simulations with variable number of patches.
+ *
+ * asda
+ *---------------------------------------------------------------------------------------*/
+
+
 #include <fstream>
-#include <string>
 #include <vector>
 #include <array>
+#include <string>
+#include <cmath>
 
 
 class IPCpostprocess {
 public:
-    IPCpostprocess(std::string const& directoryName);
+    IPCpostprocess(int inputNumberOfPatches, std::string const& directoryName);
     void run();
 
 
 private:
     IPCpostprocess();
 
+    int numberOfPatches;
     unsigned long simulationTime;
     std::ofstream autocorrelationsFile;
     std::ofstream typicalOrientationsFile;
+    std::ofstream meanSquaredDisplFile;
     std::ifstream trajectoryFile;
     // state point
     int nIPCs;
@@ -24,7 +37,8 @@ private:
     double simulationTotalDuration;
     double simulationTimeStep, printingInterval;
     // geometry
-    double ipcRadius, firstPatchRadius, firstPatchEccentricity, secndPatchRadius, secndPatchEccentricity;
+    double ipcRadius, firstPatchRadius, firstPatchEccentricity;
+    double secndPatchRadius, secndPatchEccentricity;
     // work parameters
     double simulationBoxSide, dt;
     double squaredMinimumDistanceBetweenParticles;
@@ -32,11 +46,22 @@ private:
     double patchDistance, squaredPatchDistance;
     int nPrints;
 
-    std::vector<std::array<double, 3>> ipcCentersPositions;
-    std::vector<std::array<double, 3>> ipcCentersVelocities;
-    std::vector<std::array<double, 3>> ipcOrientations;
+    std::vector<std::array<double, 3>> ipcCentersInitialPositions;
+    std::vector<std::array<double, 3>> ipcCentersPreviousPositions;
+    std::vector<std::array<double, 3>> ipcInitialOrientations;
+    std::vector<std::array<double, 3>> ipcPreviousOrientations;
+    std::vector<std::array<double, 3>> ipcCentersInitialVelocities;
+
+    std::vector<double> meanSquaredDisplacement;
+    std::vector<double> totalRotation;
+    std::vector<double> orientationAutocorrelation;
+    std::vector<double> velocityAutocorrelation;
 
     void initialize(std::string const& directoryName);
     void readFirstConfiguration();
-    void readSingleConfiguration();
+    void processSingleConfiguration();
+    inline void relativePBC(double & x) {  x -= std::round(x);  }
+    void runConsistencyChecks();
 };
+
+#endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

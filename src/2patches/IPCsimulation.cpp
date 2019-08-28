@@ -59,8 +59,8 @@ double IPCsimulation::run() {
     // simulation begins
     time(&simulationStartTime);
     while(simulationTime < simulationDurationInIterations) {
-        computeTrajectoryStep();
         ++simulationTime;
+        computeTrajectoryStep();
 
         if( simulationTime%printingIntervalInIterations == 0) {
             // compute and output energies
@@ -282,6 +282,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         density = double(nIPCs)/std::pow(simulationBoxSide, 3);
     }
     else {
+        outputFile << "Starting a new simulation.\n";
         // we read nIPCs and density from the input file, so we need to compute the simulationBoxSide from them
         simulationBoxSide = std::cbrt(nIPCs/density);
     }
@@ -349,7 +350,6 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
     if(!stage.inputRestoringPreviousSimulation) {
-        outputFile << "Starting a new simulation.\n";
         outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration(N1);
     }
