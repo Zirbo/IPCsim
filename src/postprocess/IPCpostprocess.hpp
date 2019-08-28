@@ -25,16 +25,17 @@ private:
     IPCpostprocess();
 
     int numberOfPatches;
-    unsigned long simulationTime;
+    size_t trajectorySnapshot;
     std::ofstream autocorrelationsFile;
-    std::ofstream typicalOrientationsFile;
     std::ofstream meanSquaredDisplFile;
+//    std::ofstream typicalOrientationsFile;
     std::ifstream trajectoryFile;
     // state point
     int nIPCs;
     double density, temperature;
     // simulation duration
     double simulationTotalDuration;
+    size_t simulationDurationInIterations;
     double simulationTimeStep, printingInterval;
     // geometry
     double ipcRadius, firstPatchRadius, firstPatchEccentricity;
@@ -58,10 +59,12 @@ private:
     std::vector<double> velocityAutocorrelation;
 
     void initialize(std::string const& directoryName);
-    void readFirstConfiguration();
-    void processSingleConfiguration();
+    void readFirstSnapshot();
+    void processSingleSnapshot();
     inline void relativePBC(double & x) {  x -= std::round(x);  }
+    void readOutputFile(std::string const& directoryName);
     void runConsistencyChecks();
+    void printResults();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

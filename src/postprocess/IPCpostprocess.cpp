@@ -24,12 +24,6 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, std::string const& dire
     }
 
     // open simulation output file and trajectory
-    const std::string outputFileName = directoryName + "/output.out";
-    std::ifstream simulationOutputFile(outputFileName.c_str());
-    if(simulationOutputFile.fail()) {
-        std::cerr << "File " << outputFileName << " could not be opened. Aborting.\n";
-        exit(1);
-    }
     const std::string trajectoryFileName = directoryName + "/trajectory.xyz";
     trajectoryFile.open(trajectoryFileName.c_str());
     if(trajectoryFile.fail()) {
@@ -37,26 +31,7 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, std::string const& dire
         exit(1);
     }
 
-    // read simulation parameters from the simulation output file
-    simulationOutputFile.ignore(200, '\n');
-    double useless;
-    simulationOutputFile >> nIPCs >> density >> temperature
-            >> simulationTimeStep >> printingInterval >> simulationTotalDuration
-            >> useless >> useless >> useless
-            >> useless >> useless >> useless
-            >> useless
-            >> firstPatchEccentricity >> firstPatchRadius
-            >> secndPatchEccentricity >> secndPatchRadius;
-    simulationBoxSide = std::cbrt(nIPCs/density);
-    simulationOutputFile.close();
-
-    // double check, remove later!
-    std::cout << nIPCs << "\t" << density << "\t" << temperature << "\n"
-            << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n"
-            << firstPatchEccentricity << "\t" << firstPatchRadius << "\n"
-            << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
-    // scale lenghts
-    firstPatchEccentricity /= simulationBoxSide;
+    readOutputFile(directoryName);
 
     // initialize the containers
     ipcCentersInitialPositions.resize(nIPCs, {0.0, 0.0, 0.0});
@@ -65,37 +40,58 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, std::string const& dire
     ipcPreviousOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
     ipcCentersInitialVelocities.resize(nIPCs, {0.0, 0.0, 0.0});
 
-    readFirstConfiguration();
+    meanSquaredDisplacement.resize(simulationDurationInIterations, 0.);
+    totalRotation.resize(simulationDurationInIterations, 0.);
+    orientationAutocorrelation.resize(simulationDurationInIterations, 0.);
+    velocityAutocorrelation.resize(simulationDurationInIterations, 0.);
 
+    // initialize output files
     autocorrelationsFile.open("analysis/autocorrelationsFile.out");
     autocorrelationsFile << std::scientific << std::setprecision(4);
     meanSquaredDisplFile.open("analysis/meanSquaredDisplacement.out");
     meanSquaredDisplFile << std::scientific << std::setprecision(4);
-    typicalOrientationsFile.open("analysis/typicalOrientations.out");
-    typicalOrientationsFile << std::scientific << std::setprecision(4);
+    //typicalOrientationsFile.open("analysis/typicalOrientations.out");
+    //typicalOrientationsFile << std::scientific << std::setprecision(4);
 }
 
-void IPCpostprocess::readFirstConfiguration() {
-    // read and double check number of particles and simulation box side
-    int nIPCsCheck;
-    double simulationBoxSideCheck;
-    double time;
-    trajectoryFile >> nIPCsCheck >> simulationBoxSideCheck >> time;
-    if ((1+numberOfPatches)*nIPCs != nIPCsCheck) {
-        std::cerr << "Inconsistency in the number of particles.\n"
-                  << (1+numberOfPatches)*nIPCs << " != " << nIPCsCheck << ".\n";
-        exit(1);
+void IPCpostprocess::run() {
+
+    trajectorySnapshot = 0;
+    readFirstSnapshot();
+
+    for (trajectorySnapshot = 1; trajectorySnapshot <= simulationDurationInIterations; ++trajectorySnapshot) {
+        processSingleSnapshot();
+        std::cout << trajectorySnapshot << " / " << simulationDurationInIterations << "\n";
     }
-    if (simulationBoxSide != simulationBoxSideCheck) {
-        std::cerr << "Inconsistency in the simulation box side.\n"
-                  << simulationBoxSide << " != " << simulationBoxSideCheck << ".\n";
-        exit(1);
+
+    printResults();
+
+    trajectoryFile.close();
+    autocorrelationsFile.close();
+    meanSquaredDisplFile.close();
+    //typicalOrientationsFile.close();
+}
+
+void IPCpostprocess::printResults() {
+    // set values that were not computed
+    orientationAutocorrelation[0] = 1.;
+    velocityAutocorrelation[0] = 1.;
+    meanSquaredDisplacement[0] = 0.;
+    totalRotation[0] = 0.;
+
+    double inverseOfNumberOfIPCs = 1./nIPCs;
+    for (size_t i = 0; i <= simulationDurationInIterations; ++i) {
+        autocorrelationsFile << i*printingInterval << "\t"
+                             << orientationAutocorrelation[i]*inverseOfNumberOfIPCs << "\t"
+                             << velocityAutocorrelation[i]*inverseOfNumberOfIPCs << "\n";
+        meanSquaredDisplFile << i*printingInterval << "\t"
+                             << orientationAutocorrelation[i]*inverseOfNumberOfIPCs << "\t"
+                             << velocityAutocorrelation[i]*inverseOfNumberOfIPCs << "\n";
     }
-    if (0. != time) {
-        std::cerr << "Inconsistency in the time.\n"
-                  << 0. << " != " << time << ".\n";
-        exit(1);
-    }
+}
+
+void IPCpostprocess::readFirstSnapshot() {
+    runConsistencyChecks();
 
     for(int i = 0; i < nIPCs; ++i) {
         char uselessChar;
@@ -128,30 +124,8 @@ void IPCpostprocess::readFirstConfiguration() {
 
 }
 
-void IPCpostprocess::run() {
-    const size_t simulationDurationInIterations = (size_t)simulationTotalDuration/printingInterval;
-
-    for (simulationTime = 0; simulationTime <= simulationDurationInIterations; ++simulationTime) {
-        std::cout << simulationTime << " / " << simulationDurationInIterations << "\n";
-        processSingleConfiguration();
-    }
-
-    trajectoryFile.close();
-    autocorrelationsFile.close();
-    meanSquaredDisplFile.close();
-    typicalOrientationsFile.close();
-}
-
-void IPCpostprocess::processSingleConfiguration() {
-    // read and double check the simulation time
-    double currentTime;
-    trajectoryFile >> currentTime >> currentTime >> currentTime;
-
-    if (simulationTime*printingInterval != currentTime) {
-        std::cerr << "Inconsistency in the simulation time.\n"
-                  << simulationTime*printingInterval << " != " << currentTime << ".\n";
-        exit(1);
-    }
+void IPCpostprocess::processSingleSnapshot() {
+    runConsistencyChecks();
 
     // start reading out IPCs
     for(int i = 0; i < nIPCs; ++i) {
@@ -185,11 +159,61 @@ void IPCpostprocess::processSingleConfiguration() {
             //meanSquaredDisp +=
 
             // compute autocorrelations
-            orientationAutocorrelation += ipcOrientation[j]*ipcInitialOrientations[i][j];
-            velocityAutocorrelation += ipcCenterVelocity[j]*ipcCentersInitialVelocities[i][j];
+            orientationAutocorrelation[trajectorySnapshot] += ipcOrientation[j]*ipcInitialOrientations[i][j];
+            velocityAutocorrelation[trajectorySnapshot] += ipcCenterVelocity[j]*ipcCentersInitialVelocities[i][j];
         }
     }
-    autocorrelationsFile << currentTime << "\t"
-                         << orientationAutocorrelation/nIPCs << "\t"
-                         << velocityAutocorrelation/nIPCs << "\n";
+}
+
+void IPCpostprocess::runConsistencyChecks() {
+    int nIPCsCheck;
+    double simulationBoxSideCheck;
+    double time;
+    trajectoryFile >> nIPCsCheck >> simulationBoxSideCheck >> time;
+    if ((1+numberOfPatches)*nIPCs != nIPCsCheck) {
+        std::cerr << "Inconsistency in the number of particles.\n"
+                  << (1+numberOfPatches)*nIPCs << " != " << nIPCsCheck << ".\n";
+        exit(1);
+    }
+    if (simulationBoxSide != simulationBoxSideCheck) {
+        std::cerr << "Inconsistency in the simulation box side.\n"
+                  << simulationBoxSide << " != " << simulationBoxSideCheck << ".\n";
+        exit(1);
+    }
+    if (trajectorySnapshot*printingInterval != time) {
+        std::cerr << "Inconsistency in the time.\n"
+                  << trajectorySnapshot*printingInterval << " != " << time << ".\n";
+        exit(1);
+    }
+}
+
+void IPCpostprocess::readOutputFile(const std::string &directoryName) {
+    // open file
+    const std::string outputFileName = directoryName + "/output.out";
+    std::ifstream simulationOutputFile(outputFileName.c_str());
+    if(simulationOutputFile.fail()) {
+        std::cerr << "File " << outputFileName << " could not be opened. Aborting.\n";
+        exit(1);
+    }
+
+    // read simulation parameters from the simulation output file
+    simulationOutputFile.ignore(200, '\n');
+    double useless;
+    simulationOutputFile >> nIPCs >> density >> temperature
+            >> simulationTimeStep >> printingInterval >> simulationTotalDuration
+            >> useless >> useless >> useless
+            >> useless >> useless >> useless
+            >> useless
+            >> firstPatchEccentricity >> firstPatchRadius
+            >> secndPatchEccentricity >> secndPatchRadius;
+
+    //close file
+    simulationOutputFile.close();
+
+    // process data
+    simulationBoxSide = std::cbrt(nIPCs/density);
+    simulationDurationInIterations = (size_t)simulationTotalDuration/printingInterval;
+
+    // scale lenghts
+    firstPatchEccentricity /= simulationBoxSide;
 }
