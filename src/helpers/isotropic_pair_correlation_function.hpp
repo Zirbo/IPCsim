@@ -22,7 +22,7 @@ private:
 
     std::vector<double> g;
 
-    inline void relativePBC(double & x) { x-=std::lround(x); }
+    inline void relativePBC(double & x) { x -= std::lround(x); }
 
 public:
 
@@ -49,7 +49,7 @@ public:
                     relativePBC(rik[d]);
                 }
                 const double r = std::sqrt(rik[0]*rik[0] + rik[1]*rik[1] + rik[2]*rik[2]);
-                const int R = int( r * totalBinsInSimulationBoxSide); // this works because rik is in [0:1) units
+                const int R = (int) r * totalBinsInSimulationBoxSide; // this works because rik is in [0:1) units
                 g[R]  += 1.;
             }
         }
@@ -74,7 +74,9 @@ public:
         }
         outputFile.close();
 
-        return nParticles*std::pow(simulationBoxSide,3)*integral*4.*M_PI*std::pow(binSize,3)/3.;
+        const double density = nParticles/std::pow(simulationBoxSide,3);
+        const double missingShellVolumeScaling = std::pow(binSize,3)*4.*M_PI/3.;
+        return density*integral*missingShellVolumeScaling;
     }
 
 };
