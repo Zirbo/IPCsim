@@ -23,7 +23,7 @@ int main ( int argc, char *argv[] ) {
         // open staging.in file
         std::ifstream stagesFile("stages.in");
         if(stagesFile.fail()) {
-            std::cerr << "File staging.in could not be opened. Aborting.\n";
+            std::cerr << "File stages.in could not be opened. Aborting.\n";
             exit(1);
         }
 

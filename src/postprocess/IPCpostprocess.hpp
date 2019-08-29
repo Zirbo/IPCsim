@@ -17,7 +17,9 @@
 
 class IPCpostprocess {
 public:
-    IPCpostprocess(int inputNumberOfPatches, std::string const& directoryName);
+    IPCpostprocess(int inputNumberOfPatches,
+                   size_t const inputNumberOfSubSimulations,
+                   std::string const& directoryName);
     void run();
 
 
@@ -25,10 +27,11 @@ private:
     IPCpostprocess();
 
     int numberOfPatches;
-    size_t trajectorySnapshot;
+    // output files
     std::ofstream autocorrelationsFile;
     std::ofstream meanSquaredDisplFile;
 //    std::ofstream typicalOrientationsFile;
+    // input trajectory
     std::ifstream trajectoryFile;
     // state point
     int nIPCs;
@@ -37,6 +40,8 @@ private:
     double simulationTotalDuration;
     size_t simulationDurationInIterations;
     double simulationTimeStep, printingInterval;
+    // subsimulation working parameters
+    size_t numberOfSubSimulations, subSimulationDuration;
     // geometry
     double ipcRadius, firstPatchRadius, firstPatchEccentricity;
     double secndPatchRadius, secndPatchEccentricity;
@@ -47,24 +52,27 @@ private:
     double patchDistance, squaredPatchDistance;
     int nPrints;
 
-    std::vector<std::array<double, 3>> ipcCentersInitialPositions;
-    std::vector<std::array<double, 3>> ipcCentersPreviousPositions;
-    std::vector<std::array<double, 3>> ipcInitialOrientations;
-    std::vector<std::array<double, 3>> ipcPreviousOrientations;
-    std::vector<std::array<double, 3>> ipcCentersInitialVelocities;
+    typedef std::vector<std::array<double, 3>> spaceVector;
+    spaceVector ipcCentersPreviousPositions;
+    spaceVector ipcCentersCurrentPositions;
+    spaceVector ipcInitialOrientations;
+    spaceVector ipcCurrentOrientations;
+    spaceVector ipcCentersInitialVelocities;
+    spaceVector ipcCentersCurrentVelocities;
 
-    std::vector<double> meanSquaredDisplacement;
-    std::vector<double> totalRotation;
     std::vector<double> orientationAutocorrelation;
     std::vector<double> velocityAutocorrelation;
 
     void initialize(std::string const& directoryName);
-    void readFirstSnapshot();
-    void processSingleSnapshot();
+    void updateInitialOrientationAndVelocites();
+    void updatePreviousPositions();
+    void computeMSD(size_t const snapshotNumber);
+    void computeAutocorrelations(size_t const snapshotNumber);
     inline void relativePBC(double & x) {  x -= std::round(x);  }
     void readOutputFile(std::string const& directoryName);
-    void runConsistencyChecks();
-    void printResults();
+    void readSnapshot(size_t const snapshotNumber);
+    void runConsistencyChecks(size_t const snapshotNumber);
+    void printAutocorrelations(size_t const numberOfSubSimulations);
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__
