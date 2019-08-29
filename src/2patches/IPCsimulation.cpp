@@ -102,8 +102,10 @@ double IPCsimulation::run() {
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 
     // output g(r);
-    const double g_r_integral = pairCorrelation.print("siml/g_r");
-    outputFile << "The integral of g000(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+    if (printTrajectoryAndCorrelations) {
+        const double g_r_integral = pairCorrelation.print("siml/g_r");
+        outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+    }
 
     return averageTemperature;
 }
@@ -113,8 +115,8 @@ void IPCsimulation::printPotentials() {
     int potentialPrintingStep;
 
     std::cout << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
-              << " and until " << interactionRange*simulationBoxSide << ".\n";
-    std::cout << "How often do you want to print, in integer multiples of "
+              << " and until " << interactionRange*simulationBoxSide << ".\n"
+              << "How often do you want to print, in integer multiples of "
               << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
     std::cin >> potentialPrintingStep;
 
@@ -265,7 +267,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     inputFile.close();
 
     // patch geometry integrity check
-    if ( abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
+    if ( std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
         std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
         std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
         std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
@@ -275,9 +277,9 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
     // if restoring, read state, so we get access to the real number of IPCs
     if(stage.inputRestoringPreviousSimulation) {
-        outputFile << "Resuming a previous simulation.\n";
+        outputFile << "Resuming a previous simulation. ";
         restorePreviousConfiguration();
-        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n\n";
+        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n";
         // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
         density = double(nIPCs)/std::pow(simulationBoxSide, 3);
     }
