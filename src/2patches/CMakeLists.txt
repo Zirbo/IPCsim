@@ -29,6 +29,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS}")
 
 add_executable(${PROJECT_NAME} ${COMMON_FILES} ${IPC})
 target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
+configure_file(input.in input.in)
+configure_file(stages.in stages.in)
 
 message(STATUS "COMMON FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "DEBUG FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}")
