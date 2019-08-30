@@ -8,7 +8,7 @@
 
 IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumberOfSubSimulations, std::string const& directoryName) {
     // input checks
-    if (inputNumberOfPatches < 1 || inputNumberOfPatches > 2) {
+    if (inputNumberOfPatches != 1 && inputNumberOfPatches != 2) {
         std::cerr << "At the moment only 1 and 2 patches are supported.\n";
         exit(1);
     }
@@ -48,16 +48,17 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumbe
     ipcCentersInitialVelocities.resize(nIPCs, {0.0, 0.0, 0.0});
     ipcCentersCurrentVelocities.resize(nIPCs, {0.0, 0.0, 0.0});
 
-    orientationAutocorrelation.resize(simulationDurationInIterations, 0.);
-    velocityAutocorrelation.resize(simulationDurationInIterations, 0.);
+    displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
+    orientationAutocorrelation.resize(subSimulationDuration, 0.);
+    velocityAutocorrelation.resize(subSimulationDuration, 0.);
 
     // initialize output files
     autocorrelationsFile.open("analysis/autocorrelationsFile.out");
-    autocorrelationsFile << std::scientific << std::setprecision(4);
+    autocorrelationsFile << std::scientific << std::setprecision(6);
     meanSquaredDisplFile.open("analysis/meanSquaredDisplacement.out");
-    meanSquaredDisplFile << std::scientific << std::setprecision(4);
+    meanSquaredDisplFile << std::scientific << std::setprecision(6);
     //typicalOrientationsFile.open("analysis/typicalOrientations.out");
-    //typicalOrientationsFile << std::scientific << std::setprecision(4);
+    //typicalOrientationsFile << std::scientific << std::setprecision(6);
 }
 
 void IPCpostprocess::run() {
@@ -65,12 +66,10 @@ void IPCpostprocess::run() {
         for (double subSymSnapshot = 0; subSymSnapshot < subSimulationDuration; ++subSymSnapshot) {
             const size_t absoluteSnapshot = subSymCounter*subSimulationDuration + subSymSnapshot;
             readSnapshot(absoluteSnapshot);
-            if (subSymCounter == 0) {
+            if (subSymSnapshot == 0)
                 updateInitialOrientationAndVelocites();
-                if (subSymCounter == 0) {
-                    updatePreviousPositions(); // for the initial computation of the MSD...
-                }
-            }
+            if (subSymCounter == 0 && subSymSnapshot == 0)
+                updatePreviousPositions(); // for the initial computation of the MSD...
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
             updatePreviousPositions();
@@ -78,7 +77,7 @@ void IPCpostprocess::run() {
         std::cout << "Subsym " << subSymCounter << " of " << numberOfSubSimulations << " finished\n";
     }
 
-    printAutocorrelations(numberOfSubSimulations);
+    printAutocorrelations();
 
     trajectoryFile.close();
     autocorrelationsFile.close();
@@ -191,19 +190,19 @@ void IPCpostprocess::readOutputFile(const std::string &directoryName) {
 }
 
 void IPCpostprocess::computeMSD(size_t const snapshotNumber) {
-    double MSD = 0.;
+    double meanSquaredDisplacementAtThisInstant = 0.;
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             double delta_xj = ipcCentersCurrentPositions[i][j] - ipcCentersPreviousPositions[i][j];
             relativePBC(delta_xj);
-            MSD += std::pow(delta_xj,2);
+            displacementOfEachIPCs[i][j] += delta_xj;
+            meanSquaredDisplacementAtThisInstant += std::pow(displacementOfEachIPCs[i][j],2);
         }
     }
-    meanSquaredDisplFile << snapshotNumber << "\t" << MSD << "\n";
+    meanSquaredDisplFile << snapshotNumber*printingInterval << "\t" << meanSquaredDisplacementAtThisInstant << "\n";
 }
 
 void IPCpostprocess::computeAutocorrelations(size_t const snapshotNumber) {
-
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             // compute autocorrelations
@@ -213,12 +212,12 @@ void IPCpostprocess::computeAutocorrelations(size_t const snapshotNumber) {
     }
 }
 
-void IPCpostprocess::printAutocorrelations(size_t const numberOfSubSimulations) {
-
-    double scalingFactor = 1./nIPCs/numberOfSubSimulations;
-    for (size_t i = 0; i <= simulationDurationInIterations; ++i) {
+void IPCpostprocess::printAutocorrelations() {
+    const double orientationScalingFactor = 1./nIPCs/numberOfSubSimulations;
+    const double velocityScalingFactor = 1./velocityAutocorrelation[0];
+    for (size_t i = 0; i < subSimulationDuration; ++i) {
         autocorrelationsFile << i*printingInterval << "\t"
-                             << orientationAutocorrelation[i]*scalingFactor << "\t"
-                             << velocityAutocorrelation[i]*scalingFactor << "\n";
+                             << orientationAutocorrelation[i]*orientationScalingFactor << "\t"
+                             << velocityAutocorrelation[i]*velocityScalingFactor << "\n";
     }
 }

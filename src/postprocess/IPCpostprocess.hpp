@@ -60,6 +60,7 @@ private:
     spaceVector ipcCentersInitialVelocities;
     spaceVector ipcCentersCurrentVelocities;
 
+    spaceVector displacementOfEachIPCs;
     std::vector<double> orientationAutocorrelation;
     std::vector<double> velocityAutocorrelation;
 
@@ -72,7 +73,7 @@ private:
     void readOutputFile(std::string const& directoryName);
     void readSnapshot(size_t const snapshotNumber);
     void runConsistencyChecks(size_t const snapshotNumber);
-    void printAutocorrelations(size_t const numberOfSubSimulations);
+    void printAutocorrelations();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__
