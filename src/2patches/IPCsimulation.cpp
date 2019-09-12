@@ -507,26 +507,24 @@ void IPCsimulation::computeVerletHalfStep() {
 }
 
 void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
-    double x1[3], x2[3];
-    double dxNew[3];
+    double dxNew[3], dxOld[3];
     for (int i: {0, 1, 2}) {
+        // compute and store the old separation, so that we no longer need the old positions.
+        dxOld[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
+        relativePBC(dxOld[i]);
+
         // compute the half step velocities from the effective forces of the last step
         ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
         ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
 
         // compute the new positions from the half step velocities
-        x1[i] = ipc.firstPatch.x[i] + ipc.firstPatch.v[i]*dt;
-        absolutePBC(x1[i]);
-        x2[i] = ipc.secndPatch.x[i] + ipc.secndPatch.v[i]*dt;
-        absolutePBC(x2[i]);
-        //ipc.firstPatch.x[i] += ipc.firstPatch.v[i]*dt;
-        //absolutePBC(ipc.firstPatch.x[i]);
-        //ipc.secndPatch.x[i] += ipc.secndPatch.v[i]*dt;
-        //absolutePBC(ipc.secndPatch.x[i]);
+        ipc.firstPatch.x[i] += ipc.firstPatch.v[i]*dt;
+        absolutePBC(ipc.firstPatch.x[i]);
+        ipc.secndPatch.x[i] += ipc.secndPatch.v[i]*dt;
+        absolutePBC(ipc.secndPatch.x[i]);
 
-        // compute the separation between the two patches
-        dxNew[i] = x1[i] - x2[i];
-        //dxNew[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i] ;
+        // compute the new separation between the two patches
+        dxNew[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i] ;
         relativePBC(dxNew[i]);
     }
     // compute the (squared) violation of the constraint
@@ -535,11 +533,6 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     // correct the positions and the velocities until the violation is less than the tollerance
     while( std::fabs(diff) > tollerance*squaredPatchDistance )
     {
-        double dxOld[3];
-        for (int i: {0, 1, 2}) {
-            dxOld[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
-            relativePBC(dxOld[i]);
-        }
         double g = diff/( 2.*(dxOld[0]*dxNew[0] + dxOld[1]*dxNew[1] + dxOld[2]*dxNew[2]) * alpha_sum*dt );
 
         for (int i: {0, 1, 2}) {
@@ -550,17 +543,12 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
 
             DXi *= dt;
 
-            x1[i] -= DXi*alpha_1;
-            absolutePBC(x1[i]);
-            x2[i] += DXi*alpha_2;
-            absolutePBC(x2[i]);
-            //ipc.firstPatch.x[i] -= DX[i]*alpha_1;
-            //absolutePBC(ipc.firstPatch.x[i]);
-            //ipc.secndPatch.x[i]  += DX[i]*alpha_2;
-            //absolutePBC(ipc.secndPatch.x[i] );
+            ipc.firstPatch.x[i] -= DXi*alpha_1;
+            absolutePBC(ipc.firstPatch.x[i]);
+            ipc.secndPatch.x[i]  += DXi*alpha_2;
+            absolutePBC(ipc.secndPatch.x[i] );
 
-            dxNew[i] = x1[i] - x2[i];
-            //dxNew[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
+            dxNew[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
             relativePBC(dxNew[i]);
         }
 
@@ -568,10 +556,7 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     }
 
     for (int i: {0, 1, 2}) {
-        ipc.firstPatch.x[i] = x1[i];
-        ipc.secndPatch.x[i] = x2[i];
-        ipc.ipcCenter.x[i] = x2[i] + dxNew[i]*secndPatchEccentricity/patchDistance;
-        //ipc.ipcCenter.x[i] = ipc.secndPatch.x[i] + dxNew[i]*secndPatchEccentricity/patchDistance;
+        ipc.ipcCenter.x[i] = ipc.secndPatch.x[i] + dxNew[i]*secndPatchEccentricity/patchDistance;
         absolutePBC(ipc.ipcCenter.x[i]);
     }
 }
