@@ -30,7 +30,7 @@ private:
     // output files
     std::ofstream autocorrelationsFile;
     std::ofstream meanSquaredDisplFile;
-//    std::ofstream typicalOrientationsFile;
+    std::ofstream typicalOrientationsFile;
     // input trajectory
     std::ifstream trajectoryFile;
     // state point
@@ -51,6 +51,8 @@ private:
     double interactionRange, squaredInteractionRange;
     double patchDistance, squaredPatchDistance;
     int nPrints;
+    int orientationHistogramSize;
+    size_t totalCollectedOrientations;
 
     typedef std::vector<std::array<double, 3>> spaceVector;
     spaceVector ipcCentersPreviousPositions;
@@ -63,17 +65,20 @@ private:
     spaceVector displacementOfEachIPCs;
     std::vector<double> orientationAutocorrelation;
     std::vector<double> velocityAutocorrelation;
+    std::vector<std::vector<double>> orientationHistogram;
 
     void initialize(std::string const& directoryName);
     void updateInitialOrientationAndVelocites();
     void updatePreviousPositions();
     void computeMSD(size_t const snapshotNumber);
     void computeAutocorrelations(size_t const snapshotNumber);
+    void accumulateTypicalOrientations();
     inline void relativePBC(double & x) {  x -= std::round(x);  }
     void readOutputFile(std::string const& directoryName);
     void readSnapshot(size_t const snapshotNumber);
     void runConsistencyChecks(size_t const snapshotNumber);
     void printAutocorrelations();
+    void printTypicalOrientations();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

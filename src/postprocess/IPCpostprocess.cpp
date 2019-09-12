@@ -51,33 +51,38 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumbe
     displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
     orientationAutocorrelation.resize(subSimulationDuration, 0.);
     velocityAutocorrelation.resize(subSimulationDuration, 0.);
+    orientationHistogramSize = 20;
+    totalCollectedOrientations = 0;
+    orientationHistogram.resize(orientationHistogramSize, std::vector<double>(orientationHistogramSize));
 
     // initialize output files
     autocorrelationsFile.open("analysis/autocorrelationsFile.out");
     autocorrelationsFile << std::scientific << std::setprecision(6);
     meanSquaredDisplFile.open("analysis/meanSquaredDisplacement.out");
     meanSquaredDisplFile << std::scientific << std::setprecision(6);
-    //typicalOrientationsFile.open("analysis/typicalOrientations.out");
-    //typicalOrientationsFile << std::scientific << std::setprecision(6);
+    typicalOrientationsFile.open("analysis/typicalOrientations.out");
+    typicalOrientationsFile << std::scientific << std::setprecision(6);
 }
 
 void IPCpostprocess::run() {
-    for (double subSymCounter = 0; subSymCounter < numberOfSubSimulations; ++subSymCounter) {
-        for (double subSymSnapshot = 0; subSymSnapshot < subSimulationDuration; ++subSymSnapshot) {
-            const size_t absoluteSnapshot = subSymCounter*subSimulationDuration + subSymSnapshot;
+    for (size_t subSym = 0; subSym < numberOfSubSimulations; ++subSym) {
+        for (size_t subSymSnapshot = 0; subSymSnapshot < subSimulationDuration; ++subSymSnapshot) {
+            const size_t absoluteSnapshot = subSym*subSimulationDuration + subSymSnapshot;
             readSnapshot(absoluteSnapshot);
             if (subSymSnapshot == 0)
                 updateInitialOrientationAndVelocites();
-            if (subSymCounter == 0 && subSymSnapshot == 0)
+            if (subSym == 0 && subSymSnapshot == 0)
                 updatePreviousPositions(); // for the initial computation of the MSD...
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
             updatePreviousPositions();
+            accumulateTypicalOrientations();
         }
-        std::cout << "Subsym " << subSymCounter << " of " << numberOfSubSimulations << " finished\n";
+        std::cout << "Subsym " << subSym+1 << " of " << numberOfSubSimulations << " finished\n";
     }
 
     printAutocorrelations();
+    printTypicalOrientations();
 
     trajectoryFile.close();
     autocorrelationsFile.close();
@@ -145,7 +150,7 @@ void IPCpostprocess::runConsistencyChecks(size_t const snapshotNumber) {
                   << (1+numberOfPatches)*nIPCs << " != " << nIPCsCheck << ".\n";
         exit(1);
     }
-    if (simulationBoxSide != simulationBoxSideCheck) {
+    if ( std::fabs(simulationBoxSide - simulationBoxSideCheck) > 1e-2) {
         std::cerr << "Inconsistency in the simulation box side.\n"
                   << simulationBoxSide << " != " << simulationBoxSideCheck << ".\n";
         exit(1);
@@ -219,5 +224,33 @@ void IPCpostprocess::printAutocorrelations() {
         autocorrelationsFile << i*printingInterval << "\t"
                              << orientationAutocorrelation[i]*orientationScalingFactor << "\t"
                              << velocityAutocorrelation[i]*velocityScalingFactor << "\n";
+    }
+}
+
+void IPCpostprocess::accumulateTypicalOrientations() {
+    const int halfSize = (int) orientationHistogramSize/2;
+    //for(int i = 0; i < nIPCs; ++i) {
+    for (auto ipcOrientation: ipcCurrentOrientations) {
+        ++totalCollectedOrientations;
+        const int xIndex = halfSize + std::floor(ipcOrientation[0]*halfSize);
+        const int yIndex = halfSize + std::floor(ipcOrientation[1]*halfSize);
+        orientationHistogram[xIndex][yIndex] += 1.;
+    }
+}
+
+void IPCpostprocess::printTypicalOrientations() {
+    if (simulationDurationInIterations*nIPCs != totalCollectedOrientations) {
+        std::cerr << "Consistency check failed.\n" << simulationDurationInIterations << "x" <<nIPCs << " != " << totalCollectedOrientations << "!\n";
+        exit(1);
+    }
+    const int halfSize = (int) orientationHistogramSize/2;
+    const double inverseHalfSize = 1./halfSize;
+    const double inverseTotalCollectedOrientations = 1./totalCollectedOrientations;
+    for (int x = 0; x < orientationHistogramSize; ++x) {
+        for (int y = 0; y < orientationHistogramSize; ++y) {
+            double xi = (x - halfSize)*inverseHalfSize;
+            double yi = (y - halfSize)*inverseHalfSize;
+            typicalOrientationsFile << xi << "\t" << yi << "\t" << inverseTotalCollectedOrientations*orientationHistogram[x][y] << "\n";
+        }
     }
 }
