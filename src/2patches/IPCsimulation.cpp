@@ -535,7 +535,7 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     // correct the positions and the velocities until the violation is less than the tollerance
     while( std::fabs(diff) > tollerance*squaredPatchDistance )
     {
-        double dxOld[3], DX[3];
+        double dxOld[3];
         for (int i: {0, 1, 2}) {
             dxOld[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
             relativePBC(dxOld[i]);
@@ -543,16 +543,16 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         double g = diff/( 2.*(dxOld[0]*dxNew[0] + dxOld[1]*dxNew[1] + dxOld[2]*dxNew[2]) * alpha_sum*dt );
 
         for (int i: {0, 1, 2}) {
-            DX[i] = g*dxOld[i];
+            double DXi = g*dxOld[i];
 
-            ipc.firstPatch.v[i] -= alpha_1*DX[i];
-            ipc.secndPatch.v[i] += alpha_2*DX[i];
+            ipc.firstPatch.v[i] -= alpha_1*DXi;
+            ipc.secndPatch.v[i] += alpha_2*DXi;
 
-            DX[i] *= dt;
+            DXi *= dt;
 
-            x1[i] -= DX[i]*alpha_1;
+            x1[i] -= DXi*alpha_1;
             absolutePBC(x1[i]);
-            x2[i] += DX[i]*alpha_2;
+            x2[i] += DXi*alpha_2;
             absolutePBC(x2[i]);
             //ipc.firstPatch.x[i] -= DX[i]*alpha_1;
             //absolutePBC(ipc.firstPatch.x[i]);
@@ -583,47 +583,36 @@ void IPCsimulation::finishVerletStep() {
 }
 
 void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
-    double v1[3], v2[3], dx[3], dv[3];
-    //double dx[3], dv[3];
+    double dx[3], dv[3];
     for (int i: {0, 1, 2}) {
         if (std::fabs(ipc.eFp1[i]) > 1e5) {
             return;
         }
         // compute the the final velocities from the new effective forces
-        v1[i] = ipc.firstPatch.v[i] + ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
-        v2[i] = ipc.secndPatch.v[i] + ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
-        //ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
-        //ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
+        ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
+        ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
 
         // compute the patch-patch distance
         dx[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
         relativePBC(dx[i]);
-        dv[i] = v1[i] - v2[i];
-        //dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
+        dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
     }
     // check how much the constraints are being violated
     double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
     while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
-        double DX[3];
         for (int i: {0, 1, 2}) {
-            DX[i] = k*dx[i];
-            v1[i] -= DX[i]*alpha_1;
-            v2[i] += DX[i]*alpha_2;
-            dv[i] = v1[i] - v2[i];
-            //ipc.firstPatch.v[i] -= DX[i]*alpha_1;
-            //ipc.secndPatch.v[i] += DX[i]*alpha_2;
-            //dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
+            const double DVi = k*dx[i];
+            ipc.firstPatch.v[i] -= DVi*alpha_1;
+            ipc.secndPatch.v[i] += DVi*alpha_2;
+            dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
         }
         // recompute the violation of the constraints
         k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
     }
 
     for (int i: {0, 1, 2}) {
-        ipc.firstPatch.v[i] = v1[i];
-        ipc.secndPatch.v[i] = v2[i];
-        ipc.ipcCenter.v[i] = (v1[i]*secndPatchEccentricity + v2[i]*firstPatchEccentricity)/patchDistance;
-        //ipc.ipcCenter.v[i] = (ipc.firstPatch.v[i]*secndPatchEccentricity + ipc.secndPatch.v[i]*firstPatchEccentricity)/patchDistance;
+        ipc.ipcCenter.v[i] = (ipc.firstPatch.v[i]*secndPatchEccentricity + ipc.secndPatch.v[i]*firstPatchEccentricity)/patchDistance;
     }
 }
 
