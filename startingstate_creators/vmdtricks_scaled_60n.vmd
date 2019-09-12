@@ -1,0 +1,15 @@
+mol modstyle 0 top "VDW" 0.06666666666666667 15
+set sel [atomselect top "name S"]
+$sel set radius 0.5
+set sel [atomselect top "name W"]
+$sel set radius 0.5
+set sel [atomselect top "name F"]
+$sel set radius 0.5
+set sel [atomselect top "name P"]
+$sel set radius 0.44
+set sel [atomselect top "name Q"]
+$sel set radius 0.44
+
+
+pbc set {1.0, 1.0, 1.0} -all
+pbc box
