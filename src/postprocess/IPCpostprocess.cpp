@@ -6,7 +6,7 @@
 #include <cmath>
 
 
-IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumberOfSubSimulations, std::string const& directoryName) {
+IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNumberOfSubSimulations, std::string const& directoryName) {
     // input checks
     if (inputNumberOfPatches != 1 && inputNumberOfPatches != 2) {
         std::cerr << "At the moment only 1 and 2 patches are supported.\n";
@@ -33,7 +33,7 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumbe
     // open simulation output file and trajectory
     const std::string trajectoryFileName = directoryName + "/trajectory.xyz";
     trajectoryFile.open(trajectoryFileName.c_str());
-    if(trajectoryFile.fail()) {
+    if( !trajectoryFile.is_open() || !trajectoryFile.good()  ) {
         std::cerr << "File " << trajectoryFileName << " could not be opened. Aborting.\n";
         exit(1);
     }
@@ -49,49 +49,40 @@ IPCpostprocess::IPCpostprocess(int inputNumberOfPatches, size_t const inputNumbe
     ipcCentersCurrentVelocities.resize(nIPCs, {0.0, 0.0, 0.0});
 
     displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
+    meanSquaredDisplacement.resize(simulationDurationInIterations, 0.);
     orientationAutocorrelation.resize(subSimulationDuration, 0.);
     velocityAutocorrelation.resize(subSimulationDuration, 0.);
     orientationHistogramSize = 20;
     totalCollectedOrientations = 0;
     orientationHistogram.resize(orientationHistogramSize, std::vector<double>(orientationHistogramSize));
-
-    // initialize output files
-    autocorrelationsFile.open("analysis/autocorrelationsFile.out");
-    autocorrelationsFile << std::scientific << std::setprecision(6);
-    meanSquaredDisplFile.open("analysis/meanSquaredDisplacement.out");
-    meanSquaredDisplFile << std::scientific << std::setprecision(6);
-    typicalOrientationsFile.open("analysis/typicalOrientations.out");
-    typicalOrientationsFile << std::scientific << std::setprecision(6);
 }
 
 void IPCpostprocess::run() {
-    for (size_t subSym = 0; subSym < numberOfSubSimulations; ++subSym) {
-        for (size_t subSymSnapshot = 0; subSymSnapshot < subSimulationDuration; ++subSymSnapshot) {
-            const size_t absoluteSnapshot = subSym*subSimulationDuration + subSymSnapshot;
+    for (int subSym = 0; subSym < numberOfSubSimulations; ++subSym) {
+        for (int subSymSnapshot = 0; subSymSnapshot < subSimulationDuration; ++subSymSnapshot) {
+            const int absoluteSnapshot = subSym*subSimulationDuration + subSymSnapshot;
             readSnapshot(absoluteSnapshot);
             if (subSymSnapshot == 0)
                 updateInitialOrientationAndVelocites();
-            if (subSym == 0 && subSymSnapshot == 0)
+            if (absoluteSnapshot == 0)
                 updatePreviousPositions(); // for the initial computation of the MSD...
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
-            updatePreviousPositions();
             accumulateTypicalOrientations();
+            updatePreviousPositions();
         }
         std::cout << "Subsym " << subSym+1 << " of " << numberOfSubSimulations << " finished\n";
     }
 
     printAutocorrelations();
+    printMSD();
     printTypicalOrientations();
 
     trajectoryFile.close();
-    autocorrelationsFile.close();
-    meanSquaredDisplFile.close();
-    //typicalOrientationsFile.close();
 }
 
 
-void IPCpostprocess::readSnapshot(const size_t snapshotNumber) {
+void IPCpostprocess::readSnapshot(const int snapshotNumber) {
     runConsistencyChecks(snapshotNumber);
 
     for(int i = 0; i < nIPCs; ++i) {
@@ -121,7 +112,7 @@ void IPCpostprocess::readSnapshot(const size_t snapshotNumber) {
 }
 
 void IPCpostprocess::updateInitialOrientationAndVelocites() {
-    // set initial state and previous state as the current
+    // set the current as the initial state
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             ipcInitialOrientations[i][j] = ipcCurrentOrientations[i][j];
@@ -131,7 +122,7 @@ void IPCpostprocess::updateInitialOrientationAndVelocites() {
 }
 
 void IPCpostprocess::updatePreviousPositions() {
-    // set initial state and previous state as the current
+    // set the current as the previous iteration state
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             ipcCentersPreviousPositions[i][j] = ipcCentersCurrentPositions[i][j];
@@ -140,7 +131,7 @@ void IPCpostprocess::updatePreviousPositions() {
 
 }
 
-void IPCpostprocess::runConsistencyChecks(size_t const snapshotNumber) {
+void IPCpostprocess::runConsistencyChecks(const int snapshotNumber) {
     int nIPCsCheck;
     double simulationBoxSideCheck;
     double time;
@@ -162,7 +153,7 @@ void IPCpostprocess::runConsistencyChecks(size_t const snapshotNumber) {
     }
 }
 
-void IPCpostprocess::readOutputFile(const std::string &directoryName) {
+void IPCpostprocess::readOutputFile(std::string const& directoryName) {
     // open file
     const std::string outputFileName = directoryName + "/output.out";
     std::ifstream simulationOutputFile(outputFileName.c_str());
@@ -187,27 +178,35 @@ void IPCpostprocess::readOutputFile(const std::string &directoryName) {
 
     // process data
     simulationBoxSide = std::cbrt(nIPCs/density);
-    simulationDurationInIterations = (size_t)simulationTotalDuration/printingInterval;
-    subSimulationDuration = (size_t)simulationDurationInIterations/numberOfSubSimulations;
+    simulationDurationInIterations = (int)simulationTotalDuration/printingInterval;
+    subSimulationDuration = (int)simulationDurationInIterations/numberOfSubSimulations;
 
     // scale lenghts
     firstPatchEccentricity /= simulationBoxSide;
 }
 
-void IPCpostprocess::computeMSD(size_t const snapshotNumber) {
-    double meanSquaredDisplacementAtThisInstant = 0.;
+void IPCpostprocess::computeMSD(const int snapshotNumber) {
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             double delta_xj = ipcCentersCurrentPositions[i][j] - ipcCentersPreviousPositions[i][j];
             relativePBC(delta_xj);
             displacementOfEachIPCs[i][j] += delta_xj;
-            meanSquaredDisplacementAtThisInstant += std::pow(displacementOfEachIPCs[i][j],2);
+            meanSquaredDisplacement[snapshotNumber] += std::pow(displacementOfEachIPCs[i][j],2);
         }
     }
-    meanSquaredDisplFile << snapshotNumber*printingInterval << "\t" << meanSquaredDisplacementAtThisInstant << "\n";
+    meanSquaredDisplacement[snapshotNumber] /= nIPCs;
 }
 
-void IPCpostprocess::computeAutocorrelations(size_t const snapshotNumber) {
+void IPCpostprocess::printMSD() {
+    std::ofstream meanSquaredDisplFile("analysis/meanSquaredDisplacement.out");
+    meanSquaredDisplFile << std::scientific << std::setprecision(6);
+    for(int snapshotNumber = 0; snapshotNumber < simulationDurationInIterations; ++snapshotNumber) {
+        meanSquaredDisplFile << snapshotNumber*printingInterval << "\t" << meanSquaredDisplacement[snapshotNumber] << "\n";
+    }
+    meanSquaredDisplFile.close();
+}
+
+void IPCpostprocess::computeAutocorrelations(const int snapshotNumber) {
     for(int i = 0; i < nIPCs; ++i) {
         for (int j: {0, 1, 2}) {
             // compute autocorrelations
@@ -218,39 +217,50 @@ void IPCpostprocess::computeAutocorrelations(size_t const snapshotNumber) {
 }
 
 void IPCpostprocess::printAutocorrelations() {
+    std::ofstream autocorrelationsFile("analysis/autocorrelations.out");
+    autocorrelationsFile << std::scientific << std::setprecision(6);
+
     const double orientationScalingFactor = 1./nIPCs/numberOfSubSimulations;
     const double velocityScalingFactor = 1./velocityAutocorrelation[0];
-    for (size_t i = 0; i < subSimulationDuration; ++i) {
+    for (int i = 0; i < subSimulationDuration; ++i) {
         autocorrelationsFile << i*printingInterval << "\t"
                              << orientationAutocorrelation[i]*orientationScalingFactor << "\t"
                              << velocityAutocorrelation[i]*velocityScalingFactor << "\n";
     }
+    autocorrelationsFile.close();
 }
 
 void IPCpostprocess::accumulateTypicalOrientations() {
-    const int halfSize = (int) orientationHistogramSize/2;
-    //for(int i = 0; i < nIPCs; ++i) {
     for (auto ipcOrientation: ipcCurrentOrientations) {
         ++totalCollectedOrientations;
-        const int xIndex = halfSize + std::floor(ipcOrientation[0]*halfSize);
-        const int yIndex = halfSize + std::floor(ipcOrientation[1]*halfSize);
-        orientationHistogram[xIndex][yIndex] += 1.;
+        const int halfSize = (int) orientationHistogramSize/2;
+        const double azimuthAngle = std::acos(ipcOrientation[2]);
+        const double polarAngle = std::atan2(ipcOrientation[1], ipcOrientation[0]);
+        const double azimuthConversionFactor = double(orientationHistogramSize)/M_PI;
+        const double polarConversionFactor = double(orientationHistogramSize)/(2.*M_PI);
+        const int azimuthAngleBin = halfSize + (int) std::floor(azimuthAngle*azimuthConversionFactor);
+        const int polarAngleBin = halfSize + (int) std::floor(polarAngle*polarConversionFactor);
+        orientationHistogram[polarAngleBin][azimuthAngleBin] += 1.;
     }
 }
 
 void IPCpostprocess::printTypicalOrientations() {
+    std::ofstream typicalOrientationsFile("analysis/typicalOrientations.out");
+    typicalOrientationsFile << std::scientific << std::setprecision(6);
+
     if (simulationDurationInIterations*nIPCs != totalCollectedOrientations) {
         std::cerr << "Consistency check failed.\n" << simulationDurationInIterations << "x" <<nIPCs << " != " << totalCollectedOrientations << "!\n";
         exit(1);
     }
-    const int halfSize = (int) orientationHistogramSize/2;
-    const double inverseHalfSize = 1./halfSize;
+    const double azimuthConversionFactor = M_PI/orientationHistogramSize;
+    const double polarConversionFactor = 2.*M_PI/orientationHistogramSize;
     const double inverseTotalCollectedOrientations = 1./totalCollectedOrientations;
-    for (int x = 0; x < orientationHistogramSize; ++x) {
-        for (int y = 0; y < orientationHistogramSize; ++y) {
-            double xi = (x - halfSize)*inverseHalfSize;
-            double yi = (y - halfSize)*inverseHalfSize;
-            typicalOrientationsFile << xi << "\t" << yi << "\t" << inverseTotalCollectedOrientations*orientationHistogram[x][y] << "\n";
+    for (int azimuthBin = 0; azimuthBin < orientationHistogramSize; ++azimuthBin) {
+        for (int polarBin = 0; polarBin < orientationHistogramSize; ++polarBin) {
+            const double azimuthAngle = azimuthBin*azimuthConversionFactor;
+            const double polarAngle = polarBin*polarConversionFactor;
+            typicalOrientationsFile << azimuthAngle << "\t" << polarAngle << "\t" << inverseTotalCollectedOrientations*orientationHistogram[azimuthBin][polarBin] << "\n";
         }
     }
+    typicalOrientationsFile.close();
 }
