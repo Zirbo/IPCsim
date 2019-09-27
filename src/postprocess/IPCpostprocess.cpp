@@ -32,8 +32,8 @@ IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNu
 
     // open simulation output file and trajectory
     const std::string trajectoryFileName = directoryName + "/trajectory.xyz";
-    trajectoryFile.open(trajectoryFileName.c_str());
-    if( !trajectoryFile.is_open() || !trajectoryFile.good()  ) {
+    trajectoryFile.open(trajectoryFileName);
+    if(trajectoryFile.fail()) {
         std::cerr << "File " << trajectoryFileName << " could not be opened. Aborting.\n";
         exit(1);
     }
@@ -68,7 +68,7 @@ void IPCpostprocess::run() {
                 updatePreviousPositions(); // for the initial computation of the MSD...
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
-            accumulateTypicalOrientations();
+       //     accumulateTypicalOrientations();
             updatePreviousPositions();
         }
         std::cout << "Subsym " << subSym+1 << " of " << numberOfSubSimulations << " finished\n";
@@ -76,7 +76,7 @@ void IPCpostprocess::run() {
 
     printAutocorrelations();
     printMSD();
-    printTypicalOrientations();
+    //printTypicalOrientations();
 
     trajectoryFile.close();
 }
