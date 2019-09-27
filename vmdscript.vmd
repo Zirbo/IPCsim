@@ -1,8 +1,14 @@
-mol modstyle 0 top "VDW" .09654 15
+mol modstyle 0 top "VDW" 0.0666667 15
 
 set sel0 [atomselect top "name C"]
 $sel0 set radius 0.5
 $sel0 set color colorID 8
+set sel4 [atomselect top "name W"]
+$sel4 set radius 0.5
+$sel4 set color colorID 8
+set sel5 [atomselect top "name F"]
+$sel5 set radius 0.5
+$sel5 set color colorID 8
 
 set sel1 [atomselect top "name P"]
 $sel1 set radius 0.38

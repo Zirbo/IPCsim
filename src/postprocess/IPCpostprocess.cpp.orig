@@ -54,8 +54,7 @@ IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNu
     velocityAutocorrelation.resize(subSimulationDuration, 0.);
     orientationHistogramSize = 40;
     totalCollectedOrientations = 0;
-    orientationHistogram3D.resize(orientationHistogramSize, std::vector<unsigned long>(orientationHistogramSize));
-    orientationHistogram2D.resize(orientationHistogramSize, std::vector<unsigned long>(orientationHistogramSize));
+    orientationHistogram.resize(orientationHistogramSize, std::vector<double>(orientationHistogramSize));
 }
 
 void IPCpostprocess::run() {
@@ -69,15 +68,19 @@ void IPCpostprocess::run() {
                 updatePreviousPositions(); // for the initial computation of the MSD...
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
-            accumulateTypicalOrientations();
+       //     accumulateTypicalOrientations();
             updatePreviousPositions();
         }
         std::cout << "Subsym " << subSym+1 << " of " << numberOfSubSimulations << " finished\n";
     }
 
+    printTypicalOrientations();
     printAutocorrelations();
     printMSD();
-    printTypicalOrientations();
+<<<<<<< Updated upstream
+    //printTypicalOrientations();
+=======
+>>>>>>> Stashed changes
 
     trajectoryFile.close();
 }
@@ -157,7 +160,7 @@ void IPCpostprocess::runConsistencyChecks(const int snapshotNumber) {
 void IPCpostprocess::readOutputFile(std::string const& directoryName) {
     // open file
     const std::string outputFileName = directoryName + "/output.out";
-    std::ifstream simulationOutputFile(outputFileName);
+    std::ifstream simulationOutputFile(outputFileName.c_str());
     if(simulationOutputFile.fail()) {
         std::cerr << "File " << outputFileName << " could not be opened. Aborting.\n";
         exit(1);
@@ -232,33 +235,22 @@ void IPCpostprocess::printAutocorrelations() {
 }
 
 void IPCpostprocess::accumulateTypicalOrientations() {
-    const double azimuthConversionFactor = double(orientationHistogramSize)/M_PI;
-    const double polarConversionFactor = double(orientationHistogramSize)/(2.*M_PI);
-    const int halfHistogramSize = int(orientationHistogramSize/2);
-
-    for (auto const& ipcOrientation: ipcCurrentOrientations) {
+    for (auto ipcOrientation: ipcCurrentOrientations) {
         ++totalCollectedOrientations;
-
-        const int xBin = halfHistogramSize + (int)halfHistogramSize*ipcOrientation[0];
-        const int yBin = halfHistogramSize + (int)halfHistogramSize*ipcOrientation[1];
-        ++orientationHistogram2D[xBin][yBin];
-
-        double azimuthAngle = std::acos(ipcOrientation[2]);
-        double polarAngle = std::atan2(ipcOrientation[1], ipcOrientation[0]);
-        if (polarAngle < 0.)
-            polarAngle += M_PI;
-        const int azimuthAngleBin = (int) std::floor(azimuthAngle*azimuthConversionFactor);
-        const int polarAngleBin = (int) std::floor(polarAngle*polarConversionFactor);
-        ++orientationHistogram3D[polarAngleBin][azimuthAngleBin];
+        const int halfSize = (int) orientationHistogramSize/2;
+        const double azimuthAngle = std::acos(ipcOrientation[2]);
+        const double polarAngle = std::atan2(ipcOrientation[1], ipcOrientation[0]);
+        const double azimuthConversionFactor = double(orientationHistogramSize)/M_PI;
+        const double polarConversionFactor = double(orientationHistogramSize)/(2.*M_PI);
+        const int azimuthAngleBin = halfSize + (int) std::floor(azimuthAngle*azimuthConversionFactor);
+        const int polarAngleBin = halfSize + (int) std::floor(polarAngle*polarConversionFactor);
+        orientationHistogram[polarAngleBin][azimuthAngleBin] += 1.;
     }
 }
 
 void IPCpostprocess::printTypicalOrientations() {
-    std::ofstream typicalOrientationsFile3D("analysis/typicalOrientations3D.out");
-    typicalOrientationsFile3D << std::scientific << std::setprecision(6);
-
-    std::ofstream typicalOrientationsFile2D("analysis/typicalOrientations2D.out");
-    typicalOrientationsFile2D << std::scientific << std::setprecision(6);
+    std::ofstream typicalOrientationsFile("analysis/typicalOrientations.out");
+    typicalOrientationsFile << std::scientific << std::setprecision(6);
 
     if (simulationDurationInIterations*nIPCs != totalCollectedOrientations) {
         std::cerr << "Consistency check failed.\n" << simulationDurationInIterations << "x" <<nIPCs << " != " << totalCollectedOrientations << "!\n";
@@ -266,7 +258,6 @@ void IPCpostprocess::printTypicalOrientations() {
     }
     const double azimuthConversionFactor = M_PI/orientationHistogramSize;
     const double polarConversionFactor = 2.*M_PI/orientationHistogramSize;
-    const double inverseHalfHistogramSize = 0.5/orientationHistogramSize;
     const double inverseTotalCollectedOrientations = 1./totalCollectedOrientations;
     for (int azimuthBin = 0; azimuthBin <= orientationHistogramSize; ++azimuthBin) {
         for (int polarBin = 0; polarBin <= orientationHistogramSize; ++polarBin) {
@@ -275,16 +266,9 @@ void IPCpostprocess::printTypicalOrientations() {
             // correction for the full angles that are needed by gnuplot!
             int printingAzimuthBin = (azimuthBin == orientationHistogramSize)? 0 : azimuthBin;
             int printingPolarBin = (polarBin == orientationHistogramSize)? 0 : polarBin;
-            typicalOrientationsFile3D << azimuthAngle << "\t" << polarAngle << "\t" << inverseTotalCollectedOrientations*orientationHistogram3D[printingAzimuthBin][printingPolarBin] << "\n";
-
-            if (azimuthBin == orientationHistogramSize || polarBin == orientationHistogramSize)
-                continue;
-            const double x = azimuthBin*inverseHalfHistogramSize;
-            const double y = polarBin*inverseHalfHistogramSize;
-            typicalOrientationsFile2D << x << "\t" << y << "\t" << inverseTotalCollectedOrientations*orientationHistogram2D[azimuthBin][polarBin] << "\n";
+            typicalOrientationsFile << azimuthAngle << "\t" << polarAngle << "\t" << inverseTotalCollectedOrientations*orientationHistogram[printingAzimuthBin][printingPolarBin] << "\n";
         }
-        typicalOrientationsFile3D << std::endl;
+        typicalOrientationsFile << std::endl;
     }
-    typicalOrientationsFile3D.close();
-    typicalOrientationsFile2D.close();
+    typicalOrientationsFile.close();
 }

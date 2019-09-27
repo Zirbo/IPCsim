@@ -62,7 +62,8 @@ private:
     std::vector<double> orientationAutocorrelation;
     std::vector<double> velocityAutocorrelation;
     std::vector<double> meanSquaredDisplacement;
-    std::vector<std::vector<double>> orientationHistogram;
+    std::vector<std::vector<unsigned long>> orientationHistogram3D;
+    std::vector<std::vector<unsigned long>> orientationHistogram2D;
 
     void initialize(std::string const& directoryName);
     void updateInitialOrientationAndVelocites();
