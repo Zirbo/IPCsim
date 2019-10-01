@@ -348,12 +348,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     if(isJanusSimulation) {
         cells.compileLists(janusParticles);
         // first computation of forces
-        computeFreeForces();
+        computeFreeJanusForces();
     }
     else {
         cells.compileLists(particles);
         // first computation of forces
-        computeFreeJanusForces();
+        computeFreeForces();
     }
 
     // check that total momentum is zero

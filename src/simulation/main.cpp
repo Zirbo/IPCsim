@@ -21,9 +21,9 @@ int main ( int argc, char *argv[] ) {
 
     // parse IPC type
     bool janusSimulation;
-    if(std::string(argv[2]) == "Janus") {
+    if(std::string(argv[1]) == "Janus") {
         janusSimulation = true;
-    } else if(std::string(argv[2]) == "IPC") {
+    } else if(std::string(argv[1]) == "IPC") {
         janusSimulation = false;
     } else {
         std::cerr << helpMessage.str();
