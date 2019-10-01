@@ -42,150 +42,6 @@ void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep) {
 
 
 /*****************************************************************************************/
-/*void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage)
-{
-    simulationTime = 0;
-
-    int N1;
-    // read input.in file
-    std::ifstream inputFile("input.in");
-    if(inputFile.fail()) {
-        std::cerr << "File input.in could not be opened. Aborting.";
-        exit(1);
-    }
-    inputFile >> N1 >> density >> desiredTemperature;
-    nIPCs = 4*N1*N1*N1;
-    inputFile >> simulationTimeStep >> printingInterval >> simulationTotalDuration;
-    if (stagingEnabled) {
-        desiredTemperature = stage.first;
-        simulationTotalDuration = stage.second;
-    }
-    inputFile >> e_BB >> e_Bs >> e_ss;
-    inputFile >> e_min;
-    inputFile >> patchCenterDistance >> patchRadius;
-    inputFile >> patchMass >> centerMass;
-    inputFile >> fakeHScoefficient >> fakeHSexponent;
-    inputFile >> forceAndEnergySamplingStep >> tollerance;
-    inputFile >> isFieldEnabled;
-    if(isFieldEnabled) {
-        inputFile >> ratioChargePatchOverIpcCenter;
-        inputFile >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
-        // compute external fields
-        for (int i: {0, 1, 2}) {
-            externalFieldPatch[i] = ratioChargePatchOverIpcCenter*externalFieldIpcCenter[i];
-        }
-    }
-    inputFile.close();
-
-    // patch geometry integrity check
-    if ( patchCenterDistance >= .5 ) {
-        std::cerr << "The patch-center distance is " << patchCenterDistance
-                  << ", bigger than the radius of the hard core!" << std::endl;
-        exit(1);
-    }
-
-    // if restoring, read state, so we get access to the real number of IPCs
-    if(restoreprevious) {
-        outputFile << "Resuming a previous simulation.\n";
-        restorePreviousConfiguration();
-        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n\n";
-        // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
-        density = double(nIPCs)/std::pow(simulationBoxSide, 3);
-    }
-    else {
-        // we read nIPCs and density from the input file, so we need to compute the simulationBoxSide from them
-        simulationBoxSide = std::cbrt(nIPCs/density);
-    }
-
-    // process data
-    simulationBoxSide = std::cbrt(nIPCs/density);
-    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
-    ipcRadius = patchCenterDistance + patchRadius;
-    interactionRange = 2*ipcRadius;
-
-    // output the data for future checks
-    outputFile << nIPCs << "\t" << density << "\t" << desiredTemperature << "\n";
-    outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
-    outputFile << e_BB << "\t" << e_Bs << "\t" << e_ss << "\n";
-    outputFile << e_min << "\n";
-    outputFile << patchCenterDistance << "\t" << patchRadius << "\n";
-    outputFile << patchMass << "\t" << centerMass << "\n";
-    outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
-    outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
-    outputFile << isFieldEnabled << "\n";
-    if(isFieldEnabled) {
-        outputFile << ratioChargePatchOverIpcCenter << "\t" << ratioChargePatchOverIpcCenter << "\n";
-        outputFile << externalFieldIpcCenter[0] << "\t" << externalFieldIpcCenter[1] << "\t" << externalFieldIpcCenter[2] << "\n";
-    }
-
-    outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
-    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
-    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
-    outputFile << "Total number of sites being simulated: " << 2*nIPCs << std::endl;
-
-    // potential sampling
-    outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
-    make_table(true);
-
-    // scale the lenghts to be in a [0.0:1.0] simulation box
-    ipcRadius /= simulationBoxSide;
-    interactionRange /= simulationBoxSide;
-    patchRadius /= simulationBoxSide;
-    patchCenterDistance /= simulationBoxSide;
-    dt = simulationTimeStep/simulationBoxSide;
-
-    // finish processing data
-    forceAndEnergySamplingStep /= simulationBoxSide;
-    squaredInteractionRange = std::pow(interactionRange,2);
-    patchInverseMass = 1./patchMass;
-    centerInverseMass = 1./centerMass;
-
-    // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
-    if(!restoreprevious) {
-        outputFile << "Starting a new simulation.\n";
-        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
-        initializeNewConfiguration(N1);
-    }
-
-    // cell list compilation
-    cells.initialize(1., interactionRange, nIPCs);
-    outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
-    cells.compileLists(particles);
-
-    // first computation of forces
-    computeFreeForces();
-
-    // check that total momentum is zero
-    double pcm [3];
-    computeSystemMomentum(pcm);
-    outputFile << "P whole system = ( "
-               << pcm[0]*simulationBoxSide << ", "
-               << pcm[1]*simulationBoxSide << ", "
-               << pcm[2]*simulationBoxSide << " )." << std::endl;
-
-    // if not restoring, correct the total momentum to be zero
-    double pcmCorrected [3];
-    correctTotalMomentumToZero(pcm, pcmCorrected);
-    outputFile << "P whole system corrected = ( "
-               << pcmCorrected[0]*simulationBoxSide << ", "
-               << pcmCorrected[1]*simulationBoxSide << ", "
-               << pcmCorrected[2]*simulationBoxSide << " )." << std::endl;
-
-    // first computation of the kinetic energy
-    computeSystemEnergy();
-
-    if(restoreprevious && desiredTemperature > 0) {
-        // scale velocities to obtain the desired temperature
-        double scalingFactor = std::sqrt(desiredTemperature/temperature);
-        scaleVelocities(scalingFactor);
-
-        // update energies to include the correction
-        computeSystemEnergy();
-    }
-}*/
-
-
 void IPCsimulation::computeVerletHalfStepForJanusIPC(JanusIPC & ipc) {
     double xc[3], xp[3];
     double dxNew[3];
@@ -434,9 +290,7 @@ void IPCsimulation::computeFreeJanusForces() {
             potentialEnergy += loopVars.U;
             squaredMinimumDistanceBetweenParticles += loopVars.minimumSquaredDistance;
         }
-//        #pragma omp for
-//        for(int n=0; n < nIPCs; ++n) {
-//            IPC& ipc = particles[n];
+
         for(JanusIPC &ipc: janusParticles) {
             for (int i: {0, 1, 2}) {
                 if(isFieldEnabled) {
@@ -525,9 +379,9 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
                 loopVars.janusPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 1) { // patch - center
-            loopVars.U += uBB[dist];
+            loopVars.U += uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBB[dist]*siteSiteSeparation[1][i];
+                const double modulus = fBs1[dist]*siteSiteSeparation[1][i];
                 loopVars.janusPatchF[firstIPC][i] -= modulus;
                 loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
