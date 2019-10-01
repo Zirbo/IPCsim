@@ -2,121 +2,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iomanip>
-#include "JanusIPCsimulation.hpp"
-
-
-//************************************************************************//
-JanusIPCsimulation::JanusIPCsimulation(bool restorePreviousSimulation, bool stagingEnabled, std::pair<double,int> stage) {
-  // clean up old data and recreate output directory
-    if(system("rm -rf siml") != 0) {
-        std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
-                  << "Most likely you have it open somewhere or some program is running in it.\n";
-        exit(1);
-    }
-    if(system("mkdir siml") != 0) {
-        std::cerr << "Unable to create a new 'siml/' directory. You'll never see this error message.\n";
-        exit(1);
-    }
-
-    // open output files
-    outputFile.open("siml/output.out");
-    trajectoryFile.open("siml/trajectory.xyz");
-    energyTrajectoryFile.open("siml/evolution.out");
-
-    // initialize system
-    initializeSystem(restorePreviousSimulation, stagingEnabled, stage);
-
-    // print starting configuration and initialize output file
-    outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
-
-    trajectoryFile << std::scientific << std::setprecision(24);
-    energyTrajectoryFile <<std::scientific << std::setprecision(10);
-    energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
-
-    outputSystemState(trajectoryFile, energyTrajectoryFile);
-}
-
-//************************************************************************//
-double JanusIPCsimulation::run() {
-    time_t simulationStartTime, simulationEndTime;
-
-    const size_t simulationDurationInIterations = (size_t)simulationTotalDuration/simulationTimeStep;
-    const double printingIntervalDouble = printingInterval/simulationTimeStep;
-    const size_t printingIntervalInIterations = (size_t)printingIntervalDouble;
-
-    double averageTemperature = 0.;
-    double averageSquaredTemperature = 0.;
-    double averagePotentialEnergy = 0.;
-    int prints = 0;
-
-    // simulation begins
-    time(&simulationStartTime);
-    while(simulationTime < simulationDurationInIterations) {
-        computeTrajectoryStep();
-        ++simulationTime;
-
-        if( simulationTime%printingIntervalInIterations == 0) {
-            computeSystemEnergy();
-            outputSystemState(trajectoryFile, energyTrajectoryFile);
-            averageTemperature += temperature;
-            averageSquaredTemperature += temperature*temperature;
-            averagePotentialEnergy += potentialEnergy;
-            ++prints;
-        }
-    }
-    averageTemperature /= prints;
-    averagePotentialEnergy /= prints;
-    averageSquaredTemperature /= prints;
-    double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
-    // simulation ends
-    time(&simulationEndTime);
-    outputFile << "The simulation lasted " << difftime (simulationEndTime, simulationStartTime) << " seconds.\n";
-
-    // output final state
-    std::ofstream finalStateFile("startingstate.xyz");
-    finalStateFile << std::scientific << std::setprecision(24);
-    outputSystemTrajectory(finalStateFile);
-    finalStateFile.close();
-
-    // check that total momentum is still zero and print final stuff
-    double pcm [3];
-    computeSystemMomentum(pcm);
-    outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
-    outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
-    outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
-    outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
-
-    return averageTemperature;
-}
-
-
-
-//************************************************************************//
-void JanusIPCsimulation::computeSystemMomentum(double (&pcm)[3]) {
-    for (int i: {0, 1, 2})
-        pcm[i] = 0.;
-
-    for(JanusIPC ipc: particles) {
-        for (int i: {0, 1, 2}) {
-            pcm[i] += centerMass*ipc.ipcCenter.v[i] + patchMass*ipc.janusPatch.v[i];
-        }
-    }
-}
-void JanusIPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCorrected)[3]) {
-    for (int i: {0, 1, 2}) {
-        pcmCorrected[i] = 0.;
-        pcm[i] /= 2*nIPCs;
-    }
-
-    for(JanusIPC ipc: particles) {
-        for (int i: {0, 1, 2}) {
-            ipc.ipcCenter.v[i]  -= pcm[i];
-            ipc.janusPatch.v[i] -= pcm[i];
-
-            pcmCorrected[i] += centerMass*ipc.ipcCenter.v[i] + patchMass*ipc.janusPatch.v[i];
-        }
-    }
-}
+#include "IPCsimulation.hpp"
 
 
 
@@ -268,50 +154,6 @@ void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnab
 
 
 
-
-
-/*****************************************************************************************/
-
-
-// Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-void JanusIPCsimulation::ranor(double (&a)[3], RandomNumberGenerator & r) {
-    double x,y,quad=2.;
-    while ( quad > 1. ) {
-        x = r.getRandom11();
-        y = r.getRandom11();
-        quad = x*x + y*y;
-    }
-    double norm = 2.*sqrt(1.-quad);  a[0]=x*norm;  a[1]=y*norm;  a[2]=1.-2.*quad;
-}
-
-
-
-//************************************************************************//
-double JanusIPCsimulation::omega(double Ra, double Rb, double rab) {
-    // BKL paper, formula 18
-    if ( rab > Ra+Rb )
-        return 0.;
-    else if ( rab <= std::fabs(Ra-Rb) )
-        return 8.*std::pow(std::min(Ra,Rb),3);
-    else {
-        const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
-        return 2.*( (2.*Ra+tempSum+rab/2.)*pow(Ra-tempSum-rab/2.,2)
-                  + (2.*Rb-tempSum+rab/2.)*pow(Rb+tempSum-rab/2.,2) );
-    }
-}
-//************************************************************************//
-double JanusIPCsimulation::d_dr_omega(double Ra, double Rb, double rab) {
-    // BKL paper, derivative of formula 18
-    if ( rab >= Ra+Rb || rab <= fabs(Ra-Rb) )
-        return 0.;
-    else {
-        const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
-        const double tempSumMinus = tempSum - rab/2.;
-        const double tempSumPlus = tempSum + rab/2.;
-        return (6./rab) * (tempSumMinus*(Ra - tempSumPlus)*(Ra + tempSumPlus) - tempSumPlus*(Rb - tempSumMinus)*(Rb + tempSumMinus) );
-    }
-}
-
 void JanusIPCsimulation::make_table(bool printPotentials)
 {
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
@@ -366,21 +208,7 @@ void JanusIPCsimulation::make_table(bool printPotentials)
     POT_OUTPUT.close();
 }
 
-
-void JanusIPCsimulation::computeTrajectoryStep() {
-    computeVerletHalfStep();
-    cells.compileLists(particles);
-    computeFreeForces();
-    finishVerletStep();
-}
-
-void JanusIPCsimulation::computeVerletHalfStep() {
-    for(JanusIPC &ipc: particles) {
-        computeVerletHalfStepForIPC(ipc);
-    }
-}
-
-void JanusIPCsimulation::computeVerletHalfStepForIPC(JanusIPC & ipc) {
+void IPCsimulation::computeVerletHalfStepForIPCJanus(JanusIPC & ipc) {
     double xc[3], xp[3];
     double dxNew[3];
     for (int i: {0, 1, 2}) {
@@ -437,13 +265,8 @@ void JanusIPCsimulation::computeVerletHalfStepForIPC(JanusIPC & ipc) {
     }
 }
 
-void JanusIPCsimulation::finishVerletStep() {
-    for(JanusIPC &ipc: particles) {
-        finishVerletStepForIPC(ipc);
-    }
-}
 
-void JanusIPCsimulation::finishVerletStepForIPC(JanusIPC & ipc) {
+void IPCsimulation::finishVerletStepForIPCJanus(JanusIPC & ipc) {
     double vc[3], vp[3], dx[3], dv[3];
     for (int i: {0, 1, 2}) {
         // compute the the final velocities from the new effective forces
@@ -474,54 +297,6 @@ void JanusIPCsimulation::finishVerletStepForIPC(JanusIPC & ipc) {
         ipc.ipcCenter.v[i] = vc[i];
         ipc.janusPatch.v[i] = vp[i];
     }
-}
-
-
-
-void JanusIPCsimulation::computeSystemEnergy() {
-    kineticEnergy = 0.;
-    for(JanusIPC ipc: particles) {
-        kineticEnergy += centerMass*(std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2))
-                       + patchMass*(std::pow(ipc.janusPatch.v[0],2) + std::pow(ipc.janusPatch.v[1],2) + std::pow(ipc.janusPatch.v[2],2));
-    }
-    kineticEnergy *= .5*simulationBoxSide*simulationBoxSide;
-    totalEnergy = kineticEnergy + potentialEnergy;
-    temperature = ratioBetweenTemperatureAndKineticEnergy*kineticEnergy;
-}
-
-
-
-void JanusIPCsimulation::scaleVelocities(const double scalingFactor) {
-    for (JanusIPC &ipc: particles) {
-        for (int i: {0, 1, 2}) {
-            ipc.ipcCenter.v[i]  *= scalingFactor;
-            ipc.janusPatch.v[i] *= scalingFactor;
-        }
-    }
-}
-
-
-//************************************************************************//
-void JanusIPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
-    outputTrajectoryFile << 3*nIPCs << "\n" << simulationBoxSide << "\t" << simulationTime*simulationTimeStep;
-    for (JanusIPC ipc: particles) {
-        outputTrajectoryFile << "\n"
-                             << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
-                                         << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2]
-                                         //<< "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2]
-                             << "\n"
-                             << 'P'      << "\t" << ipc.janusPatch.x[0] << "\t" << ipc.janusPatch.x[1] << "\t" << ipc.janusPatch.x[2]
-                                         << "\t" << ipc.janusPatch.v[0] << "\t" << ipc.janusPatch.v[1] << "\t" << ipc.janusPatch.v[2];
-                                         //<< "\t" << ipc.firstPatch.F[0] << "\t" << ipc.firstPatch.F[1] << "\t" << ipc.firstPatch.F[2];
-    }
-    outputTrajectoryFile << std::endl;
-}
-void JanusIPCsimulation::outputSystemState(std::ofstream & outputTrajectoryFile, std::ofstream & energyTrajectoryFile)
-{
-    outputSystemTrajectory(outputTrajectoryFile);
-    energyTrajectoryFile << simulationTime*simulationTimeStep << "\t" << temperature << "\t"
-                         << kineticEnergy/nIPCs << "\t" << potentialEnergy/nIPCs << "\t" << totalEnergy/nIPCs << "\t"
-                         << std::sqrt(squaredMinimumDistanceBetweenParticles)*simulationBoxSide << std::endl;
 }
 
 
@@ -695,22 +470,7 @@ void JanusIPCsimulation::computeFreeForces() {
     }
 }
 
-void JanusIPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars) {
-    for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
-        computeInteractionsBetweenTwoIPCs(*loc, *ext, loopVars);
-    }
-}
-
-
-
-void JanusIPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables &loopVars) {
-    // starts from loc+1 which is like summing over i > j inside the cell
-    for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
-        computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
-    }
-}
-
-void JanusIPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables &loopVars) {
+void IPCsimulation::computeInteractionsBetweenTwoIPCsJanus(const int firstIPC, const int secndIPC, loopVariables &loopVars) {
 
     JanusIPC const& first = particles[firstIPC];
     JanusIPC const& secnd = particles[secndIPC];

@@ -113,9 +113,11 @@ private:
     void computeTrajectoryStep();
 
     void computeVerletHalfStepForIPC(IPC & ipc);
+    void computeVerletHalfStepForIPCJanus(JanusIPC & ipc);
     void computeVerletHalfStep();
 
     void finishVerletStepForIPC(IPC & ipc);
+    void finishVerletStepForIPCJanus(JanusIPC & ipc);
     void finishVerletStep();
 
     void computeFreeForces();
@@ -130,9 +132,19 @@ private:
             secndPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
         }
     };
+    struct loopVariablesJanus {
+        std::vector<std::array<double, 3>> ipcCenterF;
+        std::vector<std::array<double, 3>> janusPatchF;
+        double U, minimumSquaredDistance;
+        loopVariables(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
+            ipcCenterF.resize(nIPCs, {0.0, 0.0, 0.0});
+            janusPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
+        }
+    };
     void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables & loopVars);
     void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars);
     void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables & loopVars);
+    void computeInteractionsBetweenTwoIPCsJanus(const int firstIPC, const int secndIPC, loopVariables &loopVars);
 
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
