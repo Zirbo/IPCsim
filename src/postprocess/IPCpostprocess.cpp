@@ -261,27 +261,30 @@ void IPCpostprocess::printTypicalOrientations() {
     typicalOrientationsFile2D << std::scientific << std::setprecision(6);
 
     if (simulationDurationInIterations*nIPCs != totalCollectedOrientations) {
-        std::cerr << "Consistency check failed.\n" << simulationDurationInIterations << "x" <<nIPCs << " != " << totalCollectedOrientations << "!\n";
+        std::cerr << "Consistency check failed.\n" << simulationDurationInIterations << "x" << nIPCs << " != " << totalCollectedOrientations << "!\n";
         exit(1);
     }
     const double azimuthConversionFactor = M_PI/orientationHistogramSize;
     const double polarConversionFactor = 2.*M_PI/orientationHistogramSize;
-    const double inverseHalfHistogramSize = 0.5/orientationHistogramSize;
+    const int halfHistogramSize = (int)orientationHistogramSize/2;
+    const double inverseHalfHistogramSize = 1./halfHistogramSize;
+    const double inverseHistogramSize = 1./orientationHistogramSize;
     const double inverseTotalCollectedOrientations = 1./totalCollectedOrientations;
     for (int azimuthBin = 0; azimuthBin <= orientationHistogramSize; ++azimuthBin) {
         for (int polarBin = 0; polarBin <= orientationHistogramSize; ++polarBin) {
             const double azimuthAngle = azimuthBin*azimuthConversionFactor;
             const double polarAngle = polarBin*polarConversionFactor;
             // correction for the full angles that are needed by gnuplot!
-            int printingAzimuthBin = (azimuthBin == orientationHistogramSize)? 0 : azimuthBin;
-            int printingPolarBin = (polarBin == orientationHistogramSize)? 0 : polarBin;
+            const int printingAzimuthBin = (azimuthBin == orientationHistogramSize)? 0 : azimuthBin;
+            const int printingPolarBin = (polarBin == orientationHistogramSize)? 0 : polarBin;
             typicalOrientationsFile3D << azimuthAngle << "\t" << polarAngle << "\t" << inverseTotalCollectedOrientations*orientationHistogram3D[printingAzimuthBin][printingPolarBin] << "\n";
 
             if (azimuthBin == orientationHistogramSize || polarBin == orientationHistogramSize)
                 continue;
-            const double x = azimuthBin*inverseHalfHistogramSize;
-            const double y = polarBin*inverseHalfHistogramSize;
-            typicalOrientationsFile2D << x << "\t" << y << "\t" << inverseTotalCollectedOrientations*orientationHistogram2D[azimuthBin][polarBin] << "\n";
+            const double x = (azimuthBin-halfHistogramSize)*inverseHalfHistogramSize + inverseHistogramSize;
+            const double y = (polarBin-halfHistogramSize)*inverseHalfHistogramSize + inverseHistogramSize;
+            const double z = inverseTotalCollectedOrientations*orientationHistogram2D[azimuthBin][polarBin];
+            typicalOrientationsFile2D << x << "\t" << y << "\t" << z << "\t" << std::log(z) << "\n";
         }
         typicalOrientationsFile3D << std::endl;
     }
