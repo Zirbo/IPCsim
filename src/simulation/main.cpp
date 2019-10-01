@@ -6,19 +6,37 @@
 
 int main ( int argc, char *argv[] ) {
     std::stringstream helpMessage;
-    helpMessage << "USAGE\nYou need to specify a usage mode. You have 3 options:\n"
+    helpMessage << "USAGE:\nYou need to specify an IPC type and a usage mode.\n"
+                << "IPC type must be either:\n * IPC\n * Janus.\n"
+                << "For the usage mode there are 3 options:\n"
                 << " * \"new\": start a new simulation; you need the files input.in and stages.in;\n"
                 << " * \"old\": resume an old simulation; you need the files input.in, stages.in, and a startingstate.xyz;\n"
                 << " * \"printpot\": print potentials in potentials.out, then exit.\n";
 
-    if(argc != 2) {
+    // parse number of arguments
+    if(argc != 3) {
         std::cerr << helpMessage.str();
         exit(1);
-    } else if(std::string(argv[1]) == "printpot") {
-        const SimulationStage emptyStage;
+    }
+
+    // parse IPC type
+    bool janusSimulation;
+    if(std::string(argv[2]) == "Janus") {
+        janusSimulation = true;
+    } else if(std::string(argv[2]) == "IPC") {
+        janusSimulation = false;
+    } else {
+        std::cerr << helpMessage.str();
+        exit(1);
+    }
+
+    // parse usage mode
+    if(std::string(argv[2]) == "printpot") {
+        SimulationStage emptyStage;
+        emptyStage.janusSimulation = janusSimulation;
         IPCsimulation simulation(emptyStage);
         simulation.printPotentials();
-    } else if (std::string(argv[1]) == "new" || std::string(argv[1]) == "old") {
+    } else if (std::string(argv[2]) == "new" || std::string(argv[2]) == "old") {
 
         // open staging.in file
         std::ifstream stagesFile("stages.in");
@@ -28,7 +46,8 @@ int main ( int argc, char *argv[] ) {
         }
 
         SimulationStage currentStage;
-        currentStage.inputRestoringPreviousSimulation = (std::string(argv[1]) == "old");
+        currentStage.janusSimulation = janusSimulation;
+        currentStage.inputRestoringPreviousSimulation = (std::string(argv[2]) == "old");
         int simulatedStages = 0;
         double tollerance = 0.;
         std::cout << std::boolalpha;

@@ -6,10 +6,43 @@
 
 
 
+void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep) {
+
+    // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
+    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
+    const size_t numberOfPrints = potentialRangeSamplingSize/potentialPrintingStep;
+
+    const std::string dirName("potentials_for_lammps/");
+    const std::string extension(".table");
+    std::string interactionType [3];
+    interactionType[0] = "BB";      interactionType[1] = "Bs";      interactionType[2] = "ss";
+
+    for (int type = 0; type < 3; ++type) {
+        std::string fileName = dirName + interactionType[type] + extension;
+        std::ofstream potentialOutputFile(fileName);
+        potentialOutputFile << "# potentials for lammps\n\n" << interactionType[type] << "\nN " << numberOfPrints << "\n\n";
+        potentialOutputFile << std::scientific << std::setprecision(6);
+
+        int printCounter = 0;
+        for ( size_t i = potentialPrintingStep; i < potentialRangeSamplingSize; i += potentialPrintingStep) {
+            const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
+            printCounter++;
+            potentialOutputFile << printCounter << "\t" << r << "\t";
+            if( type == 0) {
+                potentialOutputFile << uBB[i]*r << "\t" << fBB[i]*r << "\n";
+            } else if ( type == 1) {
+                potentialOutputFile << uBs1[i]*r << "\t" << fBs1[i]*r << "\n";
+            } else if ( type == 2) {
+                potentialOutputFile << us1s2[i]*r << "\t" << fs1s2[i]*r << "\n";
+            }
+        }
+        potentialOutputFile.close();
+    }
+}
 
 
 /*****************************************************************************************/
-void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage)
+/*void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnabled, const std::pair<double,int> & stage)
 {
     simulationTime = 0;
 
@@ -150,71 +183,16 @@ void JanusIPCsimulation::initializeSystem(bool restoreprevious, bool stagingEnab
         // update energies to include the correction
         computeSystemEnergy();
     }
-}
+}*/
 
 
-
-void JanusIPCsimulation::make_table(bool printPotentials)
-{
-    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
-
-    uBB.resize(potentialRangeSamplingSize);
-    uBs.resize(potentialRangeSamplingSize);
-    uss.resize(potentialRangeSamplingSize);
-    fBB.resize(potentialRangeSamplingSize);
-    fBs.resize(potentialRangeSamplingSize);
-    fss.resize(potentialRangeSamplingSize);
-
-    std::ofstream POT_OUTPUT;
-    int potOutputPrintCount = 1;
-    if (printPotentials) {
-        POT_OUTPUT.open("siml/potentials.out");
-        POT_OUTPUT << std::scientific << std::setprecision(6);
-        POT_OUTPUT << "#r\t\t\tpotBB\t\t\tpotBs1\t\t\tpotBs2\t\t\tpots1s2\t\t\tpots2s2\t\t\tpots1s1";
-        POT_OUTPUT <<  "\t\t\tforBB\t\t\tforBs1\t\t\tforBs2\t\t\tfors1s2\t\t\tfors2s2\t\t\tfors1s1\n";
-    }
-
-    for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
-    {
-        double r = i*forceAndEnergySamplingStep;
-        uBB[i]  = (e_BB /e_min) * omega(ipcRadius, ipcRadius, r);
-        uBs[i]  = (e_Bs /e_min) * omega(ipcRadius, patchRadius, r);
-        uss[i]  = (e_ss /e_min) * omega(patchRadius, patchRadius, r);
-
-        fBB[i]  = (e_BB /e_min) * d_dr_omega(ipcRadius, ipcRadius, r);
-        fBs[i]  = (e_Bs /e_min) * d_dr_omega(ipcRadius, patchRadius, r);
-        fss[i]  = (e_ss /e_min) * d_dr_omega(patchRadius, patchRadius, r);
-
-        if ( r <= 1.0 )
-        {
-            // setting up a Fake Hard Sphere Core
-            double rm = pow(r, -fakeHSexponent);
-            uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
-            fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
-        }
-        if ( printPotentials && int( (1000.*i)/potentialRangeSamplingSize ) == potOutputPrintCount )
-        {
-            potOutputPrintCount++;
-            POT_OUTPUT << r << "\t" << uBB[i] << "\t" << uBs[i] << "\t" << uss[i] << "\t";
-            POT_OUTPUT << r << "\t" << fBB[i] << "\t" << fBs[i] << "\t" << fss[i] << "\n";
-        }
-        // this division is done here to save a division during runtime;
-        // it's only done now not to be seen in the plots
-        const double x = 1./(r);
-        fBB[i] *= x;
-        fBs[i] *= x;;
-        fss[i] *= x;
-    }
-    POT_OUTPUT.close();
-}
-
-void IPCsimulation::computeVerletHalfStepForIPCJanus(JanusIPC & ipc) {
+void IPCsimulation::computeVerletHalfStepForJanusIPC(JanusIPC & ipc) {
     double xc[3], xp[3];
     double dxNew[3];
     for (int i: {0, 1, 2}) {
         // compute the half step velocities from the effective forces of the last step
-        ipc.ipcCenter.v[i] += ipc.ipcCenter.F[i]*(.5*dt*centerInverseMass);
-        ipc.janusPatch.v[i] += ipc.janusPatch.F[i]*(.5*dt*patchInverseMass);
+        ipc.ipcCenter.v[i] += ipc.ipcCenter.F[i]*(.5*dt*ipcCenterInverseMass);
+        ipc.janusPatch.v[i] += ipc.janusPatch.F[i]*(.5*dt*firstPatchInverseMass);
 
         // compute the new positions from the half step velocities
         xc[i] = ipc.ipcCenter.x[i] + ipc.ipcCenter.v[i]*dt;
@@ -227,10 +205,10 @@ void IPCsimulation::computeVerletHalfStepForIPCJanus(JanusIPC & ipc) {
         relativePBC(dxNew[i]);
     }
     // compute the (squared) violation of the constraint
-    double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchCenterDistance;
+    double diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchDistance;
 
     // correct the positions and the velocities until the violation is less than the tollerance
-    while( std::fabs(diff) > tollerance*squaredPatchCenterDistance )
+    while( std::fabs(diff) > tollerance*squaredPatchDistance )
     {
         double dxOld[3], DX[3];
         for (int i: {0, 1, 2}) {
@@ -256,7 +234,7 @@ void IPCsimulation::computeVerletHalfStepForIPCJanus(JanusIPC & ipc) {
             relativePBC(dxNew[i]);
         }
 
-        diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchCenterDistance;
+        diff = (dxNew[0]*dxNew[0] + dxNew[1]*dxNew[1] + dxNew[2]*dxNew[2]) - squaredPatchDistance;
     }
 
     for (int i: {0, 1, 2}) {
@@ -266,12 +244,12 @@ void IPCsimulation::computeVerletHalfStepForIPCJanus(JanusIPC & ipc) {
 }
 
 
-void IPCsimulation::finishVerletStepForIPCJanus(JanusIPC & ipc) {
+void IPCsimulation::finishVerletStepForJanusIPC(JanusIPC & ipc) {
     double vc[3], vp[3], dx[3], dv[3];
     for (int i: {0, 1, 2}) {
         // compute the the final velocities from the new effective forces
-        vc[i] = ipc.ipcCenter.v[i] + ipc.ipcCenter.F[i]*(.5*dt*centerInverseMass);
-        vp[i] = ipc.janusPatch.v[i] + ipc.janusPatch.F[i]*(.5*dt*patchInverseMass);
+        vc[i] = ipc.ipcCenter.v[i] + ipc.ipcCenter.F[i]*(.5*dt*ipcCenterInverseMass);
+        vp[i] = ipc.janusPatch.v[i] + ipc.janusPatch.F[i]*(.5*dt*firstPatchInverseMass);
 
         // compute the patch-patch distance
         dx[i] = ipc.ipcCenter.x[i] - ipc.janusPatch.x[i];
@@ -279,7 +257,7 @@ void IPCsimulation::finishVerletStepForIPCJanus(JanusIPC & ipc) {
         dv[i] = vc[i] - vp[i];
     }
     // check how much the constraints are being violated
-    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2]) / squaredPatchCenterDistance;
+    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2]) / squaredPatchDistance;
     while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
         double DX[3];
@@ -290,7 +268,7 @@ void IPCsimulation::finishVerletStepForIPCJanus(JanusIPC & ipc) {
             dv[i] = vc[i] - vp[i];
         }
         // recompute the violation of the constraints
-        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2]) / squaredPatchCenterDistance;
+        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2]) / squaredPatchDistance;
     }
 
     for (int i: {0, 1, 2}) {
@@ -302,8 +280,8 @@ void IPCsimulation::finishVerletStepForIPCJanus(JanusIPC & ipc) {
 
 
 
-void JanusIPCsimulation::initializeNewConfiguration(int N1) {
-    particles.resize(nIPCs);
+void IPCsimulation::initializeNewJanusConfiguration(int N1) {
+    janusParticles.resize(nIPCs);
     RandomNumberGenerator rand;
 
     int N2 = N1*N1;
@@ -312,60 +290,60 @@ void JanusIPCsimulation::initializeNewConfiguration(int N1) {
     // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
     //double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
 
-    double vel_scaling = std::sqrt(1.6*desiredTemperature)/simulationBoxSide;
+    double vel_scaling = std::sqrt(1.6*initialTemperature)/simulationBoxSide;
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
       // FCC is obtained as 4 intersecating SC
-        particles[i].number = i;
-        particles[i].type = 'C';
-        particles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i].ipcCenter.x[0]);
-        particles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i].ipcCenter.x[1]);
-        particles[i].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
-        absolutePBC(particles[i].ipcCenter.x[2]);
+        janusParticles[i].number = i;
+        janusParticles[i].type = 'C';
+        janusParticles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i].ipcCenter.x[0]);
+        janusParticles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i].ipcCenter.x[1]);
+        janusParticles[i].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
+        absolutePBC(janusParticles[i].ipcCenter.x[2]);
 
-        particles[i+N3].number = i+N3;
-        particles[i+N3].type = 'C';
-        particles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3].ipcCenter.x[0]);
-        particles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3].ipcCenter.x[1]);
-        particles[i+N3].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
-        absolutePBC(particles[i+N3].ipcCenter.x[2]);
+        janusParticles[i+N3].number = i+N3;
+        janusParticles[i+N3].type = 'C';
+        janusParticles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3].ipcCenter.x[0]);
+        janusParticles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3].ipcCenter.x[1]);
+        janusParticles[i+N3].ipcCenter.x[2] = (i/N2 + .1*rand.getRandom55()) /N1;
+        absolutePBC(janusParticles[i+N3].ipcCenter.x[2]);
 
-        particles[i+N3+N3].number = i+N3+N3;
-        particles[i+N3+N3].type = 'C';
-        particles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3+N3].ipcCenter.x[0]);
-        particles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3+N3].ipcCenter.x[1]);
-        particles[i+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
-        absolutePBC(particles[i+N3+N3].ipcCenter.x[2]);
+        janusParticles[i+N3+N3].number = i+N3+N3;
+        janusParticles[i+N3+N3].type = 'C';
+        janusParticles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3+N3].ipcCenter.x[0]);
+        janusParticles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3+N3].ipcCenter.x[1]);
+        janusParticles[i+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
+        absolutePBC(janusParticles[i+N3+N3].ipcCenter.x[2]);
 
-        particles[i+N3+N3+N3].number = i+N3+N3+N3;
-        particles[i+N3+N3+N3].type = 'C';
-        particles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3+N3+N3].ipcCenter.x[0]);
-        particles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
-        absolutePBC(particles[i+N3+N3+N3].ipcCenter.x[1]);
-        particles[i+N3+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
-        absolutePBC(particles[i+N3+N3+N3].ipcCenter.x[2]);
+        janusParticles[i+N3+N3+N3].number = i+N3+N3+N3;
+        janusParticles[i+N3+N3+N3].type = 'C';
+        janusParticles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3+N3+N3].ipcCenter.x[0]);
+        janusParticles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
+        absolutePBC(janusParticles[i+N3+N3+N3].ipcCenter.x[1]);
+        janusParticles[i+N3+N3+N3].ipcCenter.x[2] = (.5 + i/N2 + .1*rand.getRandom55()) /N1;
+        absolutePBC(janusParticles[i+N3+N3+N3].ipcCenter.x[2]);
 
         // starting from random but ONLY TRANSLATIONAL speeds, for compatibility with rattle
         for (int j: {0, 1, 2}) {
-           particles[i].ipcCenter.v[j]          = rand.getRandom11()*vel_scaling;
-           particles[i+N3].ipcCenter.v[j]       = rand.getRandom11()*vel_scaling;
-           particles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom11()*vel_scaling;
-           particles[i+N3+N3+N3].ipcCenter.v[j] = rand.getRandom11()*vel_scaling;
+           janusParticles[i].ipcCenter.v[j]          = rand.getRandom11()*vel_scaling;
+           janusParticles[i+N3].ipcCenter.v[j]       = rand.getRandom11()*vel_scaling;
+           janusParticles[i+N3+N3].ipcCenter.v[j]    = rand.getRandom11()*vel_scaling;
+           janusParticles[i+N3+N3+N3].ipcCenter.v[j] = rand.getRandom11()*vel_scaling;
         }
     }
     // initialize patches positions
-    for(JanusIPC &ipc: particles) {
+    for(JanusIPC &ipc: janusParticles) {
         double ipcAxis[3], ipcOrthogonalAxis[3];
-        ranor(ipcAxis,rand);
-        ranor(ipcOrthogonalAxis, rand);
+        generateRandomOrientation(ipcAxis,rand);
+        generateRandomOrientation(ipcOrthogonalAxis, rand);
         double normOfIpcOrthogonalAxis = std::sqrt( .5*
                 (std::pow(ipc.ipcCenter.v[0],2) + std::pow(ipc.ipcCenter.v[1],2) + std::pow(ipc.ipcCenter.v[2],2))
                 /
@@ -378,7 +356,7 @@ void JanusIPCsimulation::initializeNewConfiguration(int N1) {
             ipcOrthogonalAxis[i] *= normOfIpcOrthogonalAxis;
             ipcOrthogonalAxis[i] -= ipcAxis[i]*scalarProductOfTheTwoAxes;
 
-            ipc.janusPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*patchCenterDistance;
+            ipc.janusPatch.x[i] = ipc.ipcCenter.x[i] + ipcAxis[i]*patchDistance;
             absolutePBC(ipc.janusPatch.x[i]);
 
             double temp = rand.getRandom11()*ipcOrthogonalAxis[i]*vel_scaling;
@@ -387,7 +365,7 @@ void JanusIPCsimulation::initializeNewConfiguration(int N1) {
     }
 }
 
-void JanusIPCsimulation::restorePreviousConfiguration() {
+void IPCsimulation::restorePreviousJanusConfiguration() {
     char unusedPatchName;
     double unusedTime;
     std::ifstream startingConfigurationFile("startingstate.xyz");
@@ -401,7 +379,7 @@ void JanusIPCsimulation::restorePreviousConfiguration() {
     particles.resize(nIPCs);
     int counter = 0;
 
-    for (JanusIPC &ipc: particles) {
+    for (JanusIPC &ipc: janusParticles) {
         ipc.number = counter++;
         startingConfigurationFile >> ipc.type
            >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
@@ -420,9 +398,9 @@ void JanusIPCsimulation::restorePreviousConfiguration() {
 
 
 
-void JanusIPCsimulation::computeFreeForces() {
+void IPCsimulation::computeFreeJanusForces() {
     // reset all forces
-    for(JanusIPC &ipc: particles) {
+    for(JanusIPC &ipc: janusParticles) {
         for (int i: {0, 1, 2}) {
             ipc.ipcCenter.F[i] = 0.;
             ipc.janusPatch.F[i] = 0.;
@@ -432,7 +410,7 @@ void JanusIPCsimulation::computeFreeForces() {
 
     #pragma omp parallel
     {
-        loopVariables loopVars(nIPCs);
+        loopVariablesJanus loopVars(nIPCs);
 
         #pragma omp for
         for(int m=0; m<cells.getNumberofCells(); ++m)  // loop over all cells
@@ -446,7 +424,7 @@ void JanusIPCsimulation::computeFreeForces() {
         }
         #pragma omp critical
         {
-            for (JanusIPC &ipc: particles) {
+            for (JanusIPC &ipc: janusParticles) {
                 for (int i: {0, 1, 2}) {
                     const size_t j = ipc.number;
                     ipc.ipcCenter.F[i]  += loopVars.ipcCenterF[j][i];
@@ -459,21 +437,36 @@ void JanusIPCsimulation::computeFreeForces() {
 //        #pragma omp for
 //        for(int n=0; n < nIPCs; ++n) {
 //            IPC& ipc = particles[n];
-        for(JanusIPC &ipc: particles) {
+        for(JanusIPC &ipc: janusParticles) {
             for (int i: {0, 1, 2}) {
                 if(isFieldEnabled) {
                     ipc.ipcCenter.F[i] += externalFieldIpcCenter[i];
-                    ipc.janusPatch.F[i] += externalFieldPatch[i];
+                    ipc.janusPatch.F[i] += externalFieldFirstPatch[i];
                 }
             }
         }
     }
 }
 
-void IPCsimulation::computeInteractionsBetweenTwoIPCsJanus(const int firstIPC, const int secndIPC, loopVariables &loopVars) {
+void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariablesJanus & loopVars) {
+    for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
+        computeInteractionsBetweenTwoJanusIPCs(*loc, *ext, loopVars);
+    }
+}
 
-    JanusIPC const& first = particles[firstIPC];
-    JanusIPC const& secnd = particles[secndIPC];
+
+
+void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariablesJanus &loopVars) {
+    // starts from loc+1 which is like summing over i > j inside the cell
+    for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
+        computeInteractionsBetweenTwoJanusIPCs(*loc, *ins, loopVars);
+    }
+}
+
+void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, const int secndIPC, loopVariablesJanus &loopVars) {
+
+    JanusIPC const& first = janusParticles[firstIPC];
+    JanusIPC const& secnd = janusParticles[secndIPC];
 
     // compute center-center distance
     double centerCenterSeparation[3];
@@ -525,23 +518,23 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCsJanus(const int firstIPC, c
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
         if (j == 0) { // center - patch
-            loopVars.U += uBs[dist];
+            loopVars.U += uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs[dist]*siteSiteSeparation[0][i];
+                const double modulus = fBs1[dist]*siteSiteSeparation[0][i];
                 loopVars.ipcCenterF[firstIPC][i] -= modulus;
                 loopVars.janusPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 1) { // patch - center
-            loopVars.U += uBs[dist];
+            loopVars.U += uBB[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs[dist]*siteSiteSeparation[1][i];
+                const double modulus = fBB[dist]*siteSiteSeparation[1][i];
                 loopVars.janusPatchF[firstIPC][i] -= modulus;
                 loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 2) { // patch - patch
-            loopVars.U += uss[dist];
+            loopVars.U += us1s1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fss[dist]*siteSiteSeparation[2][i];
+                const double modulus = fs1s1[dist]*siteSiteSeparation[2][i];
                 loopVars.janusPatchF[firstIPC][i] -= modulus;
                 loopVars.janusPatchF[secndIPC][i] += modulus;
             }

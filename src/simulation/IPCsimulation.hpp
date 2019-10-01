@@ -37,15 +37,16 @@
 #include "../helpers/isotropic_pair_correlation_function.hpp"
 
 
-
 struct SimulationStage {
     double inputStartingTemperature;
     double inputStageTotalDuration;
     bool inputRestoringPreviousSimulation;
     bool inputPrintTrajectoryAndCorrelations;
+    bool janusSimulation;
 
     SimulationStage() : inputStartingTemperature{0.}, inputStageTotalDuration{0.},
-                        inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false}
+                        inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
+                        janusSimulation{false}
                     {}
  };
 
@@ -59,6 +60,8 @@ public:
 private:
     IPCsimulation();
 
+    bool isJanusSimulation;
+    bool isNotJanusSimulation() { return !isJanusSimulation; } // needed because I am blind
     unsigned long simulationTime;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;
@@ -70,6 +73,9 @@ private:
     void compileForceAndPotentialTables();
     double computeOmega(double Ra, double Rb, double rab);
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
+
+    void printPotentialsToFile(int potentialPrintingStep);
+    void printPotentialsToFileJanus(int potentialPrintingStep);
 
     bool printTrajectoryAndCorrelations;
     // state point
@@ -100,6 +106,7 @@ private:
     double externalFieldIpcCenter[3], externalFieldFirstPatch[3], externalFieldSecndPatch[3];
     // particles
     std::vector<IPC> particles;
+    std::vector<JanusIPC> janusParticles;
     cell_lists cells;
 
     IsotropicPairCorrelationFunction pairCorrelation;
@@ -107,17 +114,19 @@ private:
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
     void restorePreviousConfiguration();
+    void restorePreviousJanusConfiguration();
     void initializeNewConfiguration(int N1);
+    void initializeNewJanusConfiguration(int N1);
 
 
     void computeTrajectoryStep();
 
     void computeVerletHalfStepForIPC(IPC & ipc);
-    void computeVerletHalfStepForIPCJanus(JanusIPC & ipc);
+    void computeVerletHalfStepForJanusIPC(JanusIPC & ipc);
     void computeVerletHalfStep();
 
     void finishVerletStepForIPC(IPC & ipc);
-    void finishVerletStepForIPCJanus(JanusIPC & ipc);
+    void finishVerletStepForJanusIPC(JanusIPC & ipc);
     void finishVerletStep();
 
     void computeFreeForces();
@@ -132,19 +141,22 @@ private:
             secndPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
         }
     };
+    void computeFreeJanusForces();
     struct loopVariablesJanus {
         std::vector<std::array<double, 3>> ipcCenterF;
         std::vector<std::array<double, 3>> janusPatchF;
         double U, minimumSquaredDistance;
-        loopVariables(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
+        loopVariablesJanus(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
             ipcCenterF.resize(nIPCs, {0.0, 0.0, 0.0});
             janusPatchF.resize(nIPCs, {0.0, 0.0, 0.0});
         }
     };
     void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables & loopVars);
+    void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariablesJanus & loopVars);
     void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars);
+    void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariablesJanus & loopVars);
     void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables & loopVars);
-    void computeInteractionsBetweenTwoIPCsJanus(const int firstIPC, const int secndIPC, loopVariables &loopVars);
+    void computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, const int secndIPC, loopVariablesJanus &loopVars);
 
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);

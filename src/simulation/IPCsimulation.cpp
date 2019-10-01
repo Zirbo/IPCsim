@@ -5,140 +5,11 @@
 #include "IPCsimulation.hpp"
 
 
-//************************************************************************//
-IPCsimulation::IPCsimulation(SimulationStage const& stage) {
-    // clean up old data and recreate output directory
-    if(system("rm -rf siml") != 0) {
-        std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
-                  << "Most likely you have it open somewhere or some program is running in it.\n";
-        exit(1);
-    }
-    if(system("mkdir siml") != 0) {
-        std::cerr << "Unable to create a new 'siml/' directory. You'll never see this error message.\n";
-        exit(1);
-    }
 
-    // open output files
-    outputFile.open("siml/output.out");
-    energyTrajectoryFile.open("siml/evolution.out");
-    energyTrajectoryFile << std::scientific << std::setprecision(10);
-    energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
-
-    // initialize system
-    initializeSystem(stage);
-
-    // print starting configuration and initialize output file
-    outputFile << "\nPlot evolution.out to check the evolution of the system.\n";
-    outputSystemEnergies(energyTrajectoryFile);
-
-
-    if (printTrajectoryAndCorrelations) {
-        // initialize g(r)
-        pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
-
-        // initialize trajectory output file
-        trajectoryFile.open("siml/trajectory.xyz");
-        trajectoryFile << std::scientific << std::setprecision(24);
-        outputSystemTrajectory(trajectoryFile);
-    }
-}
-
-//************************************************************************//
-double IPCsimulation::run() {
-    time_t simulationStartTime, simulationEndTime;
-
-    const size_t simulationDurationInIterations = (size_t)simulationTotalDuration/simulationTimeStep;
-    const double printingIntervalDouble = printingInterval/simulationTimeStep;
-    const size_t printingIntervalInIterations = (size_t)printingIntervalDouble;
-
-    double averageTemperature = 0.;
-    double averageSquaredTemperature = 0.;
-    double averagePotentialEnergy = 0.;
-    int sampleSizeForAverages = 0;
-
-    // simulation begins
-    time(&simulationStartTime);
-    while(simulationTime < simulationDurationInIterations) {
-        ++simulationTime;
-        computeTrajectoryStep();
-
-        if( simulationTime%printingIntervalInIterations == 0) {
-            // compute and output energies
-            computeSystemEnergy();
-            outputSystemEnergies(energyTrajectoryFile);
-            // output trajectory and compute g(r)
-            if (printTrajectoryAndCorrelations) {
-                // g(r)
-                pairCorrelation.compute(particles);
-                outputSystemTrajectory(trajectoryFile);
-            }
-            // compute averages
-            ++sampleSizeForAverages;
-            averageTemperature += temperature;
-            averageSquaredTemperature += temperature*temperature;
-            averagePotentialEnergy += potentialEnergy;
-        }
-    }
-    // simulation ends
-    time(&simulationEndTime);
-    outputFile << "The simulation lasted " << difftime (simulationEndTime, simulationStartTime) << " seconds.\n";
-
-    // output final state
-    std::ofstream finalStateFile("startingstate.xyz");
-    finalStateFile << std::scientific << std::setprecision(24);
-    outputSystemTrajectory(finalStateFile);
-    finalStateFile.close();
-
-    // check that total momentum is still zero and print final stuff
-    double pcm [3];
-    computeSystemMomentum(pcm);
-    outputFile << "Residual momentum of the whole system = ( " << pcm[0]*simulationBoxSide << ", " << pcm[1]*simulationBoxSide << ", " << pcm[2]*simulationBoxSide << " ).\n" << std::endl;
-    averageTemperature /= sampleSizeForAverages;
-    averagePotentialEnergy /= sampleSizeForAverages;
-    averageSquaredTemperature /= sampleSizeForAverages;
-    double temperatureVariance = std::sqrt(averageSquaredTemperature - std::pow(averageTemperature,2));
-    outputFile << "Average kT during the simulation run = " << averageTemperature << std::endl;
-    outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
-    outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
-
-    // output g(r);
-    if (printTrajectoryAndCorrelations) {
-        const double g_r_integral = pairCorrelation.print("siml/g_r");
-        outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
-    }
-
-    return averageTemperature;
-}
-
-//************************************************************************//
-void IPCsimulation::printPotentials() {
-    int potentialPrintingStep;
-
-    std::cout << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
-              << " and until " << interactionRange*simulationBoxSide << ".\n"
-              << "How often do you want to print, in integer multiples of "
-              << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
-    std::cin >> potentialPrintingStep;
-
-    // clean up unneeded shit
-    outputFile.close();
-    trajectoryFile.close();
-    energyTrajectoryFile.close();
-    if(system("rm -rf siml") != 0) {
-        std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
-                  << "Most likely you have it open somewhere or some program is running in it.\n";
-        exit(1);
-    }
-    if(system("rm -rf potentials_for_lammps") != 0) {
-        std::cerr << "Unable to delete the old 'potentials_for_lammps/' directory with rm -rf. "
-                  << "Most likely you have it open somewhere or some program is running in it.\n";
-        exit(1);
-    }
-
-    // create the new directory
-    if(system("mkdir potentials_for_lammps") != 0) {
-        std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
-        exit(1);
+void IPCsimulation::printPotentialsToFile(int potentialPrintingStep) {
+    if(isJanusSimulation) {
+        printPotentialsToFileJanus(potentialPrintingStep);
+        return;
     }
 
     // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
@@ -177,290 +48,6 @@ void IPCsimulation::printPotentials() {
             }
         }
         potentialOutputFile.close();
-    }
-}
-
-
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-//************************************************************************//
-
-
-
-/*****************************************************************************************/
-void IPCsimulation::initializeSystem(const SimulationStage &stage)
-{
-    simulationTime = 0;
-
-    int N1;
-    // read input.in file
-    std::ifstream inputFile("input.in");
-    if(inputFile.fail()) {
-        std::cerr << "File input.in could not be opened. Aborting.\n";
-        exit(1);
-    }
-    initialTemperature = stage.inputStartingTemperature;
-    simulationTotalDuration = stage.inputStageTotalDuration;
-    printTrajectoryAndCorrelations = stage.inputPrintTrajectoryAndCorrelations;
-    inputFile >> N1 >> density;
-    nIPCs = 4*N1*N1*N1;
-    inputFile >> simulationTimeStep >> printingInterval;
-    inputFile >> e_BB >> e_Bs1 >> e_Bs2;
-    inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
-    inputFile >> e_min;
-    inputFile >> firstPatchEccentricity >> firstPatchRadius;
-    inputFile >> secndPatchEccentricity >> secndPatchRadius;
-    inputFile >> firstPatchMass >> secndPatchMass >> ipcCenterMass;
-    inputFile >> fakeHScoefficient >> fakeHSexponent;
-    inputFile >> forceAndEnergySamplingStep >> tollerance;
-    inputFile >> isFieldEnabled;
-    if(isFieldEnabled) {
-        inputFile >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
-        inputFile >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
-        // compute external fields
-        for (int i: {0, 1, 2}) {
-            externalFieldFirstPatch[i] = ratioChargeFirstPatchOverIpcCenter*externalFieldIpcCenter[i];
-            externalFieldSecndPatch[i] = ratioChargeSecndPatchOverIpcCenter*externalFieldIpcCenter[i];
-        }
-    }
-    inputFile.close();
-
-    // patch geometry integrity check
-    if ( std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
-        std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
-        std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
-        std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
-        std::cerr << "eccentricities and radii are not consistent!\n";
-        exit(1);
-    }
-
-    // if restoring, read state, so we get access to the real number of IPCs
-    if(stage.inputRestoringPreviousSimulation) {
-        outputFile << "Resuming a previous simulation. ";
-        restorePreviousConfiguration();
-        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n";
-        // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
-        density = double(nIPCs)/std::pow(simulationBoxSide, 3);
-    }
-    else {
-        outputFile << "Starting a new simulation.\n";
-        // we read nIPCs and density from the input file, so we need to compute the simulationBoxSide from them
-        simulationBoxSide = std::cbrt(nIPCs/density);
-    }
-
-    // process data
-    ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
-    ipcRadius = firstPatchEccentricity + firstPatchRadius;
-    interactionRange = 2*ipcRadius;
-
-    // output the data for future checks
-    outputFile << nIPCs << "\t" << density << "\t" << initialTemperature << "\n";
-    outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
-    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
-    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
-    outputFile << e_min << "\n";
-    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
-    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
-    outputFile << firstPatchMass << "\t" << secndPatchMass << "\t" << ipcCenterMass << "\n";
-    outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
-    outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
-    outputFile << isFieldEnabled << "\n";
-    if(isFieldEnabled) {
-        outputFile << ratioChargeFirstPatchOverIpcCenter << "\t" << ratioChargeFirstPatchOverIpcCenter << "\n";
-        outputFile << externalFieldIpcCenter[0] << "\t" << externalFieldIpcCenter[1] << "\t" << externalFieldIpcCenter[2] << "\n";
-    }
-
-    outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
-    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
-    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
-    outputFile << "Total number of sites being simulated: " << 3*nIPCs << std::endl;
-
-    // potential sampling
-    outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
-    compileForceAndPotentialTables();
-
-    // scale the lenghts to be in a [0.0:1.0] simulation box
-    ipcRadius /= simulationBoxSide;
-    interactionRange /= simulationBoxSide;
-    firstPatchRadius /= simulationBoxSide;
-    firstPatchEccentricity /= simulationBoxSide;
-    secndPatchRadius /= simulationBoxSide;
-    secndPatchEccentricity /= simulationBoxSide;
-    dt = simulationTimeStep/simulationBoxSide;
-    forceAndEnergySamplingStep /= simulationBoxSide;
-
-    // finish processing data
-    squaredInteractionRange = std::pow(interactionRange,2);
-    patchDistance = firstPatchEccentricity + secndPatchEccentricity;
-    squaredPatchDistance = patchDistance*patchDistance;
-    firstPatchInverseMass = 1./firstPatchMass;
-    secndPatchInverseMass = 1./secndPatchMass;
-    ipcCenterInverseMass = 1./ipcCenterMass;
-    // inverse of the I parameter from formulas!
-    const double iI = 1./(squaredPatchDistance*ipcCenterInverseMass + secndPatchInverseMass*std::pow(firstPatchEccentricity,2) + firstPatchInverseMass*std::pow(secndPatchEccentricity,2));
-    cP11 = 1. - std::pow(secndPatchEccentricity,2)*iI*firstPatchInverseMass;
-    cP12 = -firstPatchEccentricity*secndPatchEccentricity*iI*secndPatchInverseMass;
-    cP1c = patchDistance*secndPatchEccentricity*iI*ipcCenterInverseMass;
-    cP21 = -firstPatchEccentricity*secndPatchEccentricity*iI*firstPatchInverseMass;
-    cP22 = 1. - std::pow(firstPatchEccentricity,2)*iI*secndPatchInverseMass;
-    cP2c = patchDistance*firstPatchEccentricity*iI*ipcCenterInverseMass;
-    alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
-    alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
-    alpha_sum = alpha_1 + alpha_2;
-
-    // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
-    if(!stage.inputRestoringPreviousSimulation) {
-        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
-        initializeNewConfiguration(N1);
-    }
-
-    // cell list compilation
-    cells.initialize(1., interactionRange, nIPCs);
-    outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
-    cells.compileLists(particles);
-
-    // first computation of forces
-    computeFreeForces();
-
-    // check that total momentum is zero
-    double pcm [3];
-    computeSystemMomentum(pcm);
-    outputFile << "P whole system = ( "
-               << pcm[0]*simulationBoxSide << ", "
-               << pcm[1]*simulationBoxSide << ", "
-               << pcm[2]*simulationBoxSide << " )." << std::endl;
-
-    // if not restoring, correct the total momentum to be zero
-    double pcmCorrected [3];
-    correctTotalMomentumToZero(pcm, pcmCorrected);
-    outputFile << "P whole system corrected = ( "
-               << pcmCorrected[0]*simulationBoxSide << ", "
-               << pcmCorrected[1]*simulationBoxSide << ", "
-               << pcmCorrected[2]*simulationBoxSide << " )." << std::endl;
-
-    // first computation of the kinetic energy
-    computeSystemEnergy();
-
-    if(stage.inputRestoringPreviousSimulation && initialTemperature > 0) {
-        // scale velocities to obtain the desired temperature
-        double scalingFactor = std::sqrt(initialTemperature/temperature);
-        scaleVelocities(scalingFactor);
-
-        // update energies to include the correction
-        computeSystemEnergy();
-    }
-}
-
-
-
-
-
-/*****************************************************************************************/
-
-
-// Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
-void IPCsimulation::generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r) {
-    double x,y,quad=2.;
-    while ( quad > 1. ) {
-        x = r.getRandom11();
-        y = r.getRandom11();
-        quad = x*x + y*y;
-    }
-    double norm = 2.*sqrt(1.-quad);  a[0]=x*norm;  a[1]=y*norm;  a[2]=1.-2.*quad;
-}
-
-
-
-//************************************************************************//
-double IPCsimulation::computeOmega(double Ra, double Rb, double rab) {
-    // BKL paper, formula 18
-    if ( rab > Ra+Rb )
-        return 0.;
-    else if ( rab <= std::fabs(Ra-Rb) )
-        return 8.*std::pow(std::min(Ra,Rb),3);
-    else {
-        const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
-        return 2.*( (2.*Ra+tempSum+rab/2.)*pow(Ra-tempSum-rab/2.,2)
-                  + (2.*Rb-tempSum+rab/2.)*pow(Rb+tempSum-rab/2.,2) );
-    }
-}
-//************************************************************************//
-double IPCsimulation::computeOmegaRadialDerivative(double Ra, double Rb, double rab) {
-    // BKL paper, derivative of formula 18
-    if ( rab >= Ra+Rb || rab <= fabs(Ra-Rb) )
-        return 0.;
-    else {
-        const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
-        const double tempSumMinus = tempSum - rab/2.;
-        const double tempSumPlus = tempSum + rab/2.;
-        return (6./rab) * (tempSumMinus*(Ra - tempSumPlus)*(Ra + tempSumPlus) - tempSumPlus*(Rb - tempSumMinus)*(Rb + tempSumMinus) );
-    }
-}
-
-void IPCsimulation::compileForceAndPotentialTables()
-{
-    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
-
-    uBB.resize(potentialRangeSamplingSize);
-    uBs1.resize(potentialRangeSamplingSize);
-    uBs2.resize(potentialRangeSamplingSize);
-    us1s2.resize(potentialRangeSamplingSize);
-    us1s1.resize(potentialRangeSamplingSize);
-    us2s2.resize(potentialRangeSamplingSize);
-    fBB.resize(potentialRangeSamplingSize);
-    fBs1.resize(potentialRangeSamplingSize);
-    fBs2.resize(potentialRangeSamplingSize);
-    fs1s2.resize(potentialRangeSamplingSize);
-    fs1s1.resize(potentialRangeSamplingSize);
-    fs2s2.resize(potentialRangeSamplingSize);
-
-    for ( size_t i = 0; i < potentialRangeSamplingSize; ++i)
-    {
-        const double r = i*forceAndEnergySamplingStep;
-        uBB[i]   = (e_BB  /e_min) * computeOmega(ipcRadius, ipcRadius, r);
-        uBs1[i]  = (e_Bs1 /e_min) * computeOmega(ipcRadius, firstPatchRadius,  r);
-        uBs2[i]  = (e_Bs2 /e_min) * computeOmega(ipcRadius, secndPatchRadius,  r);
-        us1s2[i] = (e_s1s2/e_min) * computeOmega(firstPatchRadius,  secndPatchRadius,  r);
-        us2s2[i] = (e_s2s2/e_min) * computeOmega(secndPatchRadius,  secndPatchRadius,  r);
-        us1s1[i] = (e_s1s1/e_min) * computeOmega(firstPatchRadius,  firstPatchRadius,  r);
-
-        fBB[i]   = (e_BB  /e_min) * computeOmegaRadialDerivative(ipcRadius, ipcRadius, r);
-        fBs1[i]  = (e_Bs1 /e_min) * computeOmegaRadialDerivative(ipcRadius, firstPatchRadius,  r);
-        fBs2[i]  = (e_Bs2 /e_min) * computeOmegaRadialDerivative(ipcRadius, secndPatchRadius,  r);
-        fs1s2[i] = (e_s1s2/e_min) * computeOmegaRadialDerivative(firstPatchRadius,  secndPatchRadius,  r);
-        fs2s2[i] = (e_s2s2/e_min) * computeOmegaRadialDerivative(secndPatchRadius,  secndPatchRadius,  r);
-        fs1s1[i] = (e_s1s1/e_min) * computeOmegaRadialDerivative(firstPatchRadius,  firstPatchRadius,  r);
-
-        if ( r <= 1.0 )
-        {
-            // setting up a Fake Hard Sphere Core
-            double rm = pow(r, -fakeHSexponent);
-            uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
-            fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
-        }
-        // and finally, this division is done here so we don't have to do it during runtime.
-        // it comes from the force being Fx = -du/dr dr/dx = -du/dr (x/r)
-        const double ir = 1./(r);
-        fBB[i]   *= ir;
-        fBs1[i]  *= ir;
-        fBs2[i]  *= ir;
-        fs1s2[i] *= ir;
-        fs1s1[i] *= ir;
-        fs2s2[i] *= ir;
     }
 }
 
@@ -558,6 +145,11 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 
 
 void IPCsimulation::initializeNewConfiguration(int N1) {
+    if(isJanusSimulation) {
+        initializeNewJanusConfiguration(N1);
+        return;
+    }
+
     particles.resize(nIPCs);
     RandomNumberGenerator rand;
 
@@ -646,6 +238,11 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 }
 
 void IPCsimulation::restorePreviousConfiguration() {
+    if(isJanusSimulation) {
+        restorePreviousJanusConfiguration();
+        return;
+    }
+
     char unusedPatchName;
     double unusedTime;
     std::ifstream startingConfigurationFile("startingstate.xyz");
@@ -682,6 +279,12 @@ void IPCsimulation::restorePreviousConfiguration() {
 
 
 void IPCsimulation::computeFreeForces() {
+
+    if(isJanusSimulation) {
+        computeFreeJanusForces();
+        return;
+    }
+
     // reset all forces
     for(IPC &ipc: particles) {
         for (int i: {0, 1, 2}) {
@@ -719,9 +322,7 @@ void IPCsimulation::computeFreeForces() {
             potentialEnergy += loopVars.U;
             squaredMinimumDistanceBetweenParticles += loopVars.minimumSquaredDistance;
         }
-//        #pragma omp for
-//        for(int n=0; n < nIPCs; ++n) {
-//            IPC& ipc = particles[n];
+
         for(IPC &ipc: particles) {
             for (int i: {0, 1, 2}) {
                 if(isFieldEnabled) {
@@ -733,6 +334,21 @@ void IPCsimulation::computeFreeForces() {
                 ipc.eFp2[i] = ipc.firstPatch.F[i]*cP21 + ipc.secndPatch.F[i]*cP22 + ipc.ipcCenter.F[i]*cP2c;
             }
         }
+    }
+}
+
+void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariables & loopVars) {
+    for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
+        computeInteractionsBetweenTwoIPCs(*loc, *ext, loopVars);
+    }
+}
+
+
+
+void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariables &loopVars) {
+    // starts from loc+1 which is like summing over i > j inside the cell
+    for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
+        computeInteractionsBetweenTwoIPCs(*loc, *ins, loopVars);
     }
 }
 
