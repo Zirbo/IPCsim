@@ -65,8 +65,10 @@ void IPCpostprocess::run() {
             readSnapshot(absoluteSnapshot);
             if (subSymSnapshot == 0)
                 updateInitialOrientationAndVelocites();
-            if (absoluteSnapshot == 0)
+            if (absoluteSnapshot == 0) {
                 updatePreviousPositions(); // for the initial computation of the MSD...
+                computeNematicOrderParameter();
+            }
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
             accumulateTypicalOrientations();
@@ -184,6 +186,10 @@ void IPCpostprocess::readOutputFile(std::string const& directoryName) {
 
     // scale lenghts
     firstPatchEccentricity /= simulationBoxSide;
+    firstPatchRadius /= simulationBoxSide;
+
+    // compute working parameters
+    squaredInteractionRange = std::pow(2*(firstPatchEccentricity + firstPatchRadius), 2);
 }
 
 void IPCpostprocess::computeMSD(const int snapshotNumber) {
@@ -290,4 +296,59 @@ void IPCpostprocess::printTypicalOrientations() {
     }
     typicalOrientationsFile3D.close();
     typicalOrientationsFile2D.close();
+}
+
+#include <algorithm>
+void IPCpostprocess::computeNematicOrderParameter() {
+    std::vector<double> nematicOrderParameter(nIPCs, 0.);
+    std::vector<int> numberOfNeighbours(nIPCs, 0);
+    std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter.out");
+    nematicOrderParameterFile << std::scientific << std::setprecision(6);
+
+    double globalAverage = 0.;
+    // loop on all couples
+    for (int i = 0; i < nIPCs; ++i) {
+        for (int j = i + 1; j < nIPCs; ++j) {
+            double distance = 0.;
+            for (int d: {0, 1, 2}) {
+                double distance_d = ipcCentersPreviousPositions[i][d] - ipcCentersPreviousPositions[j][d];
+                relativePBC(distance_d);
+                distance += std::pow(distance_d, 2);
+            }
+            // if they are too far, it does not count
+            if (distance > squaredInteractionRange)
+                continue;
+            // if they are close enough, they count as neighbours and we compute the NOP
+            ++numberOfNeighbours[i];
+            ++numberOfNeighbours[j];
+            double modulusNOP = 0.;
+
+            for (int d: {0, 1, 2})
+                modulusNOP += ipcCurrentOrientations[i][d]*ipcCurrentOrientations[j][d];
+            modulusNOP = std::pow(modulusNOP,2);
+            nematicOrderParameter[i] += modulusNOP;
+            nematicOrderParameter[j] += modulusNOP;
+        }
+        // normalize and print
+        if(numberOfNeighbours[i] != 0)
+            nematicOrderParameter[i] = 1.5*nematicOrderParameter[i]/numberOfNeighbours[i] - 0.5;
+        nematicOrderParameterFile << i << "\t" << nematicOrderParameter[i] << "\n";
+        globalAverage += nematicOrderParameter[i];
+    }
+    nematicOrderParameterFile.close();
+    globalAverage /= nIPCs;
+    std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+
+    const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
+    std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
+    for(int neighboursOfThisParticle: numberOfNeighbours)
+        ++histogramOfNeighbours[neighboursOfThisParticle];
+
+    std::ofstream numberOfNeighboursFile("analysis/numberOfNeighbours.out");
+    numberOfNeighboursFile << std::scientific << std::setprecision(6);
+    for(int i = 0; i < maxNumberOfNeighbours;  ++i) {
+        numberOfNeighboursFile << i << "\t" << histogramOfNeighbours[i] << "\n";
+    }
+    numberOfNeighboursFile.close();
+
 }

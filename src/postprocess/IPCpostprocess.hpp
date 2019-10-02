@@ -82,6 +82,8 @@ private:
     void accumulateTypicalOrientations();
     void printTypicalOrientations();
 
+    void computeNematicOrderParameter();
+
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__
