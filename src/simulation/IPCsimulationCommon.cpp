@@ -244,9 +244,14 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         }
     }
     inputFile.close();
+    if(isJanusSimulation) {
+        secndPatchRadius = 0.;
+        secndPatchEccentricity = 0.;
+        secndPatchMass = 0.;
+    }
 
     // patch geometry integrity check
-    if ( !isJanusSimulation && std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
+    if ( isNotJanusSimulation() && std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
         std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
         std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
         std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
@@ -270,7 +275,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
     // process data
     ratioBetweenTemperatureAndKineticEnergy = 2./(5.*nIPCs-3.);
-    ipcRadius = firstPatchEccentricity + firstPatchRadius;
+    ipcRadius = firstPatchEccentricity + firstPatchRadius;  // works for both 2patch and Janus
     interactionRange = 2*ipcRadius;
 
     // output the data for future checks
@@ -294,7 +299,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
     outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
     outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
-    outputFile << "Total number of sites being simulated: " << 3*nIPCs << std::endl;
+    outputFile << "Total number of sites being simulated: " << (isJanusSimulation? 2*nIPCs : 3*nIPCs) << std::endl;
 
     // potential sampling
     outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
@@ -307,10 +312,6 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     firstPatchEccentricity /= simulationBoxSide;
     secndPatchRadius /= simulationBoxSide;
     secndPatchEccentricity /= simulationBoxSide;
-    if(isJanusSimulation) {
-        secndPatchRadius = 0.;
-        secndPatchEccentricity = 0.;
-    }
     dt = simulationTimeStep/simulationBoxSide;
     forceAndEnergySamplingStep /= simulationBoxSide;
 
@@ -318,10 +319,13 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     squaredInteractionRange = std::pow(interactionRange,2);
     patchDistance = firstPatchEccentricity + secndPatchEccentricity; // the second is zero for Janus
     squaredPatchDistance = patchDistance*patchDistance;
+    inversePatchDistance = 1./patchDistance;
     ipcCenterInverseMass = 1./ipcCenterMass;
+    firstPatchInverseMass = 1./firstPatchMass;
+    halfDtFirstPatchInverseMass = .5*dt*firstPatchInverseMass;
     if(isNotJanusSimulation()) {
-        firstPatchInverseMass = 1./firstPatchMass;
         secndPatchInverseMass = 1./secndPatchMass;
+        halfDtSecndPatchInverseMass = .5*dt*secndPatchInverseMass;
         // inverse of the I parameter from formulas!
         const double iI = 1./(squaredPatchDistance*ipcCenterInverseMass + secndPatchInverseMass*std::pow(firstPatchEccentricity,2) + firstPatchInverseMass*std::pow(secndPatchEccentricity,2));
         cP11 = 1. - std::pow(secndPatchEccentricity,2)*iI*firstPatchInverseMass;
@@ -333,6 +337,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
         alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
         alpha_sum = alpha_1 + alpha_2;
+        inverseAlpha_sumSquaredPatchDistance = 1./(alpha_sum*squaredPatchDistance);
     }
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
@@ -345,16 +350,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     cells.initialize(1., interactionRange, nIPCs);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
 
-    if(isJanusSimulation) {
+    if (isJanusSimulation)
         cells.compileLists(janusParticles);
-        // first computation of forces
-        computeFreeJanusForces();
-    }
-    else {
+    else
         cells.compileLists(particles);
-        // first computation of forces
-        computeFreeForces();
-    }
+    // first computation of forces
+    computeFreeForces();
 
     // check that total momentum is zero
     double pcm [3];
@@ -487,7 +488,10 @@ void IPCsimulation::compileForceAndPotentialTables()
 
 void IPCsimulation::computeTrajectoryStep() {
     computeVerletHalfStep();
-    cells.compileLists(particles);
+    if (isJanusSimulation)
+        cells.compileLists(janusParticles);
+    else
+        cells.compileLists(particles);
     computeFreeForces();
     finishVerletStep();
 }
@@ -550,7 +554,7 @@ void IPCsimulation::scaleVelocities(const double scalingFactor) {
 
 //************************************************************************//
 void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
-    outputTrajectoryFile << 3*nIPCs << "\n" << simulationBoxSide << "\t" << simulationTime*simulationTimeStep;
+    outputTrajectoryFile << (isJanusSimulation? 2*nIPCs : 3*nIPCs) << "\n" << simulationBoxSide << "\t" << simulationTime*simulationTimeStep;
     for (IPC ipc: particles) {
         outputTrajectoryFile << "\n"
                              << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]

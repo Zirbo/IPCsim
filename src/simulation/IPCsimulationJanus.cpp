@@ -274,8 +274,8 @@ void IPCsimulation::computeFreeJanusForces() {
             const std::list<int> & ipcsInCell = cells.getIPCsInCell(m);
             const std::list<int> ipcsInNeighbouringCells = cells.getIPCsInNeighbouringCells(m);
             for(auto ipc = ipcsInCell.cbegin(); ipc != ipcsInCell.cend(); ++ipc) {
-                computeInteractionsWithIPCsInTheSameCell(ipc, ipcsInCell, loopVars);
-                computeInteractionsWithIPCsInNeighbouringCells(ipc, ipcsInNeighbouringCells, loopVars);
+                computeInteractionsWithJanusIPCsInTheSameCell(ipc, ipcsInCell, loopVars);
+                computeInteractionsWithJanusIPCsInNeighbouringCells(ipc, ipcsInNeighbouringCells, loopVars);
             }
         }
         #pragma omp critical
@@ -302,7 +302,7 @@ void IPCsimulation::computeFreeJanusForces() {
     }
 }
 
-void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariablesJanus & loopVars) {
+void IPCsimulation::computeInteractionsWithJanusIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells, loopVariablesJanus & loopVars) {
     for( auto ext = ipcsInNeighbouringCells.cbegin(); ext != ipcsInNeighbouringCells.cend(); ++ext) {
         computeInteractionsBetweenTwoJanusIPCs(*loc, *ext, loopVars);
     }
@@ -310,7 +310,7 @@ void IPCsimulation::computeInteractionsWithIPCsInNeighbouringCells(std::list<int
 
 
 
-void IPCsimulation::computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariablesJanus &loopVars) {
+void IPCsimulation::computeInteractionsWithJanusIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell, loopVariablesJanus &loopVars) {
     // starts from loc+1 which is like summing over i > j inside the cell
     for(std::list<int>::const_iterator ins = std::next(loc); ins != ipcsInCurrentCell.cend(); ++ins) {
         computeInteractionsBetweenTwoJanusIPCs(*loc, *ins, loopVars);

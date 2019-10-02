@@ -60,8 +60,8 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         relativePBC(dxOld[i]);
 
         // compute the half step velocities from the effective forces of the last step
-        ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
-        ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
+        ipc.firstPatch.v[i] += ipc.eFp1[i]*halfDtFirstPatchInverseMass;
+        ipc.secndPatch.v[i] += ipc.eFp2[i]*halfDtSecndPatchInverseMass;
 
         // compute the new positions from the half step velocities
         ipc.firstPatch.x[i] += ipc.firstPatch.v[i]*dt;
@@ -102,7 +102,7 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
     }
 
     for (int i: {0, 1, 2}) {
-        ipc.ipcCenter.x[i] = ipc.secndPatch.x[i] + dxNew[i]*secndPatchEccentricity/patchDistance;
+        ipc.ipcCenter.x[i] = ipc.secndPatch.x[i] + dxNew[i]*secndPatchEccentricity*inversePatchDistance;
         absolutePBC(ipc.ipcCenter.x[i]);
     }
 }
@@ -115,8 +115,8 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
             return;
         }
         // compute the the final velocities from the new effective forces
-        ipc.firstPatch.v[i] += ipc.eFp1[i]*(.5*dt*firstPatchInverseMass);
-        ipc.secndPatch.v[i] += ipc.eFp2[i]*(.5*dt*secndPatchInverseMass);
+        ipc.firstPatch.v[i] += ipc.eFp1[i]*halfDtFirstPatchInverseMass;
+        ipc.secndPatch.v[i] += ipc.eFp2[i]*halfDtSecndPatchInverseMass;
 
         // compute the patch-patch distance
         dx[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
@@ -124,7 +124,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
         dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
     }
     // check how much the constraints are being violated
-    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
+    double k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])*inverseAlpha_sumSquaredPatchDistance;
     while( std::fabs(k) > tollerance ) {
         // compute and apply corrections
         for (int i: {0, 1, 2}) {
@@ -134,11 +134,11 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
             dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
         }
         // recompute the violation of the constraints
-        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])/(alpha_sum*squaredPatchDistance);
+        k = (dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2])*inverseAlpha_sumSquaredPatchDistance;
     }
 
     for (int i: {0, 1, 2}) {
-        ipc.ipcCenter.v[i] = (ipc.firstPatch.v[i]*secndPatchEccentricity + ipc.secndPatch.v[i]*firstPatchEccentricity)/patchDistance;
+        ipc.ipcCenter.v[i] = (ipc.firstPatch.v[i]*secndPatchEccentricity + ipc.secndPatch.v[i]*firstPatchEccentricity)*inversePatchDistance;
     }
 }
 
@@ -155,11 +155,8 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
 
     int N2 = N1*N1;
     int N3 = N2*N1;
-
-    // scaling: sqrt(2kT/mPI) comes from boltzmann average of |v_x|
-    //double vel_scaling = std::sqrt(2.*desiredTemperature/3.1415)/simulationBoxSide;
-
     double vel_scaling = std::sqrt(1.6*initialTemperature)/simulationBoxSide;
+
     // initialize IPC positions
     for(int i=0;i<N3;i++)
     {
