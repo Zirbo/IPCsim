@@ -82,7 +82,9 @@ private:
     void accumulateTypicalOrientations();
     void printTypicalOrientations();
 
+    void computeStaticProperties();
     void computeNematicOrderParameter();
+    void computeClusterAnalysis();
 
 };
 

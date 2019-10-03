@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <list>
 
 
 IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNumberOfSubSimulations, std::string const& directoryName) {
@@ -68,8 +69,9 @@ void IPCpostprocess::run() {
                 updateInitialOrientationAndVelocites();
             if (absoluteSnapshot == 0) {
                 updatePreviousPositions(); // for the initial computation of the MSD...
-                computeNematicOrderParameter();
+                computeStaticProperties();
             }
+            // compute dynamic properties, or static properties that we average over the entire simulation run
             computeMSD(absoluteSnapshot);
             computeAutocorrelations(subSymSnapshot);
             accumulateTypicalOrientations();
@@ -83,6 +85,11 @@ void IPCpostprocess::run() {
     printTypicalOrientations();
 
     trajectoryFile.close();
+}
+
+void IPCpostprocess::computeStaticProperties() {
+    computeNematicOrderParameter();
+    computeClusterAnalysis();
 }
 
 
@@ -338,17 +345,80 @@ void IPCpostprocess::computeNematicOrderParameter() {
     nematicOrderParameterFile.close();
     globalAverage /= nIPCs;
     std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+}
 
-    const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
-    std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
-    for(int neighboursOfThisParticle: numberOfNeighbours)
-        ++histogramOfNeighbours[neighboursOfThisParticle];
+void IPCpostprocess::computeClusterAnalysis() {
+    std::cout << "CLUSTER ANALYSIS" << std::endl;
 
-    std::ofstream numberOfNeighboursFile("analysis/numberOfNeighbours.out");
-    numberOfNeighboursFile << std::scientific << std::setprecision(6);
-    for(int i = 0; i < maxNumberOfNeighbours;  ++i) {
-        numberOfNeighboursFile << i << "\t" << histogramOfNeighbours[i] << "\n";
+    // first, make a table of the neighbours of each particles
+    std::vector<std::list<int>> listOfNeighbours(nIPCs);
+    for (int i = 0; i < nIPCs; ++i) {
+        for (int j = i + 1; j < nIPCs; ++j) {
+            double distance = 0.;
+            for (int d: {0, 1, 2}) {
+                double distance_d = ipcCentersPreviousPositions[i][d] - ipcCentersPreviousPositions[j][d];
+                relativePBC(distance_d);
+                distance += std::pow(distance_d, 2);
+            }
+            // if they are too far, it does not count
+            if (distance > squaredInteractionRange)
+                continue;
+            //else
+            listOfNeighbours[i].push_back(j);
+            listOfNeighbours[j].push_back(i);
+        }
     }
-    numberOfNeighboursFile.close();
 
+    // histogram of neighbours... can be moved to a separate functions
+    // input: std::vector<std::list<int>> listOfNeighbours(nIPCs);
+    {
+        std::cout << "number of neighbours" << std::endl;
+        // compute how many neighbours each particle has
+        std::vector<int> numberOfNeighbours(nIPCs, 0);
+        for (int i = 0; i < nIPCs; ++i)
+            numberOfNeighbours[i] = listOfNeighbours[i].size();
+        // compute the histogram of neighbours
+        const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
+        std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
+        for(int neighboursOfThisParticle: numberOfNeighbours)
+            ++histogramOfNeighbours[neighboursOfThisParticle];
+
+        // and print it
+        std::ofstream numberOfNeighboursFile("analysis/numberOfNeighbours.out");
+        numberOfNeighboursFile << std::scientific << std::setprecision(6);
+        for(int i = 0; i < maxNumberOfNeighbours;  ++i) {
+            numberOfNeighboursFile << i << "\t" << histogramOfNeighbours[i] << "\n";
+        }
+        numberOfNeighboursFile.close();
+    }
+
+    // compute the nematic order parameter
+    // input: std::vector<std::list<int>> listOfNeighbours(nIPCs);
+    {
+        std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter2.out");
+        nematicOrderParameterFile << std::scientific << std::setprecision(6);
+
+        double globalAverage = 0.;
+        // loop on the lists of neighbours
+        for (int particle = 0; particle < nIPCs; ++particle) {
+            double modulusNOPi = 0.;
+            // loop on the neighbours inside the list
+            for (int particleNeighbour: listOfNeighbours[particle]) {
+                for (int d: {0, 1, 2})
+                    modulusNOPi += ipcCurrentOrientations[particle][d]*ipcCurrentOrientations[particleNeighbour][d];
+                modulusNOPi = std::pow(modulusNOPi,2);
+            }
+            // normalize and print
+            if(!listOfNeighbours[particle].empty())
+                modulusNOPi = 1.5*modulusNOPi/listOfNeighbours[particle].size() - 0.5;
+            nematicOrderParameterFile << particle << "\t" << modulusNOPi << "\n";
+            globalAverage += modulusNOPi;
+        }
+        nematicOrderParameterFile.close();
+        globalAverage /= nIPCs;
+        std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+    }
+
+
+    // let's do cluster analysis on the neighbours of each particle!
 }
