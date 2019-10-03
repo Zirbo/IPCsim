@@ -4,6 +4,7 @@
 struct Particle {
     double x[3], v[3], F[3];
 };
+
 struct IPCbase {
   Particle ipcCenter;
   char type;

@@ -4,19 +4,22 @@ set (CMAKE_CXX_STANDARD 11)
 project(IPCsim)
 
 set(HELPERS
-    ../helpers/cell_lists.hpp
-    ../helpers/cell_lists.cpp
-    ../helpers/randomNumberGenerator.hpp
-    ../helpers/isotropic_pair_correlation_function.hpp
+    helpers/cell_lists.hpp
+    helpers/cell_lists.cpp
+    helpers/randomNumberGenerator.hpp
+    helpers/isotropic_pair_correlation_function.hpp
 )
-set(COMMON_FILES
+set(SIMULATION_FILES
+    IPC.hpp
+    simulation/main.cpp
+    simulation/IPCsimulation.hpp
+    simulation/IPCsimulationCommon.cpp
+    simulation/IPCsimulation.cpp
+    simulation/IPCsimulationJanus.cpp
+)
+set(ALL_FILES
     ${HELPERS}
-    ../IPC.hpp
-)
-set(IPC
-    IPCsimulation.cpp
-    IPCsimulation.hpp
-    main.cpp
+    ${SIMULATION_FILES}
 )
 
 find_package(OpenMP REQUIRED)
@@ -27,10 +30,10 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS}")
 
-add_executable(${PROJECT_NAME} ${COMMON_FILES} ${IPC})
+add_executable(${PROJECT_NAME} ${ALL_FILES})
 target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
-configure_file(input.in input.in)
-configure_file(stages.in stages.in)
+configure_file(simulation/input.in input.in)
+configure_file(simulation/stages.in stages.in)
 
 message(STATUS "COMMON FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "DEBUG FLAGS: ${CMAKE_CXX_FLAGS_DEBUG}")
