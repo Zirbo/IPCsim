@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 
 
 IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNumberOfSubSimulations, std::string const& directoryName) {
@@ -298,7 +299,6 @@ void IPCpostprocess::printTypicalOrientations() {
     typicalOrientationsFile2D.close();
 }
 
-#include <algorithm>
 void IPCpostprocess::computeNematicOrderParameter() {
     std::vector<double> nematicOrderParameter(nIPCs, 0.);
     std::vector<int> numberOfNeighbours(nIPCs, 0);
