@@ -10,6 +10,7 @@
 
 #include <fstream>
 #include <vector>
+#include <list>
 #include <array>
 #include <string>
 #include <cmath>
@@ -83,8 +84,10 @@ private:
     void printTypicalOrientations();
 
     void computeStaticProperties();
-    void computeNematicOrderParameter();
-    void computeClusterAnalysis();
+    void computeListOfNeighbours(std::vector<std::list<int>> & listOfNeighbours);
+    void computeAndPrintHistogramOfNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
+    void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
+    void doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours);
 
 };
 

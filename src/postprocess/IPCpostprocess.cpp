@@ -5,7 +5,6 @@
 #include <fstream>
 #include <cmath>
 #include <algorithm>
-#include <list>
 
 
 IPCpostprocess::IPCpostprocess(const int inputNumberOfPatches, const int inputNumberOfSubSimulations, std::string const& directoryName) {
@@ -85,11 +84,6 @@ void IPCpostprocess::run() {
     printTypicalOrientations();
 
     trajectoryFile.close();
-}
-
-void IPCpostprocess::computeStaticProperties() {
-    computeNematicOrderParameter();
-    computeClusterAnalysis();
 }
 
 
@@ -306,52 +300,15 @@ void IPCpostprocess::printTypicalOrientations() {
     typicalOrientationsFile2D.close();
 }
 
-void IPCpostprocess::computeNematicOrderParameter() {
-    std::vector<double> nematicOrderParameter(nIPCs, 0.);
-    std::vector<int> numberOfNeighbours(nIPCs, 0);
-    std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter.out");
-    nematicOrderParameterFile << std::scientific << std::setprecision(6);
-
-    double globalAverage = 0.;
-    // loop on all couples
-    for (int i = 0; i < nIPCs; ++i) {
-        for (int j = i + 1; j < nIPCs; ++j) {
-            double distance = 0.;
-            for (int d: {0, 1, 2}) {
-                double distance_d = ipcCentersPreviousPositions[i][d] - ipcCentersPreviousPositions[j][d];
-                relativePBC(distance_d);
-                distance += std::pow(distance_d, 2);
-            }
-            // if they are too far, it does not count
-            if (distance > squaredInteractionRange)
-                continue;
-            // if they are close enough, they count as neighbours and we compute the NOP
-            ++numberOfNeighbours[i];
-            ++numberOfNeighbours[j];
-            double modulusNOP = 0.;
-
-            for (int d: {0, 1, 2})
-                modulusNOP += ipcCurrentOrientations[i][d]*ipcCurrentOrientations[j][d];
-            modulusNOP = std::pow(modulusNOP,2);
-            nematicOrderParameter[i] += modulusNOP;
-            nematicOrderParameter[j] += modulusNOP;
-        }
-        // normalize and print
-        if(numberOfNeighbours[i] != 0)
-            nematicOrderParameter[i] = 1.5*nematicOrderParameter[i]/numberOfNeighbours[i] - 0.5;
-        nematicOrderParameterFile << i << "\t" << nematicOrderParameter[i] << "\n";
-        globalAverage += nematicOrderParameter[i];
-    }
-    nematicOrderParameterFile.close();
-    globalAverage /= nIPCs;
-    std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+void IPCpostprocess::computeStaticProperties() {
+    std::vector<std::list<int>> listOfNeighbours(nIPCs);
+    computeListOfNeighbours(listOfNeighbours);
+    computeAndPrintHistogramOfNeighbours(listOfNeighbours);
+    computeNematicOrderParameter(listOfNeighbours);
+    doClusterAnalysis(listOfNeighbours);
 }
 
-void IPCpostprocess::computeClusterAnalysis() {
-    std::cout << "CLUSTER ANALYSIS" << std::endl;
-
-    // first, make a table of the neighbours of each particles
-    std::vector<std::list<int>> listOfNeighbours(nIPCs);
+void IPCpostprocess::computeListOfNeighbours(std::vector<std::list<int>> & listOfNeighbours) {
     for (int i = 0; i < nIPCs; ++i) {
         for (int j = i + 1; j < nIPCs; ++j) {
             double distance = 0.;
@@ -368,57 +325,53 @@ void IPCpostprocess::computeClusterAnalysis() {
             listOfNeighbours[j].push_back(i);
         }
     }
+}
 
-    // histogram of neighbours... can be moved to a separate functions
-    // input: std::vector<std::list<int>> listOfNeighbours(nIPCs);
-    {
-        std::cout << "number of neighbours" << std::endl;
-        // compute how many neighbours each particle has
-        std::vector<int> numberOfNeighbours(nIPCs, 0);
-        for (int i = 0; i < nIPCs; ++i)
-            numberOfNeighbours[i] = listOfNeighbours[i].size();
-        // compute the histogram of neighbours
-        const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
-        std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
-        for(int neighboursOfThisParticle: numberOfNeighbours)
-            ++histogramOfNeighbours[neighboursOfThisParticle];
+void IPCpostprocess::computeAndPrintHistogramOfNeighbours(std::vector<std::list<int>> const& listOfNeighbours) {
+    // compute how many neighbours each particle has
+    std::vector<int> numberOfNeighbours(nIPCs, 0);
+    for (int i = 0; i < nIPCs; ++i)
+        numberOfNeighbours[i] = listOfNeighbours[i].size();
+    // compute the histogram of neighbours
+    const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
+    std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
+    for(int neighboursOfThisParticle: numberOfNeighbours)
+        ++histogramOfNeighbours[neighboursOfThisParticle];
 
-        // and print it
-        std::ofstream numberOfNeighboursFile("analysis/numberOfNeighbours.out");
-        numberOfNeighboursFile << std::scientific << std::setprecision(6);
-        for(int i = 0; i < maxNumberOfNeighbours;  ++i) {
-            numberOfNeighboursFile << i << "\t" << histogramOfNeighbours[i] << "\n";
-        }
-        numberOfNeighboursFile.close();
+    // and print it
+    std::ofstream numberOfNeighboursFile("analysis/numberOfNeighbours.out");
+    numberOfNeighboursFile << std::scientific << std::setprecision(6);
+    for(int i = 0; i < maxNumberOfNeighbours;  ++i) {
+        numberOfNeighboursFile << i << "\t" << histogramOfNeighbours[i] << "\n";
     }
+    numberOfNeighboursFile.close();
+}
 
-    // compute the nematic order parameter
-    // input: std::vector<std::list<int>> listOfNeighbours(nIPCs);
-    {
-        std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter2.out");
-        nematicOrderParameterFile << std::scientific << std::setprecision(6);
+void IPCpostprocess::computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours) {
+    std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter2.out");
+    nematicOrderParameterFile << std::scientific << std::setprecision(6);
 
-        double globalAverage = 0.;
-        // loop on the lists of neighbours
-        for (int particle = 0; particle < nIPCs; ++particle) {
-            double modulusNOPi = 0.;
-            // loop on the neighbours inside the list
-            for (int particleNeighbour: listOfNeighbours[particle]) {
-                for (int d: {0, 1, 2})
-                    modulusNOPi += ipcCurrentOrientations[particle][d]*ipcCurrentOrientations[particleNeighbour][d];
-                modulusNOPi = std::pow(modulusNOPi,2);
-            }
-            // normalize and print
-            if(!listOfNeighbours[particle].empty())
-                modulusNOPi = 1.5*modulusNOPi/listOfNeighbours[particle].size() - 0.5;
-            nematicOrderParameterFile << particle << "\t" << modulusNOPi << "\n";
-            globalAverage += modulusNOPi;
+    double globalAverage = 0.;
+    // loop on the lists of neighbours
+    for (int i = 0; i < nIPCs; ++i) {
+        double modulusNOPi = 0.;
+        // loop on the neighbours inside the list
+        for (int j: listOfNeighbours[i]) {
+            double modulusNOPij = 0.;
+            for (int d: {0, 1, 2})
+                modulusNOPij += ipcCurrentOrientations[i][d]*ipcCurrentOrientations[j][d];
+            modulusNOPi += std::pow(modulusNOPij,2);
         }
-        nematicOrderParameterFile.close();
-        globalAverage /= nIPCs;
-        std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+        // normalize and print
+        if(!listOfNeighbours[i].empty())
+            modulusNOPi = 1.5*modulusNOPi/listOfNeighbours[i].size() - 0.5;
+        nematicOrderParameterFile << i << "\t" << modulusNOPi << "\n";
+        globalAverage += modulusNOPi;
     }
-
-
-    // let's do cluster analysis on the neighbours of each particle!
+    nematicOrderParameterFile.close();
+    globalAverage /= nIPCs;
+    std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
+}
+void IPCpostprocess::doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours) {
+    // cacca;
 }
