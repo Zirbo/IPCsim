@@ -301,14 +301,14 @@ void IPCpostprocess::printTypicalOrientations() {
 }
 
 void IPCpostprocess::computeStaticProperties() {
-    std::vector<std::list<int>> listOfNeighbours(nIPCs);
-    computeListOfNeighbours(listOfNeighbours);
+    const std::vector<std::list<int>> listOfNeighbours = computeListOfNeighbours();
     computeAndPrintHistogramOfNeighbours(listOfNeighbours);
     computeNematicOrderParameter(listOfNeighbours);
     doClusterAnalysis(listOfNeighbours);
 }
 
-void IPCpostprocess::computeListOfNeighbours(std::vector<std::list<int>> & listOfNeighbours) {
+std::vector<std::list<int>> IPCpostprocess::computeListOfNeighbours() {
+    std::vector<std::list<int>> listOfNeighbours(nIPCs);
     for (int i = 0; i < nIPCs; ++i) {
         for (int j = i + 1; j < nIPCs; ++j) {
             double distance = 0.;
@@ -325,6 +325,7 @@ void IPCpostprocess::computeListOfNeighbours(std::vector<std::list<int>> & listO
             listOfNeighbours[j].push_back(i);
         }
     }
+    return listOfNeighbours;
 }
 
 void IPCpostprocess::computeAndPrintHistogramOfNeighbours(std::vector<std::list<int>> const& listOfNeighbours) {
@@ -372,6 +373,19 @@ void IPCpostprocess::computeNematicOrderParameter(std::vector<std::list<int>> co
     globalAverage /= nIPCs;
     std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
 }
+
 void IPCpostprocess::doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours) {
-    // cacca;
+    // construct a matrix with the particles parallel to each other...
+    std::vector<std::vector<bool>> isParallel(nIPCs, std::vector<bool>(nIPCs, false));
+    for (int i = 0; i < nIPCs; ++i) {
+        for (int j: listOfNeighbours[i]) {
+            double scalarProduct_ij = 0.;
+            for (int d: {0, 1, 2})
+                scalarProduct_ij += ipcCurrentOrientations[i][d]*ipcCurrentOrientations[j][d];
+            scalarProduct_ij = std::pow(scalarProduct_ij,2);
+            if(scalarProduct_ij > .8)
+                isParallel[i][j] = true;
+        }
+    }
+    // e mo che cazzo ci volevo fare?
 }

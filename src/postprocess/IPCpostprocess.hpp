@@ -6,8 +6,6 @@
  *
  * asda
  *---------------------------------------------------------------------------------------*/
-
-
 #include <fstream>
 #include <vector>
 #include <list>
@@ -84,7 +82,7 @@ private:
     void printTypicalOrientations();
 
     void computeStaticProperties();
-    void computeListOfNeighbours(std::vector<std::list<int>> & listOfNeighbours);
+    std::vector<std::list<int>> computeListOfNeighbours();
     void computeAndPrintHistogramOfNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
     void doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours);
