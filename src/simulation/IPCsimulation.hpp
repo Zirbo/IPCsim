@@ -43,6 +43,7 @@ struct SimulationStage {
     bool inputRestoringPreviousSimulation;
     bool inputPrintTrajectoryAndCorrelations;
     bool janusSimulation;
+    int binaryMixturePercentage;
 
     SimulationStage() : inputStartingTemperature{0.}, inputStageTotalDuration{0.},
                         inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
@@ -61,6 +62,7 @@ private:
     IPCsimulation();
 
     bool isJanusSimulation;
+    int binaryMixtureComposition;
     bool isNotJanusSimulation() { return !isJanusSimulation; } // needed because I am blind
     unsigned long simulationTime;
     std::ofstream outputFile;

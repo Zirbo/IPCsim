@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+#include <cstring>
 #include <sstream>
 #include <list>
 #include "IPCsimulation.hpp"
@@ -11,10 +13,12 @@ int main ( int argc, char *argv[] ) {
                 << "For the usage mode there are 3 options:\n"
                 << " * \"new\": start a new simulation; you need the files input.in and stages.in;\n"
                 << " * \"old\": resume an old simulation; you need the files input.in, stages.in, and a startingstate.xyz;\n"
-                << " * \"printpot\": print potentials in potentials.out, then exit.\n";
+                << " * \"printpot\": print potentials in potentials.out, then exit.\n"
+                << "Optionally, if you want to run a binary mixture system, you can specify th percentage using -b <number>,\n"
+                << "where the number has to be from 1 to 50.\n";
 
     // parse number of arguments
-    if(argc != 3) {
+    if(argc != 3 && argc != 5) {
         std::cerr << helpMessage.str();
         exit(1);
     }
@@ -28,6 +32,16 @@ int main ( int argc, char *argv[] ) {
     } else {
         std::cerr << helpMessage.str();
         exit(1);
+    }
+
+    int binaryMixture = -1;
+    // parse binary mixture
+    if(argc == 5 && std::strcmp(argv[3], "-b") == 0) {
+        binaryMixture = std::stoi(argv[4]);
+        if(binaryMixture < 1 || binaryMixture > 50) {
+            std::cerr << helpMessage.str();
+            exit(1);
+        }
     }
 
     // parse usage mode
@@ -48,6 +62,7 @@ int main ( int argc, char *argv[] ) {
         SimulationStage currentStage;
         currentStage.janusSimulation = janusSimulation;
         currentStage.inputRestoringPreviousSimulation = (std::string(argv[2]) == "old");
+        currentStage.binaryMixturePercentage = binaryMixture;
         int simulatedStages = 0;
         double tollerance = 0.;
         std::cout << std::boolalpha;

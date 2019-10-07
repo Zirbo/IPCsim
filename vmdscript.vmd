@@ -9,6 +9,9 @@ $sel4 set color colorID 8
 set sel5 [atomselect top "name F"]
 $sel5 set radius 0.5
 $sel5 set color colorID 8
+set sel6 [atomselect top "name M"]
+$sel6 set radius 0.5
+$sel6 set color colorID 8
 
 set sel1 [atomselect top "name P"]
 $sel1 set radius 0.38

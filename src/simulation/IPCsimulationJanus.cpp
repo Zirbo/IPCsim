@@ -152,7 +152,7 @@ void IPCsimulation::initializeNewJanusConfiguration(int N1) {
     {
       // FCC is obtained as 4 intersecating SC
         janusParticles[i].number = i;
-        janusParticles[i].type = 'C';
+        janusParticles[i].type = (i > binaryMixtureComposition)? 'C' : 'M';
         janusParticles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(janusParticles[i].ipcCenter.x[0]);
         janusParticles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -161,7 +161,7 @@ void IPCsimulation::initializeNewJanusConfiguration(int N1) {
         absolutePBC(janusParticles[i].ipcCenter.x[2]);
 
         janusParticles[i+N3].number = i+N3;
-        janusParticles[i+N3].type = 'C';
+        janusParticles[i+N3].type = (i+N3 > binaryMixtureComposition)? 'C' : 'M';
         janusParticles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(janusParticles[i+N3].ipcCenter.x[0]);
         janusParticles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -170,7 +170,7 @@ void IPCsimulation::initializeNewJanusConfiguration(int N1) {
         absolutePBC(janusParticles[i+N3].ipcCenter.x[2]);
 
         janusParticles[i+N3+N3].number = i+N3+N3;
-        janusParticles[i+N3+N3].type = 'C';
+        janusParticles[i+N3+N3].type = (i+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
         janusParticles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(janusParticles[i+N3+N3].ipcCenter.x[0]);
         janusParticles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -179,7 +179,7 @@ void IPCsimulation::initializeNewJanusConfiguration(int N1) {
         absolutePBC(janusParticles[i+N3+N3].ipcCenter.x[2]);
 
         janusParticles[i+N3+N3+N3].number = i+N3+N3+N3;
-        janusParticles[i+N3+N3+N3].type = 'C';
+        janusParticles[i+N3+N3+N3].type = (i+N3+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
         janusParticles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(janusParticles[i+N3+N3+N3].ipcCenter.x[0]);
         janusParticles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -322,6 +322,20 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
     JanusIPC const& first = janusParticles[firstIPC];
     JanusIPC const& secnd = janusParticles[secndIPC];
 
+    double binaryMixtureSign = 1.;
+    if(binaryMixtureComposition > 0) {
+        if ( (firstIPC < binaryMixtureComposition && secndIPC > binaryMixtureComposition) ||
+             (secndIPC < binaryMixtureComposition && firstIPC > binaryMixtureComposition) )
+            binaryMixtureSign = -1.;
+        else if( (firstIPC < binaryMixtureComposition && secndIPC < binaryMixtureComposition) ||
+                 (secndIPC > binaryMixtureComposition && firstIPC > binaryMixtureComposition) )
+            binaryMixtureSign = 1.;
+        else {
+            std::cerr << "Something really shitty is going on.";
+            exit(1);
+        }
+    }
+
     // compute center-center distance
     double centerCenterSeparation[3];
     for (int i: {0, 1, 2}) {
@@ -342,9 +356,9 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
     // we are inside the interaction range; compute the interaction between centers
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
-    loopVars.U += uBB[centerCenterDistance];
+    loopVars.U += binaryMixtureSign*uBB[centerCenterDistance];
     for (int i: {0, 1, 2}) {
-        const double modulus = fBB[centerCenterDistance]*centerCenterSeparation[i];
+        const double modulus = binaryMixtureSign*fBB[centerCenterDistance]*centerCenterSeparation[i];
         loopVars.ipcCenterF[firstIPC][i] -= modulus;
         loopVars.ipcCenterF[secndIPC][i] += modulus;
     }
@@ -372,23 +386,23 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
         if (j == 0) { // center - patch
-            loopVars.U += uBs1[dist];
+            loopVars.U += binaryMixtureSign*uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs1[dist]*siteSiteSeparation[0][i];
+                const double modulus = binaryMixtureSign*fBs1[dist]*siteSiteSeparation[0][i];
                 loopVars.ipcCenterF[firstIPC][i] -= modulus;
                 loopVars.janusPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 1) { // patch - center
-            loopVars.U += uBs1[dist];
+            loopVars.U += binaryMixtureSign*uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs1[dist]*siteSiteSeparation[1][i];
+                const double modulus = binaryMixtureSign*fBs1[dist]*siteSiteSeparation[1][i];
                 loopVars.janusPatchF[firstIPC][i] -= modulus;
                 loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 2) { // patch - patch
-            loopVars.U += us1s1[dist];
+            loopVars.U += binaryMixtureSign*us1s1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fs1s1[dist]*siteSiteSeparation[2][i];
+                const double modulus = binaryMixtureSign*fs1s1[dist]*siteSiteSeparation[2][i];
                 loopVars.janusPatchF[firstIPC][i] -= modulus;
                 loopVars.janusPatchF[secndIPC][i] += modulus;
             }

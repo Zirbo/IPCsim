@@ -162,7 +162,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     {
       // FCC is obtained as 4 intersecating SC
         particles[i].number = i;
-        particles[i].type = 'C';
+        particles[i].type = (i > binaryMixtureComposition)? 'C' : 'M';
         particles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i].ipcCenter.x[0]);
         particles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -171,7 +171,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i].ipcCenter.x[2]);
 
         particles[i+N3].number = i+N3;
-        particles[i+N3].type = 'C';
+        particles[i+N3].type = (i+N3 > binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3].ipcCenter.x[0]);
         particles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -180,7 +180,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i+N3].ipcCenter.x[2]);
 
         particles[i+N3+N3].number = i+N3+N3;
-        particles[i+N3+N3].type = 'C';
+        particles[i+N3+N3].type = (i+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -189,7 +189,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i+N3+N3].ipcCenter.x[2]);
 
         particles[i+N3+N3+N3].number = i+N3+N3+N3;
-        particles[i+N3+N3+N3].type = 'C';
+        particles[i+N3+N3+N3].type = (i+N3+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -354,6 +354,20 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
     IPC const& first = particles[firstIPC];
     IPC const& secnd = particles[secndIPC];
 
+    double binaryMixtureSign = 1.;
+    if(binaryMixtureComposition > 0) {
+        if ( (firstIPC < binaryMixtureComposition && secndIPC >= binaryMixtureComposition) ||
+             (secndIPC < binaryMixtureComposition && firstIPC >= binaryMixtureComposition) )
+            binaryMixtureSign = -1.;
+        else if( (firstIPC < binaryMixtureComposition && secndIPC < binaryMixtureComposition) ||
+                 (secndIPC >= binaryMixtureComposition && firstIPC >= binaryMixtureComposition) )
+            binaryMixtureSign = 1.;
+        else {
+            std::cerr << "Something really shitty is going on.";
+            exit(1);
+        }
+    }
+
     // compute center-center distance
     double centerCenterSeparation[3];
     for (int i: {0, 1, 2}) {
@@ -374,14 +388,14 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
     // we are inside the interaction range; compute the interaction between centers
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
-    loopVars.U += uBB[centerCenterDistance];
+    loopVars.U += binaryMixtureSign*uBB[centerCenterDistance];
     for (int i: {0, 1, 2}) {
-        const double modulus = fBB[centerCenterDistance]*centerCenterSeparation[i];
+        const double modulus = binaryMixtureSign*fBB[centerCenterDistance]*centerCenterSeparation[i];
         loopVars.ipcCenterF[firstIPC][i] -= modulus;
         loopVars.ipcCenterF[secndIPC][i] += modulus;
     }
 
-    // compute all the other site-site separations
+    // compute all the other 8 site-site separations
     double siteSiteSeparation[8][3];
     for (int i: {0, 1, 2}) {
         siteSiteSeparation[0][i] = first.ipcCenter.x[i] - secnd.firstPatch.x[i];
@@ -396,7 +410,7 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
             relativePBC(siteSiteSeparation[j][i]);
     }
 
-    // all the others
+    // compute all the other 8 site-site interactions
     for (int j = 0; j < 8; ++j) {
         double siteSiteSeparationModulus = siteSiteSeparation[j][0]*siteSiteSeparation[j][0]
                                          + siteSiteSeparation[j][1]*siteSiteSeparation[j][1]
@@ -409,58 +423,58 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
         siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
         const size_t dist = size_t( siteSiteSeparationModulus/forceAndEnergySamplingStep );
         if (j == 0) { // center - patch1
-            loopVars.U += uBs1[dist];
+            loopVars.U += binaryMixtureSign*uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs1[dist]*siteSiteSeparation[0][i];
+                const double modulus = binaryMixtureSign*fBs1[dist]*siteSiteSeparation[0][i];
                 loopVars.ipcCenterF[firstIPC][i] -= modulus;
                 loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 1) { // center - patch2
-            loopVars.U += uBs2[dist];
+            loopVars.U += binaryMixtureSign*uBs2[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs2[dist]*siteSiteSeparation[1][i];
+                const double modulus = binaryMixtureSign*fBs2[dist]*siteSiteSeparation[1][i];
                 loopVars.ipcCenterF[firstIPC][i] -= modulus;
                 loopVars.secndPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 2) { // patch1 - center
-            loopVars.U += uBs1[dist];
+            loopVars.U += binaryMixtureSign*uBs1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs1[dist]*siteSiteSeparation[2][i];
+                const double modulus = binaryMixtureSign*fBs1[dist]*siteSiteSeparation[2][i];
                 loopVars.firstPatchF[firstIPC][i] -= modulus;
                 loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 3) { // patch1 - patch1
-            loopVars.U += us1s1[dist];
+            loopVars.U += binaryMixtureSign*us1s1[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fs1s1[dist]*siteSiteSeparation[3][i];
+                const double modulus = binaryMixtureSign*fs1s1[dist]*siteSiteSeparation[3][i];
                 loopVars.firstPatchF[firstIPC][i] -= modulus;
                 loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 4) { // patch1 - patch2
-            loopVars.U += us1s2[dist];
+            loopVars.U += binaryMixtureSign*us1s2[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fs1s2[dist]*siteSiteSeparation[4][i];
+                const double modulus = binaryMixtureSign*fs1s2[dist]*siteSiteSeparation[4][i];
                 loopVars.firstPatchF[firstIPC][i] -= modulus;
                 loopVars.secndPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 5) { // patch2 - center
-            loopVars.U += uBs2[dist];
+            loopVars.U += binaryMixtureSign*uBs2[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fBs2[dist]*siteSiteSeparation[5][i];
+                const double modulus = binaryMixtureSign*fBs2[dist]*siteSiteSeparation[5][i];
                 loopVars.secndPatchF[firstIPC][i] -= modulus;
                 loopVars.ipcCenterF[secndIPC][i] += modulus;
             }
         } else if (j == 6) { // patch2 - patch1
-            loopVars.U += us1s2[dist];
+            loopVars.U += binaryMixtureSign*us1s2[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fs1s2[dist]*siteSiteSeparation[6][i];
+                const double modulus = binaryMixtureSign*fs1s2[dist]*siteSiteSeparation[6][i];
                 loopVars.secndPatchF[firstIPC][i] -= modulus;
                 loopVars.firstPatchF[secndIPC][i] += modulus;
             }
         } else if (j == 7) { // patch2 - patch2
-            loopVars.U += us2s2[dist];
+            loopVars.U += binaryMixtureSign*us2s2[dist];
             for (int i: {0, 1, 2}) {
-                const double modulus = fs2s2[dist]*siteSiteSeparation[7][i];
+                const double modulus = binaryMixtureSign*fs2s2[dist]*siteSiteSeparation[7][i];
                 loopVars.secndPatchF[firstIPC][i] -= modulus;
                 loopVars.secndPatchF[secndIPC][i] += modulus;
             }

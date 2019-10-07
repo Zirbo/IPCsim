@@ -278,6 +278,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     ipcRadius = firstPatchEccentricity + firstPatchRadius;  // works for both 2patch and Janus
     interactionRange = 2*ipcRadius;
 
+    // if binary mixture, compute the number of oppositely-charged IPCs
+    if(stage.binaryMixturePercentage > 0)
+        binaryMixtureComposition = (int) (.01*nIPCs*stage.binaryMixturePercentage);
+    else
+        binaryMixtureComposition = 0;
+
     // output the data for future checks
     outputFile << nIPCs << "\t" << density << "\t" << initialTemperature << "\n";
     outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
@@ -344,6 +350,9 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     if(!stage.inputRestoringPreviousSimulation) {
         outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration(N1);
+        if (binaryMixtureComposition > 0)
+            outputFile << "Binary mixture where " << stage.binaryMixturePercentage << "% of the particles have a different sign;\n"
+                       << binaryMixtureComposition << " have opposite charge than the other " << nIPCs - binaryMixtureComposition << " particles.\n\n";
     }
 
     // cell list compilation
