@@ -11,28 +11,32 @@ bool getFlag(int argc, char* argv[], const std::string& flag);
 
 int main ( int argc, char *argv[] ) {
     std::stringstream helpMessage;
-    helpMessage << "USAGE:\nYou need to specify a usage mode as the first, mandatory, argument. You have three options:\n"
+    helpMessage << "\n - - - - - SIMULATION OF INVERSE PATCHY COLLOIDS - - - - -\n\n"
+                << "USAGE:\nYou need to specify a usage mode as the first, mandatory, argument. You have three options:\n"
                 << " * \"new\": start a new simulation; you need the files input.in and stages.in;\n"
                 << " * \"old\": resume an old simulation; you need the files input.in, stages.in, and a startingstate.xyz;\n"
-                << " * \"printpot\": print potentials in potentials.out, then exit.\n"
-                << "Optional flags:\n"
+                << " * \"printpot\": print potentials in lammps format in potentials.out, then exit.\n"
+                << "\nOPTIONAL FLAGS:\n"
                 << "   --janus        - Run a simulation with only one patch.\n"
                 << "                    Information in input.in regarding the second patch will be ignored.\n"
-                << "   --binary       - run a system with a binary mixture of oppositely charged particles.,\n"
+                << "   --binary       - Run a system with a binary mixture of oppositely charged particles.\n"
                 << "                    You must specify the percentage of unlike-charged particles like this:\n"
                 << "                          --binary=P\n"
                 << "                    where P is an integer number between 1 and 50.\n"
-                << "  --printforces   - prints also the forces in the trajectory.xyz file (only in the stages where it is created).\n"
+                << "  --printforces   - Prints also the forces in the trajectory.xyz file (only in the stages where it is created).\n"
                 << "                    Be careful, the postprocess program does not support this format.\n"
                 << "                    The startingstate.xyz file will not be affected."
-                << "\nExample:\n"
+                << "\n\nEXAMPLES:\n"
                 << "./IPCsim printpot\n"
                 << "./IPCsim new --binary=40\n"
-                << "./IPCsim old --janus --printforces\n";
+                << "./IPCsim old --janus --printforces\n"
+                << "\n\nIMPORTANT!!!\n"
+                << "There is error checking for the flag options, but not for the flags themselves!\n"
+                << "This means that, for example, something like\n"
+                << "./IPCsim new --BINARY 40        or\n./IPCsim old --prntfrcs\nwould be silently ignored!\n";
 
     // parse number of arguments
    if(argc < 2 || argc > 4) {
-        std::cerr << "Invalid number of arguments.\n";
         std::cerr << helpMessage.str();
         return 1;
     }
