@@ -164,7 +164,7 @@ private:
     void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC, loopVariables & loopVars);
     void computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, const int secndIPC, loopVariablesJanus &loopVars);
 
-    void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
+    void outputSystemTrajectory(std::ofstream & outputTrajectoryFile, const bool printTheForces);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
 
