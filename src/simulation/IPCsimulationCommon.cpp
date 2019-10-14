@@ -209,6 +209,7 @@ void IPCsimulation::correctTotalMomentumToZero(double (&pcm)[3], double (&pcmCor
 void IPCsimulation::initializeSystem(const SimulationStage &stage)
 {
     isJanusSimulation = stage.janusSimulation;
+    printForces = stage.printForces;
 
     simulationTime = 0;
 
@@ -565,28 +566,31 @@ void IPCsimulation::scaleVelocities(const double scalingFactor) {
 void IPCsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
     outputTrajectoryFile << (isJanusSimulation? 2*nIPCs : 3*nIPCs) << "\n" << simulationBoxSide << "\t" << simulationTime*simulationTimeStep;
     for (IPC ipc: particles) {
-        outputTrajectoryFile << "\n"
-                             << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
-                                         << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2]
-                                         //<< "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2]
-                             << "\n"
-                             << 'P'      << "\t" << ipc.firstPatch.x[0] << "\t" << ipc.firstPatch.x[1] << "\t" << ipc.firstPatch.x[2]
-                                         << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2]
-                                         //<< "\t" << ipc.firstPatch.F[0] << "\t" << ipc.firstPatch.F[1] << "\t" << ipc.firstPatch.F[2]
-                             << "\n"
-                             << 'Q'      << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
-                                         << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
-                                         //<< "\t" << ipc.secndPatch.F[0] << "\t" << ipc.secndPatch.F[1] << "\t" << ipc.secndPatch.F[2];
+        // center
+        outputTrajectoryFile << "\n" << ipc.type
+                             << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
+                             << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2];
+        if (printForces)     outputTrajectoryFile << "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2];
+        // first patch
+        outputTrajectoryFile << "\n" << 'P'
+                             << "\t" << ipc.firstPatch.x[0] << "\t" << ipc.firstPatch.x[1] << "\t" << ipc.firstPatch.x[2]
+                             << "\t" << ipc.firstPatch.v[0] << "\t" << ipc.firstPatch.v[1] << "\t" << ipc.firstPatch.v[2];
+        if (printForces)     outputTrajectoryFile << "\t" << ipc.firstPatch.F[0] << "\t" << ipc.firstPatch.F[1] << "\t" << ipc.firstPatch.F[2];
+        // second patch
+        outputTrajectoryFile << "\n" << 'Q'
+                             << "\t" << ipc.secndPatch.x[0] << "\t" << ipc.secndPatch.x[1] << "\t" << ipc.secndPatch.x[2]
+                             << "\t" << ipc.secndPatch.v[0] << "\t" << ipc.secndPatch.v[1] << "\t" << ipc.secndPatch.v[2];
+        if (printForces)     outputTrajectoryFile << "\t" << ipc.secndPatch.F[0] << "\t" << ipc.secndPatch.F[1] << "\t" << ipc.secndPatch.F[2];
     }
     for (JanusIPC ipc: janusParticles) {
-        outputTrajectoryFile << "\n"
-                             << ipc.type << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
-                                         << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2]
-                                         //<< "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2]
-                             << "\n"
-                             << 'P'      << "\t" << ipc.janusPatch.x[0] << "\t" << ipc.janusPatch.x[1] << "\t" << ipc.janusPatch.x[2]
-                                         << "\t" << ipc.janusPatch.v[0] << "\t" << ipc.janusPatch.v[1] << "\t" << ipc.janusPatch.v[2];
-                                         //<< "\t" << ipc.firstPatch.F[0] << "\t" << ipc.firstPatch.F[1] << "\t" << ipc.firstPatch.F[2];
+        outputTrajectoryFile << "\n" << ipc.type
+                             << "\t" << ipc.ipcCenter.x[0] << "\t" << ipc.ipcCenter.x[1] << "\t" << ipc.ipcCenter.x[2]
+                             << "\t" << ipc.ipcCenter.v[0] << "\t" << ipc.ipcCenter.v[1] << "\t" << ipc.ipcCenter.v[2];
+        if (printForces)     outputTrajectoryFile << "\t" << ipc.ipcCenter.F[0] << "\t" << ipc.ipcCenter.F[1] << "\t" << ipc.ipcCenter.F[2];
+        outputTrajectoryFile << "\n" << 'P'
+                             << "\t" << ipc.janusPatch.x[0] << "\t" << ipc.janusPatch.x[1] << "\t" << ipc.janusPatch.x[2]
+                             << "\t" << ipc.janusPatch.v[0] << "\t" << ipc.janusPatch.v[1] << "\t" << ipc.janusPatch.v[2];
+        if (printForces)     outputTrajectoryFile << "\t" << ipc.janusPatch.F[0] << "\t" << ipc.janusPatch.F[1] << "\t" << ipc.janusPatch.F[2];
     }
     outputTrajectoryFile << std::endl;
 }
