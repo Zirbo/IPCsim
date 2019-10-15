@@ -1,0 +1,64 @@
+#################################
+#                               #
+# script for lammps to create   #
+# a 3D simulation of IPCs!      #
+#                               #
+#################################
+
+variable inputfile index IPC_1_startingstate.txt
+variable outputfile index outputFile.txt
+#variable trajectoryfile index trajectory_from_lammps.xyz
+variable trajectoryfile index trajectory_from_lammps.lammpstrj
+
+#
+dimension 3
+units real
+boundary p p p
+atom_style full
+
+# read starting configuration
+read_data ${inputfile}
+
+# interaction potential
+pair_style lj/cut/coul/cut 12.0
+bond_style harmonic
+angle_style harmonic
+pair_modify mix geometric tail yes
+
+
+# force field parameters
+# missing nonbonded parameters are inferred from mixing.
+pair_coeff	1 1 0.0537 2.80	# C of CO2 ( 27 K = 0.0537 kcal/mol)
+pair_coeff	2 2 0.1570 3.05	# O of CO2 (79 K = 0.1570 kcal/mol)
+bond_coeff	1 999.9 1.16	# C=O (999.9 = fake number since not used)
+angle_coeff	1 999.9 180.0	# O=C=O (999.9 = fake number since not used)
+
+group all_co2 id <> 1 3
+
+fix 1 all_co2 rigid/nve molecule	# my_ketran = finite number
+
+compute my_ketran all_co2 ke/rigid 1
+compute my_kerot all_co2 erotate/rigid 1
+compute my_temp all_co2 temp
+
+timestep 1.0
+reset_timestep 0
+neigh_modify every 10 delay 20 check yes
+thermo 500
+thermo_style custom step c_my_ketran c_my_kerot temp c_my_temp pe ebond eangle
+
+dump 1 all atom 100 dump.lammpstrj
+# print logs and trajectory
+log             ${outputfile}
+# dump ID particle-type format print-interval file
+dump            dumpcommand all atom 25 ${trajectoryfile}
+
+
+velocity all create 3.0 12345
+run 0							# temperature may not be 300K
+velocity all scale 3.0			# now it should be
+
+
+
+timestep 1.0
+run 10000
