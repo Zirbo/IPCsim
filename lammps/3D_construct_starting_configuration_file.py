@@ -54,12 +54,14 @@ for iz in range(0, args.nIPCsSide):
         for ix in range(0, args.nIPCsSide):
             # ipc center
             i = 1 + 3*(ix + iy*args.nIPCsSide + iz*args.nIPCsPlane)
+            ipcNum = int(i/3) + 1
             x = (0.5 + ix + 0.1*ranf())*args.side
             y = (0.5 + iy + 0.1*ranf())*args.side
             z = (0.5 + iz + 0.1*ranf())*args.side
             outputFile.write("\n" + str(i).rjust(10) +
+                  str(ipcNum).rjust(10) +
                   str(1).rjust(10) +
-                  str(0.0).rjust(10) +
+                  str(-1.).rjust(10) +
                  '{:3.8f}'.format(x).rjust(16) +
                  '{:3.8f}'.format(y).rjust(16) +
                  '{:3.8f}'.format(z).rjust(16) )
@@ -73,14 +75,16 @@ for iz in range(0, args.nIPCsSide):
             pz /= mod
             # patches
             outputFile.write("\n" + str(i+1).rjust(10) +
+                  str(ipcNum).rjust(10) +
                   str(2).rjust(10) +
-                  str(0.0).rjust(10) +
+                  str(0.5).rjust(10) +
                  '{:3.8f}'.format(x + args.ecc*px).rjust(16) +
                  '{:3.8f}'.format(y + args.ecc*py).rjust(16) +
                  '{:3.8f}'.format(z + args.ecc*pz).rjust(16) )
             outputFile.write("\n" + str(i+2).rjust(10) +
+                  str(ipcNum).rjust(10) +
                   str(2).rjust(10) +
-                  str(0.0).rjust(10) +
+                  str(0.5).rjust(10) +
                  '{:3.8f}'.format(x - args.ecc*px).rjust(16) +
                  '{:3.8f}'.format(y - args.ecc*py).rjust(16) +
                  '{:3.8f}'.format(z - args.ecc*pz).rjust(16) )
