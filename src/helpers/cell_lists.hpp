@@ -13,6 +13,8 @@ public:
     void initialize(double simulationBoxSide, double interactionRange, int howManyParticles);
     template <typename IPCtype>
     void compileLists(std::vector<IPCtype> const& ipcs) {
+        // consistency check --- this should probably be done using enable_if or other template-specific helpers, but this works and it's much more readable
+        static_assert(std::is_base_of<IPCbase, IPCtype>::value, "FATAL MISUSE OF cell_lists::compileLists(std::vector<IPCtype>) : IPCtype must be IPCbase or derived");
         // empty all the lists
         for(auto & m: list_of_neighbours)
             m.clear();
