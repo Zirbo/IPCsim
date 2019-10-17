@@ -34,17 +34,17 @@ void IPCsimulation::printPotentialsToFile(int potentialPrintingStep) {
             printCounter++;
             potentialOutputFile << printCounter << "\t" << r << "\t";
             if( type == 0) {
-                potentialOutputFile << uBB[i]*r << "\t" << fBB[i]*r << "\n";
+                potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
             } else if ( type == 1) {
-                potentialOutputFile << uBs1[i]*r << "\t" << fBs1[i]*r << "\n";
+                potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
             } else if ( type == 2) {
-                potentialOutputFile << uBs2[i]*r << "\t" << fBs2[i]*r << "\n";
+                potentialOutputFile << uBs2[i] << "\t" << fBs2[i]*r << "\n";
             } else if ( type == 3) {
-                potentialOutputFile << us1s2[i]*r << "\t" << fs1s2[i]*r << "\n";
+                potentialOutputFile << us1s2[i] << "\t" << fs1s2[i]*r << "\n";
             } else if ( type == 4) {
-                potentialOutputFile << us1s1[i]*r << "\t" << fs1s1[i]*r << "\n";
+                potentialOutputFile << us1s1[i] << "\t" << fs1s1[i]*r << "\n";
             } else if ( type == 5) {
-                potentialOutputFile << us2s2[i]*r << "\t" << fs2s2[i]*r << "\n";
+                potentialOutputFile << us2s2[i] << "\t" << fs2s2[i]*r << "\n";
             }
         }
         potentialOutputFile.close();

@@ -29,11 +29,11 @@ void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep) {
             printCounter++;
             potentialOutputFile << printCounter << "\t" << r << "\t";
             if( type == 0) {
-                potentialOutputFile << uBB[i]*r << "\t" << fBB[i]*r << "\n";
+                potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
             } else if ( type == 1) {
-                potentialOutputFile << uBs1[i]*r << "\t" << fBs1[i]*r << "\n";
+                potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
             } else if ( type == 2) {
-                potentialOutputFile << us1s2[i]*r << "\t" << fs1s2[i]*r << "\n";
+                potentialOutputFile << us1s2[i] << "\t" << fs1s2[i]*r << "\n";
             }
         }
         potentialOutputFile.close();
