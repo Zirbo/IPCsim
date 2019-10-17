@@ -1,0 +1,71 @@
+#################################
+#                               #
+# script for lammps to create   #
+# a 3D simulation of IPCs!      #
+#                               #
+#################################
+
+variable       inputfile        index   IPC_startingstate.txt
+variable       outputfile       index   outputFile.txt
+#variable       trajectoryfile index trajectory.xyz
+variable       trajectoryfile   index   trajectory.lammpstrj
+
+#
+dimension      3
+units          real
+boundary       p p p
+atom_style     full
+
+# read starting configuration
+read_data      ${inputfile}
+
+# interaction potential
+#pair_style lj/cut/coul/cut 12.0
+pair_style     table linear 120000
+bond_style     harmonic
+angle_style    harmonic
+pair_modify    mix geometric tail yes
+
+
+# force field parameters
+# missing nonbonded parameters are inferred from mixing.
+pair_coeff     1 1 potentials_for_lammps/BB.table BB
+pair_coeff     1 2 potentials_for_lammps/Bs1.table Bs1
+pair_coeff     2 2 potentials_for_lammps/s1s1.table s1s1
+bond_coeff     1 999.9 0.22     # center-patch distance
+angle_coeff	   1 999.9 180.0    # patch-patch angle
+
+velocity all create 100.0 53244 dist gaussian mom no rot no
+
+group all_ipcs id <> 1 24
+
+fix 1 all_ipcs rigid/nve molecule	# my_ketran = finite number
+
+compute        my_ketran  all_ipcs  ke/rigid 1
+compute        my_kerot   all_ipcs  erotate/rigid 1
+compute        my_temp    all_ipcs  temp
+
+timestep       1.0
+reset_timestep 0
+neighbor       1.2 bin
+neigh_modify   every 10 delay 20 check yes
+thermo 500
+
+#thermo_style multi
+thermo_style   custom step   c_my_ketran c_my_kerot temp c_my_temp pe ebond eangle
+
+#dump 1 all atom 100 dump.lammpstrj
+# print logs and trajectory
+log            ${outputfile}
+# dump ID particle-type format print-interval file
+dump           dumpcommand all atom 25 ${trajectoryfile}
+
+
+#velocity all create 3.0 12345
+#run 0							# temperature may not be 300K
+#velocity all scale 3.0			# now it should be
+
+run 0
+
+timestep 0.0025
+run 10000

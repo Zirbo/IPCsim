@@ -16,6 +16,7 @@ outputFile = open('startingConfiguration.txt','w')
 args.nIPCsPlane = args.nIPCsSide**2
 args.nIPCs = args.nIPCsSide**3
 args.side = (args.nIPCs/args.density)**(1./3.)
+args.sideStep = args.side/args.nIPCsSide
 
 print(args)
 
@@ -55,9 +56,9 @@ for iz in range(0, args.nIPCsSide):
             # ipc center
             i = 1 + 3*(ix + iy*args.nIPCsSide + iz*args.nIPCsPlane)
             ipcNum = int(i/3) + 1
-            x = (0.5 + ix + 0.1*ranf())*args.side
-            y = (0.5 + iy + 0.1*ranf())*args.side
-            z = (0.5 + iz + 0.1*ranf())*args.side
+            x = (0.5 + ix + 0.1*ranf())*args.sideStep
+            y = (0.5 + iy + 0.1*ranf())*args.sideStep
+            z = (0.5 + iz + 0.1*ranf())*args.sideStep
             outputFile.write("\n" + str(i).rjust(10) +
                   str(ipcNum).rjust(10) +
                   str(1).rjust(10) +
