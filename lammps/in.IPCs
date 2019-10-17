@@ -24,7 +24,7 @@ velocity        all create 3.0 123456
 # LJ potential
 pair_style	table linear 120000
 pair_coeff	1 1 potentials_for_lammps/BB.table BB
-pair_coeff	1 2 potentials_for_lammps/Bs1table BB
+pair_coeff	1 2 potentials_for_lammps/Bs1.table BB
 pair_coeff	2 2 potentials_for_lammps/s1s1.table BB
 # neighbor lists
 neighbor        0.3   bin
