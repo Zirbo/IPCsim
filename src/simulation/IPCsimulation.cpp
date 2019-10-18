@@ -162,7 +162,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     {
       // FCC is obtained as 4 intersecating SC
         particles[i].number = i;
-        particles[i].type = (i > binaryMixtureComposition)? 'C' : 'M';
+        particles[i].type = (i >= binaryMixtureComposition)? 'C' : 'M';
         particles[i].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i].ipcCenter.x[0]);
         particles[i].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -171,7 +171,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i].ipcCenter.x[2]);
 
         particles[i+N3].number = i+N3;
-        particles[i+N3].type = (i+N3 > binaryMixtureComposition)? 'C' : 'M';
+        particles[i+N3].type = (i+N3 >= binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3].ipcCenter.x[0]);
         particles[i+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -180,7 +180,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i+N3].ipcCenter.x[2]);
 
         particles[i+N3+N3].number = i+N3+N3;
-        particles[i+N3+N3].type = (i+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
+        particles[i+N3+N3].type = (i+N3+N3 >= binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3+N3].ipcCenter.x[0] = (i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3].ipcCenter.x[1] = (.5 + (i/N1)%N1 + .1*rand.getRandom55())/N1;
@@ -189,7 +189,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
         absolutePBC(particles[i+N3+N3].ipcCenter.x[2]);
 
         particles[i+N3+N3+N3].number = i+N3+N3+N3;
-        particles[i+N3+N3+N3].type = (i+N3+N3+N3 > binaryMixtureComposition)? 'C' : 'M';
+        particles[i+N3+N3+N3].type = (i+N3+N3+N3 >= binaryMixtureComposition)? 'C' : 'M';
         particles[i+N3+N3+N3].ipcCenter.x[0] = (.5 + i%N1 + .1*rand.getRandom55())/N1;
         absolutePBC(particles[i+N3+N3+N3].ipcCenter.x[0]);
         particles[i+N3+N3+N3].ipcCenter.x[1] = ((i/N1)%N1 + .1*rand.getRandom55())/N1;
