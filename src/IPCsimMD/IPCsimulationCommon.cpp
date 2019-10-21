@@ -1,7 +1,6 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <iomanip>
 #include "IPCsimulation.hpp"
 
 

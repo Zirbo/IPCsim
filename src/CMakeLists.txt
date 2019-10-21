@@ -22,6 +22,6 @@ message(STATUS "CMAKE_RUNTIME_OUTPUT_DIRECTORY: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY
 
 add_subdirectory(helpers)
 add_subdirectory(IPCsimMD)
-add_subdirectory(IPEsimMC)
+#add_subdirectory(IPEsimMC)
 add_subdirectory(postprocess)
 

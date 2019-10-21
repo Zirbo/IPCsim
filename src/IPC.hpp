@@ -19,4 +19,12 @@ struct JanusIPC : public IPCbase {
   Particle janusPatch;
 };
 
+
+
+
+struct IPE {
+    double cmPosition[3], orientation[3];
+};
+
+
 #endif // __IPC_HEADER_INCLUDED__

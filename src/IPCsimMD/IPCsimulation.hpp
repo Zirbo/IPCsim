@@ -50,7 +50,7 @@ struct SimulationStage {
                         inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
                         janusSimulation{false}, printForces{false}
                     {}
- };
+};
 
 class IPCsimulation {
 public:
