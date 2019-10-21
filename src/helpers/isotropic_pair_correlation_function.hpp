@@ -40,6 +40,8 @@ public:
 
     template <typename IPCtype>
     void compute(std::vector<IPCtype> particles) {
+        // consistency check --- this should probably be done using enable_if or other template-specific helpers, but this works and it's much more readable
+        static_assert(std::is_base_of<IPCbase, IPCtype>::value, "FATAL MISUSE OF cell_lists::compileLists(std::vector<IPCtype>) : IPCtype must be IPCbase or derived");
         ++paircorrelationTotalSamplings;
         for (int i=0; i<nParticles-1; ++i) {
             for (int k=i+1; k<nParticles; ++k) {
