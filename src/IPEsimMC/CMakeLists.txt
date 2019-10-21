@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 project(IPEsim)
 
 set(ALL_FILES
-#    ../IPC.hpp
+    ../IPC.hpp
     main.cpp
     IPEsimulation.hpp
     IPEsimulation.cpp
