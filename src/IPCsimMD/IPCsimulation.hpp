@@ -78,8 +78,8 @@ private:
     double computeOmega(double Ra, double Rb, double rab);
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
 
-    void printPotentialsToFile(int potentialPrintingStep);
-    void printPotentialsToFileJanus(int potentialPrintingStep);
+    void printPotentialsToFile(int potentialPrintingStep, int cutoffValue);
+    void printPotentialsToFileJanus(int potentialPrintingStep, int cutoffValue);
 
     bool printTrajectoryAndCorrelations;
     // state point

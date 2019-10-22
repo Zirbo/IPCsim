@@ -6,7 +6,7 @@
 
 
 
-void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep) {
+void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep, int cutoffValue) {
 
     // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
@@ -28,12 +28,28 @@ void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep) {
             const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
             printCounter++;
             potentialOutputFile << printCounter << "\t" << r << "\t";
-            if( type == 0) {
-                potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
-            } else if ( type == 1) {
-                potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
-            } else if ( type == 2) {
-                potentialOutputFile << us1s2[i] << "\t" << fs1s2[i]*r << "\n";
+
+            if (cutoffValue < 0) {
+                if( type == 0) {
+                    potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
+                } else if ( type == 1) {
+                    potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
+                } else if ( type == 2) {
+                    potentialOutputFile << us1s1[i] << "\t" << fs1s1[i]*r << "\n";
+                }
+            } else {
+                double printPotential, printForce;
+                if( type == 0) {
+                    printPotential = ( uBB[i] > cutoffValue )? cutoffValue : uBB[i];
+                    printForce = (fBB[i]*r < -cutoffValue )? -cutoffValue : fBB[i];
+                } else if ( type == 1) {
+                    printPotential = ( uBs1[i] > cutoffValue )? cutoffValue : uBs1[i];
+                    printForce = (fBs1[i]*r < -cutoffValue )? -cutoffValue : fBs1[i];
+                } else if ( type == 2) {
+                    printPotential = ( us1s1[i] > cutoffValue )? cutoffValue : us1s1[i];
+                    printForce = (fs1s1[i]*r < -cutoffValue )? -cutoffValue : fs1s1[i];
+                }
+                potentialOutputFile << printPotential << "\t" << printForce << "\n";
             }
         }
         potentialOutputFile.close();

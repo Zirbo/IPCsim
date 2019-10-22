@@ -112,12 +112,16 @@ double IPCsimulation::run() {
 //************************************************************************//
 void IPCsimulation::printPotentials() {
     int potentialPrintingStep;
+    int cutoffValue;
 
     std::cout << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
               << " and until " << interactionRange*simulationBoxSide << ".\n"
               << "How often do you want to print, in integer multiples of "
               << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
     std::cin >> potentialPrintingStep;
+    std::cout << "Do you want to set up a maximum (absolute) value for the prints?\n"
+              << "If yes write it, if no write a negative number. (PLEASE NO ZERO)\n";
+    std::cin >> cutoffValue;
 
     // clean up unneeded shit
     outputFile.close();
@@ -140,7 +144,7 @@ void IPCsimulation::printPotentials() {
         exit(1);
     }
 
-    printPotentialsToFile(potentialPrintingStep);
+    printPotentialsToFile(potentialPrintingStep, cutoffValue);
 }
 
 

@@ -6,9 +6,9 @@
 
 
 
-void IPCsimulation::printPotentialsToFile(int potentialPrintingStep) {
+void IPCsimulation::printPotentialsToFile(int potentialPrintingStep, int cutoffValue) {
     if(isJanusSimulation) {
-        printPotentialsToFileJanus(potentialPrintingStep);
+        printPotentialsToFileJanus(potentialPrintingStep, cutoffValue);
         return;
     }
 
@@ -33,22 +33,48 @@ void IPCsimulation::printPotentialsToFile(int potentialPrintingStep) {
             const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
             printCounter++;
             potentialOutputFile << printCounter << "\t" << r << "\t";
-            if( type == 0) {
-                potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
-            } else if ( type == 1) {
-                potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
-            } else if ( type == 2) {
-                potentialOutputFile << uBs2[i] << "\t" << fBs2[i]*r << "\n";
-            } else if ( type == 3) {
-                potentialOutputFile << us1s2[i] << "\t" << fs1s2[i]*r << "\n";
-            } else if ( type == 4) {
-                potentialOutputFile << us1s1[i] << "\t" << fs1s1[i]*r << "\n";
-            } else if ( type == 5) {
-                potentialOutputFile << us2s2[i] << "\t" << fs2s2[i]*r << "\n";
+
+            if (cutoffValue < 0) {
+                if( type == 0) {
+                    potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
+                } else if ( type == 1) {
+                    potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
+                } else if ( type == 2) {
+                    potentialOutputFile << uBs2[i] << "\t" << fBs2[i]*r << "\n";
+                } else if ( type == 3) {
+                    potentialOutputFile << us1s2[i] << "\t" << fs1s2[i]*r << "\n";
+                } else if ( type == 4) {
+                    potentialOutputFile << us1s1[i] << "\t" << fs1s1[i]*r << "\n";
+                } else if ( type == 5) {
+                    potentialOutputFile << us2s2[i] << "\t" << fs2s2[i]*r << "\n";
+                }
+            } else {
+                double printPotential, printForce;
+                if( type == 0) {
+                    printPotential = ( uBB[i] > cutoffValue )? cutoffValue : uBB[i];
+                    printForce = (fBB[i]*r < -cutoffValue )? -cutoffValue : fBB[i];
+                } else if ( type == 1) {
+                    printPotential = ( uBs1[i] > cutoffValue )? cutoffValue : uBs1[i];
+                    printForce = (fBs1[i]*r < -cutoffValue )? -cutoffValue : fBs1[i];
+                } else if ( type == 2) {
+                    printPotential = ( uBs2[i] > cutoffValue )? cutoffValue : uBs2[i];
+                    printForce = (fBs2[i]*r < -cutoffValue )? -cutoffValue : fBs2[i];
+                } else if ( type == 3) {
+                    printPotential = ( us1s2[i] > cutoffValue )? cutoffValue : us1s2[i];
+                    printForce = (fs1s2[i]*r < -cutoffValue )? -cutoffValue : fs1s2[i];
+                } else if ( type == 4) {
+                    printPotential = ( us1s1[i] > cutoffValue )? cutoffValue : us1s1[i];
+                    printForce = (fs1s1[i]*r < -cutoffValue )? -cutoffValue : fs1s1[i];
+                } else if ( type == 5) {
+                    printPotential = ( us2s2[i] > cutoffValue )? cutoffValue : us2s2[i];
+                    printForce = (fs2s2[i]*r < -cutoffValue )? -cutoffValue : fs2s2[i];
+                }
+                potentialOutputFile << printPotential << "\t" << printForce << "\n";
             }
         }
         potentialOutputFile.close();
     }
+
 }
 
 
