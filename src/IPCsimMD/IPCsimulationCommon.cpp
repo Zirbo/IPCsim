@@ -144,7 +144,10 @@ void IPCsimulation::printPotentials() {
         exit(1);
     }
 
-    printPotentialsToFile(potentialPrintingStep, cutoffValue);
+    if(isJanusSimulation)
+        printPotentialsToFileJanus(potentialPrintingStep, cutoffValue);
+    else
+        printPotentialsToFileIPC(potentialPrintingStep, cutoffValue);
 }
 
 
@@ -266,7 +269,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     // if restoring, read state, so we get access to the real number of IPCs
     if(stage.inputRestoringPreviousSimulation) {
         outputFile << "Resuming a previous simulation. ";
-        restorePreviousConfiguration();
+
+        if(isJanusSimulation)
+            restorePreviousJanusConfiguration();
+        else
+            restorePreviousIPCconfiguration();
+
         outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n";
         // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
         density = double(nIPCs)/std::pow(simulationBoxSide, 3);
@@ -353,7 +361,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
     if(!stage.inputRestoringPreviousSimulation) {
         outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
-        initializeNewConfiguration(N1);
+
+        if(isJanusSimulation)
+            initializeNewJanusConfiguration(N1);
+        else
+            initializeNewIPCconfiguration(N1);
+
         if (binaryMixtureComposition > 0)
             outputFile << "Binary mixture where " << stage.binaryMixturePercentage << "% of the particles have a different sign;\n"
                        << binaryMixtureComposition << " have opposite charge than the other " << nIPCs - binaryMixtureComposition << " particles.\n\n";
@@ -363,12 +376,15 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     cells.initialize(1., interactionRange, nIPCs);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
 
-    if (isJanusSimulation)
-        cells.compileLists(janusParticles);
-    else
-        cells.compileLists(particles);
     // first computation of forces
-    computeFreeForces();
+    if (isJanusSimulation) {
+        cells.compileLists(janusParticles);
+        computeFreeJanusForces();
+    }
+    else {
+        cells.compileLists(particles);
+        computeFreeForces();
+    }
 
     // check that total momentum is zero
     double pcm [3];
@@ -500,29 +516,27 @@ void IPCsimulation::compileForceAndPotentialTables()
 
 
 void IPCsimulation::computeTrajectoryStep() {
-    computeVerletHalfStep();
-    if (isJanusSimulation)
+    if (isJanusSimulation) {
+        for(JanusIPC &ipc: janusParticles)
+            computeVerletHalfStepForJanusIPC(ipc);
+
         cells.compileLists(janusParticles);
-    else
+        computeFreeJanusForces();
+
+        for(JanusIPC &ipc: janusParticles)
+            finishVerletStepForJanusIPC(ipc);
+    }
+    else {
+        for(IPC &ipc: particles)
+            computeVerletHalfStepForIPC(ipc);
+
         cells.compileLists(particles);
-    computeFreeForces();
-    finishVerletStep();
-}
+        computeFreeForces();
 
-void IPCsimulation::computeVerletHalfStep() {
-    for(IPC &ipc: particles)
-        computeVerletHalfStepForIPC(ipc);
+        for(IPC &ipc: particles)
+            finishVerletStepForIPC(ipc);
 
-    for(JanusIPC &ipc: janusParticles)
-        computeVerletHalfStepForJanusIPC(ipc);
-}
-
-void IPCsimulation::finishVerletStep() {
-    for(IPC &ipc: particles)
-        finishVerletStepForIPC(ipc);
-
-    for(JanusIPC &ipc: janusParticles)
-        finishVerletStepForJanusIPC(ipc);
+    }
 }
 
 

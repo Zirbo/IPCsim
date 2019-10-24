@@ -78,7 +78,7 @@ private:
     double computeOmega(double Ra, double Rb, double rab);
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
 
-    void printPotentialsToFile(int potentialPrintingStep, int cutoffValue);
+    void printPotentialsToFileIPC(int potentialPrintingStep, int cutoffValue);
     void printPotentialsToFileJanus(int potentialPrintingStep, int cutoffValue);
 
     bool printTrajectoryAndCorrelations;
@@ -119,9 +119,9 @@ private:
 
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
-    void restorePreviousConfiguration();
+    void restorePreviousIPCconfiguration();
     void restorePreviousJanusConfiguration();
-    void initializeNewConfiguration(int N1);
+    void initializeNewIPCconfiguration(int N1);
     void initializeNewJanusConfiguration(int N1);
 
 
@@ -129,11 +129,9 @@ private:
 
     void computeVerletHalfStepForIPC(IPC & ipc);
     void computeVerletHalfStepForJanusIPC(JanusIPC & ipc);
-    void computeVerletHalfStep();
 
     void finishVerletStepForIPC(IPC & ipc);
     void finishVerletStepForJanusIPC(JanusIPC & ipc);
-    void finishVerletStep();
 
     void computeFreeForces();
     struct loopVariables {

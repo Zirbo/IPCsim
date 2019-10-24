@@ -6,12 +6,7 @@
 
 
 
-void IPCsimulation::printPotentialsToFile(int potentialPrintingStep, int cutoffValue) {
-    if(isJanusSimulation) {
-        printPotentialsToFileJanus(potentialPrintingStep, cutoffValue);
-        return;
-    }
-
+void IPCsimulation::printPotentialsToFileIPC(int potentialPrintingStep, int cutoffValue) {
     // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
     const size_t numberOfPrints = potentialRangeSamplingSize/potentialPrintingStep;
@@ -170,12 +165,7 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 
 
 
-void IPCsimulation::initializeNewConfiguration(int N1) {
-    if(isJanusSimulation) {
-        initializeNewJanusConfiguration(N1);
-        return;
-    }
-
+void IPCsimulation::initializeNewIPCconfiguration(int N1) {
     particles.resize(nIPCs);
     RandomNumberGenerator rand;
 
@@ -260,12 +250,7 @@ void IPCsimulation::initializeNewConfiguration(int N1) {
     }
 }
 
-void IPCsimulation::restorePreviousConfiguration() {
-    if(isJanusSimulation) {
-        restorePreviousJanusConfiguration();
-        return;
-    }
-
+void IPCsimulation::restorePreviousIPCconfiguration() {
     char unusedPatchName;
     double unusedTime;
     std::ifstream startingConfigurationFile("startingstate.xyz");
@@ -302,12 +287,6 @@ void IPCsimulation::restorePreviousConfiguration() {
 
 
 void IPCsimulation::computeFreeForces() {
-
-    if(isJanusSimulation) {
-        computeFreeJanusForces();
-        return;
-    }
-
     // reset all forces
     for(IPC &ipc: particles) {
         for (int i: {0, 1, 2}) {
