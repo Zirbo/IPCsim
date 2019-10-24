@@ -51,7 +51,7 @@ public:
                     relativePBC(rik[d]);
                 }
                 const double r = std::sqrt(rik[0]*rik[0] + rik[1]*rik[1] + rik[2]*rik[2]);
-                const int R = (int) r * totalBinsInSimulationBoxSide; // this works because rik is in [0:1) units
+                const int R = (int) (r * totalBinsInSimulationBoxSide); // this works because rik is in [0:1) units
                 g[R]  += 1.;
             }
         }
