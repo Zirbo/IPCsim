@@ -85,6 +85,7 @@ private:
     std::vector<std::list<int>> computeListOfNeighbours();
     void computeAndPrintHistogramOfNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
+    void computePcosTheta(std::vector<std::list<int>> const& listOfNeighbours);
     void doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours);
 
 };

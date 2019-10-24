@@ -304,6 +304,7 @@ void IPCpostprocess::computeStaticProperties() {
     const std::vector<std::list<int>> listOfNeighbours = computeListOfNeighbours();
     computeAndPrintHistogramOfNeighbours(listOfNeighbours);
     computeNematicOrderParameter(listOfNeighbours);
+    computePcosTheta(listOfNeighbours);
     doClusterAnalysis(listOfNeighbours);
 }
 
@@ -349,7 +350,7 @@ void IPCpostprocess::computeAndPrintHistogramOfNeighbours(std::vector<std::list<
 }
 
 void IPCpostprocess::computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours) {
-    std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter2.out");
+    std::ofstream nematicOrderParameterFile("analysis/nematicOrderParameter.out");
     nematicOrderParameterFile << std::scientific << std::setprecision(6);
 
     double globalAverage = 0.;
@@ -374,9 +375,44 @@ void IPCpostprocess::computeNematicOrderParameter(std::vector<std::list<int>> co
     std::cout << "Global average of the nematic order parameter: " << globalAverage << "!\n";
 }
 
+void IPCpostprocess::computePcosTheta(std::vector<std::list<int>> const& listOfNeighbours) {
+    std::ofstream nematicOrderParameterFile("analysis/PcosTheta.out");
+    nematicOrderParameterFile << std::scientific << std::setprecision(6);
+
+    double globalAverage = 0.;
+    double globalAverageAbsoluteValue = 0.;
+    // loop on the lists of neighbours
+    for (int i = 0; i < nIPCs; ++i) {
+        double modulusPcosTheta = 0.;
+        double modulusPcosThetaAbsoluteValue = 0.;
+        // loop on the neighbours inside the list
+        for (int j: listOfNeighbours[i]) {
+            double modulusPcosTheta_ij = 0.;
+            for (int d: {0, 1, 2})
+                modulusPcosTheta_ij += ipcCurrentOrientations[i][d]*ipcCurrentOrientations[j][d];
+            modulusPcosTheta += modulusPcosTheta_ij;
+            modulusPcosThetaAbsoluteValue += std::abs(modulusPcosTheta_ij);
+
+        }
+        // normalize and print
+        if(!listOfNeighbours[i].empty()) {
+            modulusPcosTheta = modulusPcosTheta/listOfNeighbours[i].size();
+            modulusPcosThetaAbsoluteValue = modulusPcosThetaAbsoluteValue/listOfNeighbours[i].size();
+        }
+        nematicOrderParameterFile << i << "\t" << modulusPcosTheta << "\t" << modulusPcosThetaAbsoluteValue << "\n";
+        globalAverage += modulusPcosTheta;
+        globalAverageAbsoluteValue += modulusPcosThetaAbsoluteValue;
+    }
+    nematicOrderParameterFile.close();
+    globalAverage /= nIPCs;
+    globalAverageAbsoluteValue /= nIPCs;
+    std::cout << "Global average of PcosTheta: " << globalAverage << "!\n";
+    std::cout << "Global average of |PcosTheta|: " << globalAverageAbsoluteValue << "!\n";
+}
+
 void IPCpostprocess::doClusterAnalysis(std::vector<std::list<int>> const& listOfNeighbours) {
     // construct a matrix with the particles parallel to each other...
-    std::vector<std::vector<bool>> isParallel(nIPCs, std::vector<bool>(nIPCs, false));
+ /*   std::vector<std::vector<bool>> isParallel(nIPCs, std::vector<bool>(nIPCs, false));
     for (int i = 0; i < nIPCs; ++i) {
         for (int j: listOfNeighbours[i]) {
             double scalarProduct_ij = 0.;
@@ -386,6 +422,6 @@ void IPCpostprocess::doClusterAnalysis(std::vector<std::list<int>> const& listOf
             if(scalarProduct_ij > .8)
                 isParallel[i][j] = true;
         }
-    }
+    }*/
     // e mo che cazzo ci volevo fare?
 }
