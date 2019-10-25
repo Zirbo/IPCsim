@@ -1,60 +1,6 @@
 ﻿#include <cstdlib>
-#include <iomanip>
 #include <iostream>
-#include <iomanip>
 #include "IPCsimulation.hpp"
-
-
-
-void IPCsimulation::printPotentialsToFileJanus(int potentialPrintingStep, int cutoffValue) {
-
-    // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
-    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
-    const size_t numberOfPrints = potentialRangeSamplingSize/potentialPrintingStep;
-
-    const std::string dirName("potentials_for_lammps/");
-    const std::string extension(".table");
-    std::string interactionType [3];
-    interactionType[0] = "BB";      interactionType[1] = "Bs";      interactionType[2] = "ss";
-
-    for (int type = 0; type < 3; ++type) {
-        std::string fileName = dirName + interactionType[type] + extension;
-        std::ofstream potentialOutputFile(fileName);
-        potentialOutputFile << "# potentials for lammps\n\n" << interactionType[type] << "\nN " << numberOfPrints << "\n\n";
-        potentialOutputFile << std::scientific << std::setprecision(6);
-
-        int printCounter = 0;
-        for ( size_t i = potentialPrintingStep; i < potentialRangeSamplingSize; i += potentialPrintingStep) {
-            const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
-            printCounter++;
-            potentialOutputFile << printCounter << "\t" << r << "\t";
-
-            if (cutoffValue < 0) {
-                if( type == 0) {
-                    potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
-                } else if ( type == 1) {
-                    potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
-                } else if ( type == 2) {
-                    potentialOutputFile << us1s1[i] << "\t" << fs1s1[i]*r << "\n";
-                }
-            } else {
-                double printPotential, printForce;
-                if( type == 0) {
-                    printPotential = ( uBB[i] > cutoffValue )? cutoffValue : uBB[i];
-                    printForce = (fBB[i]*r < -cutoffValue )? -cutoffValue : fBB[i];
-                } else if ( type == 1) {
-                    printPotential = ( uBs1[i] > cutoffValue )? cutoffValue : uBs1[i];
-                    printForce = (fBs1[i]*r < -cutoffValue )? -cutoffValue : fBs1[i];
-                } else if ( type == 2) {
-                    printPotential = ( us1s1[i] > cutoffValue )? cutoffValue : us1s1[i];
-                    printForce = (fs1s1[i]*r < -cutoffValue )? -cutoffValue : fs1s1[i];
-                }
-                potentialOutputFile << printPotential << "\t" << printForce << "\n";
-            }
-        }
-        potentialOutputFile.close();
-    }
-}
 
 
 /*****************************************************************************************/

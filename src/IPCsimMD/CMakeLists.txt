@@ -9,6 +9,7 @@ set(ALL_FILES
     IPCsimulationCommon.cpp
     IPCsimulation.cpp
     IPCsimulationJanus.cpp
+    IPCsimulationPrint.cpp
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
