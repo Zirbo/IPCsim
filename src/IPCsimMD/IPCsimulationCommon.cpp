@@ -132,7 +132,7 @@ void IPCsimulation::printPotentials() {
                   << "Most likely you have it open somewhere or some program is running in it.\n";
         exit(1);
     }
-    if(system("rm -rf potentials_for_lammps potentials_emanuela6r") != 0) {
+    if(system("rm -rf potentials_for_lammps potentials") != 0) {
         std::cerr << "Unable to delete the old 'potentials_for_lammps/' directory with rm -rf. "
                   << "Most likely you have it open somewhere or some program is running in it.\n";
         exit(1);
@@ -143,16 +143,16 @@ void IPCsimulation::printPotentials() {
         std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
         exit(1);
     }
-    if(system("mkdir potentials_emanuela6r") != 0) {
+    if(system("mkdir potentials") != 0) {
         std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
         exit(1);
     }
 
-    potentialPrintingStep = 5000;
-    cutoffValue = -1;
+    // uncomment when debugging to save time
+    //potentialPrintingStep = 5000;
+    //cutoffValue = -1;
     printPotentialsToFileLAMMPS(potentialPrintingStep, cutoffValue);
-    printPotentialsToFileEmanuela6r(potentialPrintingStep);
-    printPotentialsToFileContourPlot(potentialPrintingStep);
+    printPotentialsToFileForVisualization(potentialPrintingStep);;
 }
 
 

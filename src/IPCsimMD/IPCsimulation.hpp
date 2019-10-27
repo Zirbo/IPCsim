@@ -79,9 +79,8 @@ private:
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
 
     void printPotentialsToFileLAMMPS(const int potentialPrintingStep, const int cutoffValue);
-    void printPotentialsToFileEmanuela6r(const int potentialPrintingStep);
-    void printPotentialsToFileContourPlot(const int potentialPrintingStep);
-    void printPotentialsToFileEmanuela6rSingleOrientation(const int potentialPrintingStep);
+    void printPotentialsToFileForVisualization(const int potentialPrintingStep);
+    void printPotentialsToFileForVisualizationSingleOrientation(const int potentialPrintingStep);
 
     bool printTrajectoryAndCorrelations;
     // state point

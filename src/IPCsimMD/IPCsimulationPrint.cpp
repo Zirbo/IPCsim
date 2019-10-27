@@ -71,7 +71,7 @@ void IPCsimulation::printPotentialsToFileLAMMPS(const int potentialPrintingStep,
 }
 
 
-void IPCsimulation::printPotentialsToFileEmanuela6r(const int potentialPrintingStep) {
+void IPCsimulation::printPotentialsToFileForVisualization(const int potentialPrintingStep) {
     particles.resize(2);
     // compute the four possible orientation with two asymmetric patches
     IPC upwards, downwards, sidewaysLeft, sidewaysRight;
@@ -103,43 +103,60 @@ void IPCsimulation::printPotentialsToFileEmanuela6r(const int potentialPrintingS
                         IPCcouple(sidewaysLeft, sidewaysLeft), IPCcouple(sidewaysLeft, sidewaysRight) }) {
         particles[0] = couple.first;
         particles[1] = couple.second;
-        printPotentialsToFileEmanuela6rSingleOrientation(potentialPrintingStep);
+        printPotentialsToFileForVisualizationSingleOrientation(potentialPrintingStep);
     }
 }
 
-void IPCsimulation::printPotentialsToFileEmanuela6rSingleOrientation(const int potentialPrintingStep) {
+void IPCsimulation::printPotentialsToFileForVisualizationSingleOrientation(const int potentialPrintingStep) {
 
-    const std::string dirName("potentials_emanuela6r/");
-    const std::string extension(".table");
-    const std::string fileName = dirName + particles[0].type + particles[1].type + extension;
+    std::string dirName("potentials/emanuela_r_");
+    std::string extension(".dat");
+    std::string fileName = dirName + particles[0].type + particles[1].type + extension;
     //std::stringstream fileName;
     //fileName << "potentials_emanuela6r/" << std::string(1, particles[0].type) << std::string(1, particles[1].type) << ".table";
     //const std::string fileName = "potentials_emanuela6r/" + particles[0].type + particles[1].type + ".table";
-    std::ofstream potentialOutputFile(fileName);
-    potentialOutputFile << "# potentials plotted as f(r) in Emanuela's six indipentent orientations\n";
-    potentialOutputFile << "# r          U(r)           U(r)*e_min (not renormalized)\n";
-    potentialOutputFile << std::scientific << std::setprecision(6);
+    std::ofstream radialOutputFile(fileName);
+    radialOutputFile << "# potentials plotted as f(r) in Emanuela's six indipentent orientations\n";
+    radialOutputFile << "# r          U(r)           U(r)*e_min (not renormalized)\n";
+    radialOutputFile << std::scientific << std::setprecision(6);
+
+    dirName= "potentials/countour_plot_";
+    fileName = dirName + particles[0].type + particles[1].type + extension;
+    std::ofstream contourPlotOutputFile(fileName);
 
     const double dr = forceAndEnergySamplingStep*potentialPrintingStep;
     const double atContact = 1./simulationBoxSide;
-    particles[1].ipcCenter.x[0]  += atContact;
-    particles[1].firstPatch.x[0] += atContact;
-    particles[1].secndPatch.x[0] += atContact;
 
-    for (double r = atContact; r <= interactionRange; r += dr) {
-        loopVariables loopVars(2);
-        computeInteractionsBetweenTwoIPCs(0, 1, loopVars);
+    const IPC initialStateFirstIpc = particles[1];
 
-        potentialOutputFile << r*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
+    for (double z = -interactionRange; z <= interactionRange; z += dr) {
+        for (double x = 0; x <= interactionRange; x += dr) {
+            loopVariables loopVars(2);
+            computeInteractionsBetweenTwoIPCs(0, 1, loopVars);
 
-        particles[1].ipcCenter.x[0]  += dr;
-        particles[1].firstPatch.x[0] += dr;
-        particles[1].secndPatch.x[0] += dr;
+            double radialDistance = std::sqrt(std::pow(x,2) + std::pow(z,2));
+            if (radialDistance > atContact) {
+                if (z == 0.) {
+                    // print the six x-axis projections
+                    radialOutputFile << x*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
+                }
+                contourPlotOutputFile << x*simulationBoxSide << "\t" << z*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
+            }
+            else
+                contourPlotOutputFile << x*simulationBoxSide << "\t" << z*simulationBoxSide << "\t" << "inf" << "\t" << "inf" << "\n";
+
+            particles[1].ipcCenter.x[0]  += dr;
+            particles[1].firstPatch.x[0] += dr;
+            particles[1].secndPatch.x[0] += dr;
+        }
+
+        // reset x-position, update z-position
+        particles[1].ipcCenter.x[0]  = initialStateFirstIpc.ipcCenter.x[0];
+        particles[1].firstPatch.x[0] = initialStateFirstIpc.firstPatch.x[0];
+        particles[1].secndPatch.x[0] = initialStateFirstIpc.secndPatch.x[0];
+
+        particles[1].ipcCenter.x[2]  += dr;
+        particles[1].firstPatch.x[2] += dr;
+        particles[1].secndPatch.x[2] += dr;
     }
-}
-
-
-
-void IPCsimulation::printPotentialsToFileContourPlot(const int potentialPrintingStep) {
-    // not yet implemented
 }
