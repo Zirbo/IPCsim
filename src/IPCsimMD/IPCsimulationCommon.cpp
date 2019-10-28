@@ -111,48 +111,57 @@ double IPCsimulation::run() {
 
 //************************************************************************//
 void IPCsimulation::printPotentials() {
-    int potentialPrintingStep;
-    int cutoffValue;
-
-    std::cout << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
-              << " and until " << interactionRange*simulationBoxSide << ".\n"
-              << "How often do you want to print, in integer multiples of "
-              << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
-    std::cin >> potentialPrintingStep;
-    std::cout << "Do you want to set up a maximum (absolute) value for the prints?\n"
-              << "If yes write it, if no write a negative number. (PLEASE NO ZERO)\n";
-    std::cin >> cutoffValue;
-
     // clean up unneeded shit
     outputFile.close();
     trajectoryFile.close();
     energyTrajectoryFile.close();
     if(system("rm -rf siml") != 0) {
-        std::cerr << "Unable to delete the old 'siml/' directory with rm -rf. "
+        std::cerr << "Unable to delete the just created 'siml/' directory with rm -rf. "
                   << "Most likely you have it open somewhere or some program is running in it.\n";
         exit(1);
     }
     if(system("rm -rf potentials_for_lammps potentials") != 0) {
-        std::cerr << "Unable to delete the old 'potentials_for_lammps/' directory with rm -rf. "
-                  << "Most likely you have it open somewhere or some program is running in it.\n";
+        std::cerr << "Unable to delete the old 'potentials_for_lammps' and/or 'potentials' directory with rm -rf. "
+                  << "Most likely you have it open somewhere, or some program is running in it.\n";
         exit(1);
     }
 
-    // create the new directories
-    if(system("mkdir potentials_for_lammps") != 0) {
-        std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
-        exit(1);
+    int choice;
+    std::cout << "Which potentials do you want to print?\n 1 LAMMPS\n 2 Emanuela";
+    std::cin >> choice;
+    // LAMMPS
+    if (choice == 1) {
+        if(system("mkdir potentials_for_lammps") != 0) {
+            std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
+            exit(1);
+        }
+        int potentialPrintingStep = 20000;
+        int cutoffValue = 100;
+        std::cout << "You choose LAMMPS\n"
+                  << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
+                  << " and until " << interactionRange*simulationBoxSide << ".\n"
+                  << "How often do you want to print, in integer multiples of "
+                  << forceAndEnergySamplingStep*simulationBoxSide << "?\n";
+        std::cin >> potentialPrintingStep;
+        std::cout << "Do you want to set up a maximum (absolute) value for the prints?\n"
+                  << "If yes write it, if no write a negative number. (PLEASE NO ZERO)\n";
+        std::cin >> cutoffValue;
+        printPotentialsToFileLAMMPS(potentialPrintingStep, cutoffValue);
     }
-    if(system("mkdir potentials") != 0) {
-        std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
-        exit(1);
-    }
+    else if (choice == 2) {
+        // CONTOUR PLOTS
+        if(system("mkdir potentials") != 0) {
+            std::cerr << "Unable to create a new 'potentials/' directory. You'll never see this error message.\n";
+            exit(1);
+        }
 
-    // uncomment when debugging to save time
-    //potentialPrintingStep = 5000;
-    //cutoffValue = -1;
-    printPotentialsToFileLAMMPS(potentialPrintingStep, cutoffValue);
-    printPotentialsToFileForVisualization(potentialPrintingStep);;
+        int potentialPrintingStep = 10000;
+        std::cout << "You choose contour plots\n";
+        printPotentialsToFileForVisualization(potentialPrintingStep);;
+    }
+    else {
+        std::cout << "Wrong selection!\n";
+    }
 }
 
 

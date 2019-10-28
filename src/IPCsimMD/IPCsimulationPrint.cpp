@@ -77,30 +77,31 @@ void IPCsimulation::printPotentialsToFileForVisualization(const int potentialPri
     IPC upwards, downwards, sidewaysLeft, sidewaysRight;
 
     upwards.type = 'u';
-    upwards.ipcCenter  = {0., 0., 0.};
-    upwards.firstPatch = {0., 0., firstPatchEccentricity};
-    upwards.secndPatch = {0., 0., -secndPatchEccentricity};
+    upwards.ipcCenter  = {0.5, 0.5, 0.5};
+    upwards.firstPatch = {0.5, 0.5, 0.5 + firstPatchEccentricity};
+    upwards.secndPatch = {0.5, 0.5, 0.5 - secndPatchEccentricity};
 
     downwards.type = 'd';
-    downwards.ipcCenter  = {0., 0., 0.};
-    downwards.firstPatch = {0., 0., -firstPatchEccentricity};
-    downwards.secndPatch = {0., 0., secndPatchEccentricity};
+    downwards.ipcCenter  = {0.5, 0.5, 0.5};
+    downwards.firstPatch = {0.5, 0.5, 0.5 - firstPatchEccentricity};
+    downwards.secndPatch = {0.5, 0.5, 0.5 + secndPatchEccentricity};
 
     sidewaysLeft.type = 'l';
-    sidewaysLeft.ipcCenter  = {0., 0., 0.};
-    sidewaysLeft.firstPatch = {firstPatchEccentricity, 0., 0.};
-    sidewaysLeft.secndPatch = {-secndPatchEccentricity, 0., 0.};
+    sidewaysLeft.ipcCenter  = {0.5, 0.5, 0.5};
+    sidewaysLeft.firstPatch = {0.5 + firstPatchEccentricity, 0.5, 0.5};
+    sidewaysLeft.secndPatch = {0.5 - secndPatchEccentricity, 0.5, 0.5};
 
     sidewaysRight.type = 'r';
-    sidewaysRight.ipcCenter  = {0., 0., 0.};
-    sidewaysRight.firstPatch = {-firstPatchEccentricity, 0., 0};
-    sidewaysRight.secndPatch = {secndPatchEccentricity, 0., 0.};
+    sidewaysRight.ipcCenter  = {0.5, 0.5, 0.5};
+    sidewaysRight.firstPatch = {0.5 - firstPatchEccentricity, 0.5, 0.5};
+    sidewaysRight.secndPatch = {0.5 + secndPatchEccentricity, 0.5, 0.5};
 
-    // the couples of orientations that are not equal by symmetry are: uu-00 ud-01 ul-02 ur-03 ll-22 lr-23 (because uu=-dd, dl=-ul, dr=-ur, rr=-ll)
+    // the couples of independent orientations are: uu, ud, ul, ur, ll, lr, rr (because dd=-uu, dl=-ul, dr=-ur)
     typedef std::pair<IPC,IPC> IPCcouple;
     for( IPCcouple const& couple: { IPCcouple(upwards, upwards), IPCcouple(upwards, downwards),
                         IPCcouple(upwards, sidewaysLeft), IPCcouple(upwards, sidewaysRight),
-                        IPCcouple(sidewaysLeft, sidewaysLeft), IPCcouple(sidewaysLeft, sidewaysRight) }) {
+                        IPCcouple(sidewaysLeft, sidewaysLeft), IPCcouple(sidewaysLeft, sidewaysRight),
+                        IPCcouple(sidewaysRight, sidewaysRight) }) {
         particles[0] = couple.first;
         particles[1] = couple.second;
         printPotentialsToFileForVisualizationSingleOrientation(potentialPrintingStep);
@@ -108,26 +109,31 @@ void IPCsimulation::printPotentialsToFileForVisualization(const int potentialPri
 }
 
 void IPCsimulation::printPotentialsToFileForVisualizationSingleOrientation(const int potentialPrintingStep) {
-
-    std::string dirName("potentials/emanuela_r_");
-    std::string extension(".dat");
-    std::string fileName = dirName + particles[0].type + particles[1].type + extension;
-    //std::stringstream fileName;
-    //fileName << "potentials_emanuela6r/" << std::string(1, particles[0].type) << std::string(1, particles[1].type) << ".table";
-    //const std::string fileName = "potentials_emanuela6r/" + particles[0].type + particles[1].type + ".table";
+    // open two output files
+    const std::string dirName("potentials/");
+    const std::string extension(".dat");
+    std::string fileName = dirName + "emanuela_r_" + particles[0].type + particles[1].type + extension;
     std::ofstream radialOutputFile(fileName);
-    radialOutputFile << "# potentials plotted as f(r) in Emanuela's six indipentent orientations\n";
-    radialOutputFile << "# r          U(r)           U(r)*e_min (not renormalized)\n";
+    fileName = dirName + "countour_plot_" + particles[0].type + particles[1].type + extension;
+    std::ofstream contourPlotOutputFile(fileName);
+
+    radialOutputFile << "# potentials plotted as f(r) in Emanuela's six independent orientations\n";
+    radialOutputFile << "# r          U(r)           U(r)*e_min (i.e. not renormalized)\n";
     radialOutputFile << std::scientific << std::setprecision(6);
 
-    dirName= "potentials/countour_plot_";
-    fileName = dirName + particles[0].type + particles[1].type + extension;
-    std::ofstream contourPlotOutputFile(fileName);
+    contourPlotOutputFile << "# potentials plotted as f(x,z) on a half-plane in Emanuela's six indepentent orientations\n";
+    contourPlotOutputFile << "# x          z            U(x,z)           U(x,z)*e_min (i.e. not renormalized)\n";
+    contourPlotOutputFile << std::scientific << std::setprecision(6);
+
 
     const double dr = forceAndEnergySamplingStep*potentialPrintingStep;
     const double atContact = 1./simulationBoxSide;
 
-    const IPC initialStateFirstIpc = particles[1];
+    const IPC initialStateProbeIpc = particles[1];
+
+    particles[1].ipcCenter.x[2]  -= interactionRange;
+    particles[1].firstPatch.x[2] -= interactionRange;
+    particles[1].secndPatch.x[2] -= interactionRange;
 
     for (double z = -interactionRange; z <= interactionRange; z += dr) {
         for (double x = 0; x <= interactionRange; x += dr) {
@@ -136,7 +142,7 @@ void IPCsimulation::printPotentialsToFileForVisualizationSingleOrientation(const
 
             double radialDistance = std::sqrt(std::pow(x,2) + std::pow(z,2));
             if (radialDistance > atContact) {
-                if (z == 0.) {
+                if (std::fabs(z) < dr*tollerance) {
                     // print the six x-axis projections
                     radialOutputFile << x*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
                 }
@@ -151,9 +157,9 @@ void IPCsimulation::printPotentialsToFileForVisualizationSingleOrientation(const
         }
 
         // reset x-position, update z-position
-        particles[1].ipcCenter.x[0]  = initialStateFirstIpc.ipcCenter.x[0];
-        particles[1].firstPatch.x[0] = initialStateFirstIpc.firstPatch.x[0];
-        particles[1].secndPatch.x[0] = initialStateFirstIpc.secndPatch.x[0];
+        particles[1].ipcCenter.x[0]  = initialStateProbeIpc.ipcCenter.x[0];
+        particles[1].firstPatch.x[0] = initialStateProbeIpc.firstPatch.x[0];
+        particles[1].secndPatch.x[0] = initialStateProbeIpc.secndPatch.x[0];
 
         particles[1].ipcCenter.x[2]  += dr;
         particles[1].firstPatch.x[2] += dr;
