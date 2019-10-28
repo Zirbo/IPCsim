@@ -1,0 +1,25 @@
+set terminal postscript eps color enhanced "Times,20"
+
+set size ratio 2
+unset key
+set palette defined (-1 "green", 0 "gray", 0.5 "red", 1.5 "orange", 2.5 "yellow", 3.5 "cyan", 5 "white")
+
+set xtics (0.0, 0.6, 1.2)
+set ytics (-1.2, -0.6, 0.0, 0.6, 1.2)
+
+
+
+set output 'potentials/countour_plot_uu.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_uu.dat" w image
+set output 'potentials/countour_plot_ud.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_ud.dat" w image
+set output 'potentials/countour_plot_ul.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_ul.dat" w image
+set output 'potentials/countour_plot_ur.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_ur.dat" w image
+set output 'potentials/countour_plot_ll.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_ll.dat" w image
+set output 'potentials/countour_plot_lr.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_lr.dat" w image
+set output 'potentials/countour_plot_rr.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_rr.dat" w image
