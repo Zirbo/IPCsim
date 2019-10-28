@@ -7,4 +7,4 @@ p "potentials/emanuela_r_uu.dat" w l lt 1 lw 3 lc "red" t 'uu', \
   "potentials/emanuela_r_ur.dat" w p pt 7 lw 3 lc "green" t 'ur', \
   "potentials/emanuela_r_ll.dat" w l lt 1 lw 3 lc "blue" t 'll', \
   "potentials/emanuela_r_lr.dat" w p pt 5 lw 3 lc "blue" t 'lr', \
-  "potentials/emanuela_r_rr.dat" w p pt 7 lw 3 lc "cyan" t 'rr'
+  "potentials/emanuela_r_rl.dat" w p pt 7 lw 3 lc "cyan" t 'rl'

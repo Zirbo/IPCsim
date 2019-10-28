@@ -21,5 +21,5 @@ set output 'potentials/countour_plot_ll.eps'
 p [0:1.2][-1.2:1.2] "potentials/countour_plot_ll.dat" w image
 set output 'potentials/countour_plot_lr.eps'
 p [0:1.2][-1.2:1.2] "potentials/countour_plot_lr.dat" w image
-set output 'potentials/countour_plot_rr.eps'
-p [0:1.2][-1.2:1.2] "potentials/countour_plot_rr.dat" w image
+set output 'potentials/countour_plot_rl.eps'
+p [0:1.2][-1.2:1.2] "potentials/countour_plot_rl.dat" w image

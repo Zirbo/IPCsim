@@ -101,7 +101,7 @@ void IPCsimulation::printPotentialsToFileForVisualization(const int potentialPri
     for( IPCcouple const& couple: { IPCcouple(upwards, upwards), IPCcouple(upwards, downwards),
                         IPCcouple(upwards, sidewaysLeft), IPCcouple(upwards, sidewaysRight),
                         IPCcouple(sidewaysLeft, sidewaysLeft), IPCcouple(sidewaysLeft, sidewaysRight),
-                        IPCcouple(sidewaysRight, sidewaysRight) }) {
+                        IPCcouple(sidewaysRight, sidewaysLeft) }) {
         particles[0] = couple.first;
         particles[1] = couple.second;
         printPotentialsToFileForVisualizationSingleOrientation(potentialPrintingStep);
