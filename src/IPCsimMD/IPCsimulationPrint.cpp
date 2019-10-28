@@ -140,23 +140,28 @@ void IPCsimulation::printPotentialsToFileForVisualizationSingleOrientation(const
             loopVariables loopVars(2);
             computeInteractionsBetweenTwoIPCs(0, 1, loopVars);
 
-            double radialDistance = std::sqrt(std::pow(x,2) + std::pow(z,2));
-            if (radialDistance > atContact) {
-                if (std::fabs(z) < dr*tollerance) {
-                    // print the six x-axis projections
+            double contourPotential = (loopVars.U < 5.)? loopVars.U : 5.;
+            if (contourPotential < -1.) {
+                std::cerr << std::scientific << std::setprecision(6);
+                std::cerr << contourPotential << " < -1.0!!!!\n";
+                contourPotential = -1.;
+            }
+            contourPlotOutputFile << x*simulationBoxSide << "\t" << z*simulationBoxSide << "\t" << contourPotential << "\t" << contourPotential*e_min << "\n";
+
+            // if z = 0 and 1. < x < interaction range, print the six site-site potentials
+            if (std::fabs(z) < dr*tollerance) {
+                if (x > atContact - dr) {
                     radialOutputFile << x*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
                 }
-                contourPlotOutputFile << x*simulationBoxSide << "\t" << z*simulationBoxSide << "\t" << loopVars.U << "\t" << loopVars.U*e_min << "\n";
             }
-            else
-                contourPlotOutputFile << x*simulationBoxSide << "\t" << z*simulationBoxSide << "\t" << "inf" << "\t" << "inf" << "\n";
 
+            // update x-positions
             particles[1].ipcCenter.x[0]  += dr;
             particles[1].firstPatch.x[0] += dr;
             particles[1].secndPatch.x[0] += dr;
         }
 
-        // reset x-position, update z-position
+        // reset x-positions, update z-positions
         particles[1].ipcCenter.x[0]  = initialStateProbeIpc.ipcCenter.x[0];
         particles[1].firstPatch.x[0] = initialStateProbeIpc.firstPatch.x[0];
         particles[1].secndPatch.x[0] = initialStateProbeIpc.secndPatch.x[0];

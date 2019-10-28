@@ -127,7 +127,7 @@ void IPCsimulation::printPotentials() {
     }
 
     int choice;
-    std::cout << "Which potentials do you want to print?\n 1 LAMMPS\n 2 Emanuela";
+    std::cout << "Which potentials do you want to print?\n 1 LAMMPS\n 2 Emanuela\n";
     std::cin >> choice;
     // LAMMPS
     if (choice == 1) {
@@ -137,7 +137,7 @@ void IPCsimulation::printPotentials() {
         }
         int potentialPrintingStep = 20000;
         int cutoffValue = 100;
-        std::cout << "You choose LAMMPS\n"
+        std::cout << "You chose LAMMPS\n"
                   << "Your potential is defined every " << forceAndEnergySamplingStep*simulationBoxSide
                   << " and until " << interactionRange*simulationBoxSide << ".\n"
                   << "How often do you want to print, in integer multiples of "
@@ -156,7 +156,7 @@ void IPCsimulation::printPotentials() {
         }
 
         int potentialPrintingStep = 10000;
-        std::cout << "You choose contour plots\n";
+        std::cout << "You chose contour plots\n";
         printPotentialsToFileForVisualization(potentialPrintingStep);;
     }
     else {
