@@ -57,6 +57,22 @@ public:
         }
     }
 
+    void compute(std::vector<IPE> particles) {
+        ++paircorrelationTotalSamplings;
+        for (int i=0; i<nParticles-1; ++i) {
+            for (int k=i+1; k<nParticles; ++k) {
+                double rik[3];
+                for (int d: {0, 1, 2}) {
+                    rik[d] = particles[i].cmPosition[d] - particles[k].cmPosition[d];
+                    relativePBC(rik[d]);
+                }
+                const double r = std::sqrt(rik[0]*rik[0] + rik[1]*rik[1] + rik[2]*rik[2]);
+                const int R = (int) (r * totalBinsInSimulationBoxSide); // this works because rik is in [0:1) units
+                g[R]  += 1.;
+            }
+        }
+    }
+
     double print(std::string const& outputFileName) {
         std::ofstream outputFile(outputFileName);
         outputFile << std::scientific << std::setprecision(8);

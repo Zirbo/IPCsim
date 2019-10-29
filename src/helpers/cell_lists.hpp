@@ -23,6 +23,15 @@ public:
             list_of_neighbours[  cellNumberFromPosition(ipc.ipcCenter)  ].push_back(ipc.number);
           }
     }
+    void compileLists(std::vector<IPE> const& ipes) {
+        // empty all the lists
+        for(auto & m: list_of_neighbours)
+            m.clear();
+        // put each particle in the list of the volume it finds itself in
+        for(IPE const& ipe: ipes) {
+            list_of_neighbours[  cellNumberFromPosition(ipe)  ].push_back(ipe.number);
+          }
+    }
 
     int getNumberofCells() {
         return totalCells;
@@ -35,17 +44,20 @@ public:
     const std::list<int> getIPCsInNeighbouringCells(int cell);
 
 private:
-  int cellsPerSide, cellsPerSideSquared, totalCells, numberOfParticles;
-  double cellSide;
-  std::vector<std::list<int>> neighbouring_cells,   // element n is a list containing the indices of the particles in cell n
-                              list_of_neighbours;   // element m is a list containing the indices of the cells that are nearest neighbour of cell m
+    int cellsPerSide, cellsPerSideSquared, totalCells, numberOfParticles;
+    double cellSide;
+    std::vector<std::list<int>> neighbouring_cells,   // element n is a list containing the indices of the particles in cell n
+                                list_of_neighbours;   // element m is a list containing the indices of the cells that are nearest neighbour of cell m
 
-  int cellNumberFromPosition(Particle const& ipc) {
-      return int(ipc.x[0]/cellSide) + cellsPerSide*int(ipc.x[1]/cellSide) + cellsPerSideSquared*int(ipc.x[2]/cellSide);
-  }
-  int cellNumberFromPosition(int x, int y, int z) {
-      return x + cellsPerSide*y + cellsPerSideSquared*z;
-  }
+    int cellNumberFromPosition(Particle const& ipc) {
+        return int(ipc.x[0]/cellSide) + cellsPerSide*int(ipc.x[1]/cellSide) + cellsPerSideSquared*int(ipc.x[2]/cellSide);
+    }
+    int cellNumberFromPosition(IPE const& ipe) {
+        return int(ipe.cmPosition[0]/cellSide) + cellsPerSide*int(ipe.cmPosition[1]/cellSide) + cellsPerSideSquared*int(ipe.cmPosition[2]/cellSide);
+    }
+    int cellNumberFromPosition(int x, int y, int z) {
+        return x + cellsPerSide*y + cellsPerSideSquared*z;
+    }
 };
 
 #endif //__CELL_LISTS_HEADER_INCLUDED__
