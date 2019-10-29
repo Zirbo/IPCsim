@@ -291,12 +291,13 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
 
     double binaryMixtureSign = 1.;
     if(binaryMixtureComposition > 0) {
-        if ( (firstIPC < binaryMixtureComposition && secndIPC >= binaryMixtureComposition) ||
-             (secndIPC < binaryMixtureComposition && firstIPC >= binaryMixtureComposition) )
+        if ( (first.type == 'M'  && secnd.type == 'C') ||
+             (first.type == 'C'  && secnd.type == 'M') ) {
             binaryMixtureSign = -1.;
-        else if( (firstIPC < binaryMixtureComposition && secndIPC < binaryMixtureComposition) ||
-                 (secndIPC >= binaryMixtureComposition && firstIPC >= binaryMixtureComposition) )
-            binaryMixtureSign = 1.;
+        }
+        else if( (first.type == 'M'  && secnd.type == 'M') ||
+                   (first.type == 'C'  && secnd.type == 'C') ) {
+        }
         else {
             std::cerr << "Something really shitty is going on.";
             exit(1);
