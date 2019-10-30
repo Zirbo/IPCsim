@@ -62,9 +62,6 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
 void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
     double dx[3], dv[3];
     for (int i: {0, 1, 2}) {
-        if (std::fabs(ipc.eFp1[i]) > 1e5) {
-            return;
-        }
         // compute the the final velocities from the new effective forces
         ipc.firstPatch.v[i] += ipc.eFp1[i]*halfDtFirstPatchInverseMass;
         ipc.secndPatch.v[i] += ipc.eFp2[i]*halfDtSecndPatchInverseMass;
