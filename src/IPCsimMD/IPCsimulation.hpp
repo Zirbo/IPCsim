@@ -78,6 +78,7 @@ private:
     double computeOmega(double Ra, double Rb, double rab);
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
 
+    void printRawSiteSitePotentials(const int potentialPrintingStep);
     void printPotentialsToFileLAMMPS(const int potentialPrintingStep, const int cutoffValue);
     void printPotentialsToFileForVisualization(const int potentialPrintingStep);
     void printPotentialsToFileForVisualizationSingleOrientation(const int potentialPrintingStep);
@@ -101,6 +102,7 @@ private:
     // work parameters
     double ratioBetweenTemperatureAndKineticEnergy, totalEnergy, potentialEnergy, kineticEnergy, simulationBoxSide, dt;
     double squaredMinimumDistanceBetweenParticles;
+    double ipcHCdiameter;
     double interactionRange, squaredInteractionRange;
     double patchDistance, squaredPatchDistance, inversePatchDistance;
     double halfDtFirstPatchInverseMass, halfDtSecndPatchInverseMass;

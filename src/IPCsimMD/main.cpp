@@ -38,7 +38,7 @@ int main ( int argc, char *argv[] ) {
     // parse number of arguments
    if(argc < 2 || argc > 4) {
         std::cerr << helpMessage.str();
-        return 1;
+        return EXIT_FAILURE;
     }
 
     // parse arguments with value
@@ -46,7 +46,7 @@ int main ( int argc, char *argv[] ) {
     bool validUsageMode = (usageMode == "printpot") || (usageMode == "new") || (usageMode == "old");
     if(!validUsageMode) {
         std::cerr << helpMessage.str();
-        return 1;
+        return EXIT_FAILURE;
     }
     std::string binaryMixtureEnabled = getFlagWithOption(argc, argv, "--binary=");
     int binaryMixturePercentage = -1;
@@ -54,7 +54,7 @@ int main ( int argc, char *argv[] ) {
         binaryMixturePercentage = std::stoi(binaryMixtureEnabled);
         if(binaryMixturePercentage < 1 || binaryMixturePercentage > 50) {
             std::cerr << helpMessage.str();
-            return 1;
+            return EXIT_FAILURE;
         }
     }
     // boolean flags
@@ -68,14 +68,14 @@ int main ( int argc, char *argv[] ) {
         emptyStage.janusSimulation = janusSimulation;
         IPCsimulation simulation(emptyStage);
         simulation.printPotentials();
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     // open staging.in file
     std::ifstream stagesFile("stages.in");
     if(stagesFile.fail()) {
         std::cerr << "File stages.in could not be opened. Aborting.\n";
-        return 1;
+        return EXIT_FAILURE;
     }
 
     SimulationStage currentStage;
@@ -106,13 +106,13 @@ int main ( int argc, char *argv[] ) {
                 command << "mv siml siml_stage-" << simulatedStages << "_T-" << averageTemperatureinTheRun;
                 if(system(command.str().c_str()) != 0) {
                     std::cerr << "Could not move siml/* between simulation stages. Aborting.\n";
-                    exit(1);
+                    return EXIT_FAILURE;
                 }
                 std::stringstream().swap(command);
                 command << "cp startingstate.xyz siml_stage-" << simulatedStages << "_T-" << averageTemperatureinTheRun << "/startingstate.xyz";
                 if(system(command.str().c_str()) != 0) {
                     std::cerr << "Could not copy startingstate.xyz between simulation stages. Aborting.\n";
-                    exit(1);
+                    return EXIT_FAILURE;
                 }
             }
 
@@ -125,7 +125,7 @@ int main ( int argc, char *argv[] ) {
         } while(repeatStage);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 std::string getFlagWithOption(int argc, char* argv[], const std::string& flag) {

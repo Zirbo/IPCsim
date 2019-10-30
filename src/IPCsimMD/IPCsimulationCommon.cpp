@@ -127,10 +127,34 @@ void IPCsimulation::printPotentials() {
     }
 
     int choice;
-    std::cout << "Which potentials do you want to print?\n 1 LAMMPS\n 2 Emanuela\n";
+    std::cout << "Which potentials do you want to print?\n 1 Silvano\n 2 Emanuela\n 3 LAMMPS\n";
     std::cin >> choice;
-    // LAMMPS
+
+
     if (choice == 1) {
+        // RAW SITE-SITE
+        if(system("mkdir potentials") != 0) {
+            std::cerr << "Unable to create a new 'potentials_raw_sitesite/' directory. You'll never see this error message.\n";
+            exit(1);
+        }
+
+        int potentialPrintingStep = 10000;
+        std::cout << "You chose raw site-site potentials.\n";
+        printRawSiteSitePotentials(potentialPrintingStep);;
+    }
+    else if (choice == 2) {
+        // CONTOUR PLOTS
+        if(system("mkdir potentials") != 0) {
+            std::cerr << "Unable to create a new 'potentials/' directory. You'll never see this error message.\n";
+            exit(1);
+        }
+
+        int potentialPrintingStep = 10000;
+        std::cout << "You chose contour plots\n";
+        printPotentialsToFileForVisualization(potentialPrintingStep);;
+    }
+    else if (choice == 3) {
+        // LAMMPS
         if(system("mkdir potentials_for_lammps") != 0) {
             std::cerr << "Unable to create a new 'potentials_for_lammps/' directory. You'll never see this error message.\n";
             exit(1);
@@ -147,17 +171,6 @@ void IPCsimulation::printPotentials() {
                   << "If yes write it, if no write a negative number. (PLEASE NO ZERO)\n";
         std::cin >> cutoffValue;
         printPotentialsToFileLAMMPS(potentialPrintingStep, cutoffValue);
-    }
-    else if (choice == 2) {
-        // CONTOUR PLOTS
-        if(system("mkdir potentials") != 0) {
-            std::cerr << "Unable to create a new 'potentials/' directory. You'll never see this error message.\n";
-            exit(1);
-        }
-
-        int potentialPrintingStep = 10000;
-        std::cout << "You chose contour plots\n";
-        printPotentialsToFileForVisualization(potentialPrintingStep);;
     }
     else {
         std::cout << "Wrong selection!\n";
@@ -346,6 +359,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     secndPatchEccentricity /= simulationBoxSide;
     dt = simulationTimeStep/simulationBoxSide;
     forceAndEnergySamplingStep /= simulationBoxSide;
+    ipcHCdiameter = 1./simulationBoxSide;
 
     // finish processing data
     squaredInteractionRange = std::pow(interactionRange,2);

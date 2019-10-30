@@ -4,6 +4,32 @@
 #include <sstream>
 #include "IPCsimulation.hpp"
 
+
+void IPCsimulation::printRawSiteSitePotentials(const int potentialPrintingStep) {
+    std::ofstream potentialOutputFile("potentials/site-site-potentials.txt");
+    potentialOutputFile << "# r\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
+    potentialOutputFile << std::scientific << std::setprecision(6);
+
+    std::ofstream forcesOutputFile("potentials/site-site-forces.txt");
+    forcesOutputFile << "# r\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
+    forcesOutputFile << std::scientific << std::setprecision(6);
+
+    // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
+    const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
+
+    for ( size_t i = potentialPrintingStep; i < potentialRangeSamplingSize; i += potentialPrintingStep) {
+        const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
+        potentialOutputFile << r << "\t"
+                            << uBB[i] << "\t" << uBs1[i] << "\t" << uBs2[i] << "\t"
+                            << us1s2[i] << "\t" << us1s1[i] << "\t" << us2s2[i] << "\n";
+        forcesOutputFile << r << "\t"
+                         << fBB[i]*r << "\t" << fBs1[i]*r << "\t" << fBs2[i]*r << "\t"
+                         << fs1s2[i]*r << "\t" << fs1s1[i]*r << "\t" << fs2s2[i]*r << "\n";
+    }
+    potentialOutputFile.close();
+}
+
+
 void IPCsimulation::printPotentialsToFileLAMMPS(const int potentialPrintingStep, const int cutoffValue) {
     // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
