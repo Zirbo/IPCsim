@@ -394,10 +394,11 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
             initializeNewJanusConfiguration(N1);
         else
             initializeNewIPCconfiguration(N1);
+    }
 
-        if (binaryMixtureComposition > 0)
-            outputFile << "Binary mixture where " << stage.binaryMixturePercentage << "% of the particles have a different sign;\n"
-                       << binaryMixtureComposition << " have opposite charge than the other " << nIPCs - binaryMixtureComposition << " particles.\n\n";
+    if (binaryMixtureComposition > 0) {
+        outputFile << "Binary mixture where " << stage.binaryMixturePercentage << "% of the particles have the opposite charge;\n"
+                   << binaryMixtureComposition << " have charge of the opposite sign of that of the other " << nIPCs - binaryMixtureComposition << " particles.\n\n";
     }
 
     // cell list compilation
