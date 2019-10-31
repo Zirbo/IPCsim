@@ -249,7 +249,8 @@ void IPCsimulation::computeFreeForces() {
                 }
             }
             potentialEnergy += loopVars.U;
-            squaredMinimumDistanceBetweenParticles += loopVars.minimumSquaredDistance;
+            if (loopVars.minimumSquaredDistance < squaredMinimumDistanceBetweenParticles)
+                squaredMinimumDistanceBetweenParticles = loopVars.minimumSquaredDistance;
         }
 
         for(IPC &ipc: particles) {
