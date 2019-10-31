@@ -7,11 +7,11 @@
 
 void IPCsimulation::printRawSiteSitePotentials(const int potentialPrintingStep) {
     std::ofstream potentialOutputFile("potentials/site-site-potentials.txt");
-    potentialOutputFile << "# r\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
+    potentialOutputFile << "# r\t\tHS\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
     potentialOutputFile << std::scientific << std::setprecision(6);
 
     std::ofstream forcesOutputFile("potentials/site-site-forces.txt");
-    forcesOutputFile << "# r\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
+    forcesOutputFile << "# r\t\tHS\t\tBB\t\tBs1\t\tBs2\t\ts1s1\t\ts1s2\t\ts2s2\n";
     forcesOutputFile << std::scientific << std::setprecision(6);
 
     // interactionRange and forceAndEnergySamplingStep are both scaled by simulationBoxSide, so their ratio is right
@@ -19,10 +19,10 @@ void IPCsimulation::printRawSiteSitePotentials(const int potentialPrintingStep) 
 
     for ( size_t i = potentialPrintingStep; i < potentialRangeSamplingSize; i += potentialPrintingStep) {
         const double r = i*forceAndEnergySamplingStep*simulationBoxSide;
-        potentialOutputFile << r << "\t"
+        potentialOutputFile << r << "\t" << uHS[i] << "\t"
                             << uBB[i] << "\t" << uBs1[i] << "\t" << uBs2[i] << "\t"
                             << us1s2[i] << "\t" << us1s1[i] << "\t" << us2s2[i] << "\n";
-        forcesOutputFile << r << "\t"
+        forcesOutputFile << r << "\t" << fHS[i] << "\t"
                          << fBB[i]*r << "\t" << fBs1[i]*r << "\t" << fBs2[i]*r << "\t"
                          << fs1s2[i]*r << "\t" << fs1s1[i]*r << "\t" << fs2s2[i]*r << "\n";
     }
@@ -55,7 +55,7 @@ void IPCsimulation::printPotentialsToFileLAMMPS(const int potentialPrintingStep,
 
             if (cutoffValue < 0) {
                 if( type == 0) {
-                    potentialOutputFile << uBB[i] << "\t" << fBB[i]*r << "\n";
+                    potentialOutputFile << uHS[i] + uBB[i] << "\t" << (fHS[i] + fBB[i])*r << "\n";
                 } else if ( type == 1) {
                     potentialOutputFile << uBs1[i] << "\t" << fBs1[i]*r << "\n";
                 } else if ( type == 2) {
@@ -70,23 +70,23 @@ void IPCsimulation::printPotentialsToFileLAMMPS(const int potentialPrintingStep,
             } else {
                 double printPotential, printForce;
                 if( type == 0) {
-                    printPotential = ( uBB[i] > cutoffValue )? cutoffValue : uBB[i];
-                    printForce = (fBB[i]*r < -cutoffValue )? -cutoffValue : fBB[i];
+                    printPotential = ( uHS[i] + uBB[i] > cutoffValue )? cutoffValue : uHS[i] + uBB[i];
+                    printForce = ((fHS[i] + fBB[i])*r < -cutoffValue )? -cutoffValue : (fHS[i] + fBB[i])*r;
                 } else if ( type == 1) {
                     printPotential = ( uBs1[i] > cutoffValue )? cutoffValue : uBs1[i];
-                    printForce = (fBs1[i]*r < -cutoffValue )? -cutoffValue : fBs1[i];
+                    printForce = (fBs1[i]*r < -cutoffValue )? -cutoffValue : fBs1[i]*r;
                 } else if ( type == 2) {
                     printPotential = ( uBs2[i] > cutoffValue )? cutoffValue : uBs2[i];
-                    printForce = (fBs2[i]*r < -cutoffValue )? -cutoffValue : fBs2[i];
+                    printForce = (fBs2[i]*r < -cutoffValue )? -cutoffValue : fBs2[i]*r;
                 } else if ( type == 3) {
                     printPotential = ( us1s2[i] > cutoffValue )? cutoffValue : us1s2[i];
-                    printForce = (fs1s2[i]*r < -cutoffValue )? -cutoffValue : fs1s2[i];
+                    printForce = (fs1s2[i]*r < -cutoffValue )? -cutoffValue : fs1s2[i]*r;
                 } else if ( type == 4) {
                     printPotential = ( us1s1[i] > cutoffValue )? cutoffValue : us1s1[i];
-                    printForce = (fs1s1[i]*r < -cutoffValue )? -cutoffValue : fs1s1[i];
+                    printForce = (fs1s1[i]*r < -cutoffValue )? -cutoffValue : fs1s1[i]*r;
                 } else if ( type == 5) {
                     printPotential = ( us2s2[i] > cutoffValue )? cutoffValue : us2s2[i];
-                    printForce = (fs2s2[i]*r < -cutoffValue )? -cutoffValue : fs2s2[i];
+                    printForce = (fs2s2[i]*r < -cutoffValue )? -cutoffValue : fs2s2[i]*r;
                 }
                 potentialOutputFile << printPotential << "\t" << printForce << "\n";
             }

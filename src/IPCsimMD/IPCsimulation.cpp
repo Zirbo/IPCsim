@@ -321,10 +321,9 @@ void IPCsimulation::computeInteractionsBetweenTwoIPCs(const int firstIPC, const 
     // we are inside the interaction range; compute the interaction between centers
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
-    const double binaryMixtureSignIPCcenter = (centerCenterSeparationModulus < ipcHCdiameter)? 1. : binaryMixtureSign;
-    loopVars.U += binaryMixtureSignIPCcenter*uBB[centerCenterDistance];
+    loopVars.U += binaryMixtureSign*uBB[centerCenterDistance] + uHS[centerCenterDistance];
     for (int i: {0, 1, 2}) {
-        const double modulus = binaryMixtureSignIPCcenter*fBB[centerCenterDistance]*centerCenterSeparation[i];
+        const double modulus = (binaryMixtureSign*fBB[centerCenterDistance] + fHS[centerCenterDistance])*centerCenterSeparation[i];
         loopVars.ipcCenterF[firstIPC][i] -= modulus;
         loopVars.ipcCenterF[secndIPC][i] += modulus;
     }

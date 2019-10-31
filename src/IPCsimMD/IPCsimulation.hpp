@@ -72,8 +72,8 @@ private:
     std::ofstream trajectoryFile;
 
     // force and potential tables computation
-    std::vector<double> uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
-    std::vector<double> fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
+    std::vector<double> uHS, uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
+    std::vector<double> fHS, fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
     void compileForceAndPotentialTables();
     double computeOmega(double Ra, double Rb, double rab);
     double computeOmegaRadialDerivative(double Ra, double Rb, double rab);
@@ -102,7 +102,6 @@ private:
     // work parameters
     double ratioBetweenTemperatureAndKineticEnergy, totalEnergy, potentialEnergy, kineticEnergy, simulationBoxSide, dt;
     double squaredMinimumDistanceBetweenParticles;
-    double ipcHCdiameter;
     double interactionRange, squaredInteractionRange;
     double patchDistance, squaredPatchDistance, inversePatchDistance;
     double halfDtFirstPatchInverseMass, halfDtSecndPatchInverseMass;

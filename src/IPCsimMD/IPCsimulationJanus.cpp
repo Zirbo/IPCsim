@@ -286,12 +286,13 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
 
     double binaryMixtureSign = 1.;
     if(binaryMixtureComposition > 0) {
-        if ( (firstIPC < binaryMixtureComposition && secndIPC > binaryMixtureComposition) ||
-             (secndIPC < binaryMixtureComposition && firstIPC > binaryMixtureComposition) )
+        if ( (first.type == 'M'  && secnd.type == 'C') ||
+             (first.type == 'C'  && secnd.type == 'M') ) {
             binaryMixtureSign = -1.;
-        else if( (firstIPC < binaryMixtureComposition && secndIPC < binaryMixtureComposition) ||
-                 (secndIPC > binaryMixtureComposition && firstIPC > binaryMixtureComposition) )
-            binaryMixtureSign = 1.;
+        }
+        else if( (first.type == 'M'  && secnd.type == 'M') ||
+                   (first.type == 'C'  && secnd.type == 'C') ) {
+        }
         else {
             std::cerr << "Something really shitty is going on.";
             exit(1);
@@ -318,9 +319,9 @@ void IPCsimulation::computeInteractionsBetweenTwoJanusIPCs(const int firstIPC, c
     // we are inside the interaction range; compute the interaction between centers
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
     const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/forceAndEnergySamplingStep );
-    loopVars.U += binaryMixtureSign*uBB[centerCenterDistance];
+    loopVars.U += binaryMixtureSign*uBB[centerCenterDistance] + uHS[centerCenterDistance];
     for (int i: {0, 1, 2}) {
-        const double modulus = binaryMixtureSign*fBB[centerCenterDistance]*centerCenterSeparation[i];
+        const double modulus = (binaryMixtureSign*fBB[centerCenterDistance] + fHS[centerCenterDistance])*centerCenterSeparation[i];
         loopVars.ipcCenterF[firstIPC][i] -= modulus;
         loopVars.ipcCenterF[secndIPC][i] += modulus;
     }

@@ -359,7 +359,6 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     secndPatchEccentricity /= simulationBoxSide;
     dt = simulationTimeStep/simulationBoxSide;
     forceAndEnergySamplingStep /= simulationBoxSide;
-    ipcHCdiameter = 1./simulationBoxSide;
 
     // finish processing data
     squaredInteractionRange = std::pow(interactionRange,2);
@@ -494,12 +493,14 @@ void IPCsimulation::compileForceAndPotentialTables()
 {
     const size_t potentialRangeSamplingSize = size_t( interactionRange/forceAndEnergySamplingStep ) + 1;
 
+    uHS.resize(potentialRangeSamplingSize);
     uBB.resize(potentialRangeSamplingSize);
     uBs1.resize(potentialRangeSamplingSize);
     uBs2.resize(potentialRangeSamplingSize);
     us1s2.resize(potentialRangeSamplingSize);
     us1s1.resize(potentialRangeSamplingSize);
     us2s2.resize(potentialRangeSamplingSize);
+    fHS.resize(potentialRangeSamplingSize);
     fBB.resize(potentialRangeSamplingSize);
     fBs1.resize(potentialRangeSamplingSize);
     fBs2.resize(potentialRangeSamplingSize);
@@ -528,12 +529,13 @@ void IPCsimulation::compileForceAndPotentialTables()
         {
             // setting up a Fake Hard Sphere Core
             double rm = pow(r, -fakeHSexponent);
-            uBB[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
-            fBB[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
+            uHS[i]   += fakeHScoefficient*((rm-2.)*rm+1.);
+            fHS[i]   += -2.*fakeHSexponent*fakeHScoefficient*(rm-1.)*rm/r;
         }
         // and finally, this division is done here so we don't have to do it during runtime.
         // it comes from the force being Fx = -du/dr dr/dx = -du/dr (x/r)
         const double ir = 1./(r);
+        fHS[i]   *= ir;
         fBB[i]   *= ir;
         fBs1[i]  *= ir;
         fBs2[i]  *= ir;
