@@ -5,14 +5,19 @@
 #                               #
 #################################
 
-variable       inputfile        index   IPC_startingstate.txt
+variable       inputfile        index   IPC_startingstate_1000.txt
 variable       outputfile       index   outputFile.txt
-#variable       trajectoryfile index trajectory.xyz
 variable       trajectoryfile   index   trajectory.lammpstrj
+variable       Temp0            index   0.20
+variable       Temp1            index   0.15
+variable       Temp2            index   0.14
+variable       Temp3            index   0.13
+variable       Temp4            index   0.12
+variable       Temp5            index   0.11
 
 #
 dimension      3
-units          real
+units          lj
 boundary       p p p
 atom_style     full
 
@@ -32,40 +37,49 @@ pair_modify    mix geometric tail yes
 pair_coeff     1 1 potentials_for_lammps/BB.table BB
 pair_coeff     1 2 potentials_for_lammps/Bs1.table Bs1
 pair_coeff     2 2 potentials_for_lammps/s1s1.table s1s1
+#pair_coeff      1 1 0.0537 2.80    # C of CO2 (27 K = 0.0537 kcal/mol)
+#pair_coeff      2 2 0.1570 3.05    # O of CO2 (79 K = 0.1570 kcal/mol)
+#bond_coeff      1 999.9 1.16       # C=O (999.9 = fake number since not used)
 bond_coeff     1 999.9 0.22     # center-patch distance
 angle_coeff	   1 999.9 180.0    # patch-patch angle
 
-velocity all create 100.0 53244 dist gaussian mom no rot no
 
-group all_ipcs id <> 1 24
 
-fix 1 all_ipcs rigid/nve molecule	# my_ketran = finite number
 
-compute        my_ketran  all_ipcs  ke/rigid 1
-compute        my_kerot   all_ipcs  erotate/rigid 1
-compute        my_temp    all_ipcs  temp
+fix 1 all rigid/nvt molecule temp ${Temp0} ${Temp0} 1
 
-timestep       1.0
-reset_timestep 0
-neighbor       1.2 bin
-neigh_modify   every 10 delay 20 check yes
+velocity all create ${Temp0} 53244 dist gaussian rot yes
+run 0 # temperature may not be right due to the constraints not being applied yet
+velocity all scale ${Temp0}       # now it should be
+
+compute        k_tr  all  ke/rigid 1
+compute        k_rot all  erotate/rigid 1
+
+neighbor       0.3 bin
+neigh_modify   every 1 check yes
 thermo 500
 
 #thermo_style multi
-thermo_style   custom step   c_my_ketran c_my_kerot temp c_my_temp pe ebond eangle
+thermo_style   custom step   c_k_tr c_k_rot temp pe
 
 #dump 1 all atom 100 dump.lammpstrj
 # print logs and trajectory
 log            ${outputfile}
 # dump ID particle-type format print-interval file
-dump           dumpcommand all atom 25 ${trajectoryfile}
+dump           dumpcommand all atom 500 ${trajectoryfile}
 
 
-#velocity all create 3.0 12345
-#run 0							# temperature may not be 300K
-#velocity all scale 3.0			# now it should be
 
-run 0
+timestep 0.0005
 
-timestep 0.0025
-run 10000
+run 2000000
+fix 1 all rigid/nvt molecule temp ${Temp1} ${Temp1} 1
+run 2000000
+fix 1 all rigid/nvt molecule temp ${Temp2} ${Temp2} 1
+run 2000000
+fix 1 all rigid/nvt molecule temp ${Temp3} ${Temp3} 1
+run 2000000
+fix 1 all rigid/nvt molecule temp ${Temp4} ${Temp4} 1
+run 2000000
+fix 1 all rigid/nvt molecule temp ${Temp5} ${Temp5} 1
+run 2000000
