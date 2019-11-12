@@ -25,7 +25,7 @@ atom_style     full
 read_data      ${inputfile}
 
 # interaction potential
-#pair_style lj/cut/coul/cut 12.0
+#pair_style     lj/cut/coul/cut 12.0
 pair_style     table linear 120000
 bond_style     harmonic
 angle_style    harmonic
@@ -37,51 +37,54 @@ pair_modify    mix geometric tail yes
 pair_coeff     1 1 potentials_for_lammps/BB.table BB
 pair_coeff     1 2 potentials_for_lammps/Bs1.table Bs1
 pair_coeff     2 2 potentials_for_lammps/s1s1.table s1s1
-#pair_coeff      1 1 0.0537 2.80    # C of CO2 (27 K = 0.0537 kcal/mol)
-#pair_coeff      2 2 0.1570 3.05    # O of CO2 (79 K = 0.1570 kcal/mol)
-#bond_coeff      1 999.9 1.16       # C=O (999.9 = fake number since not used)
+#pair_coeff     1 1 0.0537 2.80    # C of CO2 (27 K = 0.0537 kcal/mol)
+#pair_coeff     2 2 0.1570 3.05    # O of CO2 (79 K = 0.1570 kcal/mol)
+#bond_coeff     1 999.9 1.16       # C=O (999.9 = fake number since not used)
 bond_coeff     1 999.9 0.22     # center-patch distance
 angle_coeff	   1 999.9 180.0    # patch-patch angle
 
 
-group plane id <> 1 514 # 168*3
-group fluid id <> 515 5256
+group          substrate_IPCs   id <> 1 504 # 168*3
+group          fluid_IPCs       id <> 505 5256
 
-fix 1 fluid rigid/nvt molecule temp ${Temp0} ${Temp0} 1
-fix 2 plane freeze
 
-velocity fluid create ${Temp0} 53244 dist gaussian rot yes
-run 0 # temperature may not be right due to the constraints not being applied yet
-velocity fluid scale ${Temp0}       # now it should be
-
-compute        k_tr  fluid  ke/rigid 1
-compute        k_rot fluid  erotate/rigid 1
+compute        k_tr  fluid_IPCs  ke/rigid 1
+compute        k_rot fluid_IPCs  erotate/rigid 1
 
 neighbor       0.3 bin
 neigh_modify   every 1 check yes
-thermo 500
+thermo         500
 
-#thermo_style multi
+#thermo_style   multi
 thermo_style   custom step   c_k_tr c_k_rot temp pe
 
-#dump 1 fluid atom 100 dump.lammpstrj
+#dump     1     fluid_IPCs atom 100 dump.lammpstrj
 # print logs and trajectory
 log            ${outputfile}
 # dump ID particle-type format print-interval file
-dump           dumpcommand fluid atom 500 ${trajectoryfile}
+dump           dumpcommand all atom 500 ${trajectoryfile}
+
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp0} ${Temp0} 1
+velocity       fluid_IPCs create ${Temp0} 53244 dist gaussian rot yes
+run            0  # temperature may not be right due to the constraints not being applied yet
+velocity       fluid_IPCs scale ${Temp0}       # now it should be
+
+#fix    2       substrate_IPCs freeze
+fix    2       substrate_IPCs setforce 0.0 0.0 0.0
+velocity       substrate_IPCs zero linear
 
 
+timestep       0.0005
 
-timestep 0.0005
-
-run 2000000
-fix 1 fluid rigid/nvt molecule temp ${Temp1} ${Temp1} 1
-run 2000000
-fix 1 fluid rigid/nvt molecule temp ${Temp2} ${Temp2} 1
-run 2000000
-fix 1 fluid rigid/nvt molecule temp ${Temp3} ${Temp3} 1
-run 2000000
-fix 1 fluid rigid/nvt molecule temp ${Temp4} ${Temp4} 1
-run 2000000
-fix 1 fluid rigid/nvt molecule temp ${Temp5} ${Temp5} 1
-run 2000000
+run            2000000
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp1} ${Temp1} 1
+run            2000000
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp2} ${Temp2} 1
+run            2000000
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp3} ${Temp3} 1
+run            2000000
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp4} ${Temp4} 1
+run            2000000
+fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp5} ${Temp5} 1
+run            2000000
+write_restart  cacca.new
