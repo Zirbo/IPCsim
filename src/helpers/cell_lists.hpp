@@ -43,6 +43,10 @@ public:
     // getIPCsInNeighbouringCells --- returns a list containing the indices of all the particles in the neighbouring cells
     const std::list<int> getIPCsInNeighbouringCells(int cell);
 
+    int cellNumberFromPosition(IPE const& ipe) {
+        return int(ipe.cmPosition[0]/cellSide) + cellsPerSide*int(ipe.cmPosition[1]/cellSide) + cellsPerSideSquared*int(ipe.cmPosition[2]/cellSide);
+    }
+
 private:
     int cellsPerSide, cellsPerSideSquared, totalCells, numberOfParticles;
     double cellSide;
@@ -51,9 +55,6 @@ private:
 
     int cellNumberFromPosition(Particle const& ipc) {
         return int(ipc.x[0]/cellSide) + cellsPerSide*int(ipc.x[1]/cellSide) + cellsPerSideSquared*int(ipc.x[2]/cellSide);
-    }
-    int cellNumberFromPosition(IPE const& ipe) {
-        return int(ipe.cmPosition[0]/cellSide) + cellsPerSide*int(ipe.cmPosition[1]/cellSide) + cellsPerSideSquared*int(ipe.cmPosition[2]/cellSide);
     }
     int cellNumberFromPosition(int x, int y, int z) {
         return x + cellsPerSide*y + cellsPerSideSquared*z;

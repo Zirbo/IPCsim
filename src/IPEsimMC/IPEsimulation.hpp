@@ -27,8 +27,6 @@ public:
 private:
     IPEsimulation();
 
-
-
     unsigned long simulationTime;
     std::ofstream outputFile;
     std::ofstream trajectoryFile;
@@ -62,16 +60,19 @@ private:
 
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
+    void readInputFile();
     void restorePreviousConfiguration();
-    void initializeNewConfiguration(int N1);
+    void initializeNewConfiguration();
     void computeSimulationStep();
-    void computePotential();
 
-    void computeInteractionsWithIPCsInTheSameCell(std::list<int>::const_iterator loc, std::list<int> const& ipcsInCurrentCell);
-    void computeInteractionsWithIPCsInNeighbouringCells(std::list<int>::const_iterator loc, std::list<int> const& ipcsInNeighbouringCells);
-    void computeInteractionsBetweenTwoIPCs(const int firstIPC, const int secndIPC);
+    double makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
+    double computePotentialDifference(IPE const& ipe);
+    double computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell);
+    double computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells);
+    double computeInteractionsBetweenTwoIPEs(const int firstIPC, const int secndIPC);
+
+    void computePotential();
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
-    void computeSystemEnergy();
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
     // boundary conditions
