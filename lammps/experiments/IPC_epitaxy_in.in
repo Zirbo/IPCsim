@@ -6,8 +6,10 @@
 #################################
 
 variable       inputfile        index   IPC_startingstate_manner.txt
+#variable       inputfile        index   IPC_startingstate_27.txt
 variable       outputfile       index   outputFile.txt
 variable       trajectoryfile   index   trajectory.lammpstrj
+variable       stagetime        index   2000
 variable       Temp0            index   0.20
 variable       Temp1            index   0.15
 variable       Temp2            index   0.14
@@ -46,6 +48,8 @@ angle_coeff	   1 999.9 180.0    # patch-patch angle
 
 group          substrate_IPCs   id <> 1 504 # 168*3
 group          fluid_IPCs       id <> 505 5256
+#group          substrate_IPCs   id <> 1 9 # 168*3
+#group          fluid_IPCs       id <> 10 81
 
 
 compute        k_tr  fluid_IPCs  ke/rigid 1
@@ -64,27 +68,36 @@ log            ${outputfile}
 # dump ID particle-type format print-interval file
 dump           dumpcommand all atom 500 ${trajectoryfile}
 
+
+
+#velocity        substrate_IPCs set 0.0 0.0 0.0 units box
+#velocity        substrate_IPCs zero linear
+#velocity        substrate_IPCs zero angular
+#fix  noforce1   substrate_IPCs rigid/nve      single  torque 1 off off off force 1 on off off
+#fix  noforce2   substrate_IPCs setforce 0.0 0.0 0.0
+
+#neigh_modify    exclude group substrate_IPCs substrate_IPCs check no
+
+
+
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp0} ${Temp0} 1
 velocity       fluid_IPCs create ${Temp0} 53244 dist gaussian rot yes
 run            0  # temperature may not be right due to the constraints not being applied yet
 velocity       fluid_IPCs scale ${Temp0}       # now it should be
 
-#fix    2       substrate_IPCs freeze
-fix    2       substrate_IPCs setforce 0.0 0.0 0.0
-velocity       substrate_IPCs zero linear
 
 
 timestep       0.0005
 
-run            2000000
+run            ${stagetime}
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp1} ${Temp1} 1
-run            2000000
+run            ${stagetime}
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp2} ${Temp2} 1
-run            2000000
+run            ${stagetime}
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp3} ${Temp3} 1
-run            2000000
+run            ${stagetime}
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp4} ${Temp4} 1
-run            2000000
+run            ${stagetime}
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp5} ${Temp5} 1
-run            2000000
+run            ${stagetime}
 write_restart  cacca.new
