@@ -6,11 +6,17 @@ import argparse
 from math import cos, sin, sqrt, pi, floor
 from numpy.random import ranf
 
-parser = argparse.ArgumentParser(description='Creates a LAMMPS starting configuration with a single wafer plane.\n Suggested values: 14 12 1.2 12.4 0.22')
+helpString = """Creates a LAMMPS starting configuration with a single wafer plane.\n
+Suggested values for a cubic box: 14 12 1.2 1.2 12.4 12.4 0.22\n
+Suggested values for an elongates box for gravity experiments: 14 12 1.2 sz 12.4 Lz 0.22\n"""
+
+parser = argparse.ArgumentParser(description=helpString)
 parser.add_argument('particlePerSideX', metavar='nPx', type=int, help='number of particles in the X side')
 parser.add_argument('particlePerSideY', metavar='nPy', type=int, help='number of particles in the Y side')
-parser.add_argument('spacing', metavar='s', type=float, help='spacing')
-parser.add_argument('boxSide', metavar='L', type=float, help='size of the simulation box side')
+parser.add_argument('spacing', metavar='s', type=float, help='spacing of the fluid in the x-y plane')
+parser.add_argument('spacingZ', metavar='sz', type=float, help='spacing of the fluid in the z direction')
+parser.add_argument('boxSide', metavar='L', type=float, help='size of the simulation box side base (x-y)')
+parser.add_argument('boxSideZ', metavar='Lz', type=float, help='height of the simulation box side (z)')
 parser.add_argument('ecc', metavar='e', type=float, help='eccentricity of the IPCs')
 args = parser.parse_args()
 print(args)
@@ -18,20 +24,25 @@ print(args)
 outputFile = open('IPC_startingstate_manner.txt','w')
 
 L = args.boxSide
+Lz = args.boxSideZ
 spacing = args.spacing
+spacingZ = args.spacingZ
 ecc = args.ecc
 nWaferX = args.particlePerSideX
 nWaferY = args.particlePerSideY
 nFluidX = int(L/spacing)
 nFluidY = int(L/spacing)
-nFluidZ = int(L/spacing) - 1
+nFluidZ = int(Lz/spacingZ) - 1
 
 print(nWaferX, nWaferY, spacing, L, ecc, nFluidX, nFluidY, nFluidZ)
 
 nIPCs = nWaferX*nWaferY + nFluidX*nFluidY*nFluidZ
 
-def absolutePBC(z):
-    return z - L*floor(z/L)
+def absolutePBC(x):
+    return x - L*floor(x/L)
+
+def absolutePBCz(z):
+    return z - Lz*floor(z/Lz)
 
 alpha = .45*pi
 beta = .93*pi
@@ -60,7 +71,7 @@ outputFile.write("\n" + '{:3.8f}'.format(0.0).rjust(16) +
 outputFile.write("\n" + '{:3.8f}'.format(0.0).rjust(16) +
                         '{:3.8f}'.format(L).rjust(16) + "     ylo yhi")
 outputFile.write("\n" + '{:3.8f}'.format(0.0).rjust(16) +
-                        '{:3.8f}'.format(L).rjust(16) + "     zlo zhi")
+                        '{:3.8f}'.format(Lz).rjust(16) + "     zlo zhi")
 
 outputFile.write("\n")
 outputFile.write("\nMasses")
@@ -93,7 +104,7 @@ for ix in range(nWaferX):
         # first patch
         px = x + p[j][0];    px = absolutePBC(px)
         py = y + p[j][1];    py = absolutePBC(py)
-        pz = z + p[j][2];    pz = absolutePBC(pz)
+        pz = z + p[j][2];    pz = absolutePBCz(pz)
         atomNumber += 1
         outputFile.write("\n" + str(atomNumber).rjust(10) +
               str(waferParticles).rjust(10) +
@@ -105,7 +116,7 @@ for ix in range(nWaferX):
         # second patch
         px = x - p[j][0];    px = absolutePBC(px)
         py = y - p[j][1];    py = absolutePBC(py)
-        pz = z - p[j][2];    pz = absolutePBC(pz)
+        pz = z - p[j][2];    pz = absolutePBCz(pz)
         atomNumber += 1
         outputFile.write("\n" + str(atomNumber).rjust(10) +
               str(waferParticles).rjust(10) +
@@ -118,7 +129,7 @@ for ix in range(nWaferX):
 # square lattice above the plane
 fluidParticles = 0
 for iz in range(1, nFluidZ + 1):
-    z = (.5 + iz)*spacing
+    z = (.5 + iz)*spacingZ
     for ix in range(nFluidX):
         x = (.5 + ix)*spacing
         for iy in range(nFluidY):
@@ -136,7 +147,7 @@ for iz in range(1, nFluidZ + 1):
             # first patch
             px = x + p[j][0];    px = absolutePBC(px)
             py = y + p[j][1];    py = absolutePBC(py)
-            pz = z + p[j][2];    pz = absolutePBC(pz)
+            pz = z + p[j][2];    pz = absolutePBCz(pz)
             atomNumber += 1
             outputFile.write("\n" + str(atomNumber).rjust(10) +
                   str(waferParticles + fluidParticles).rjust(10) +
@@ -148,7 +159,7 @@ for iz in range(1, nFluidZ + 1):
             # second patch
             px = x - p[j][0];    px = absolutePBC(px)
             py = y - p[j][1];    py = absolutePBC(py)
-            pz = z - p[j][2];    pz = absolutePBC(pz)
+            pz = z - p[j][2];    pz = absolutePBCz(pz)
             atomNumber += 1
             outputFile.write("\n" + str(atomNumber).rjust(10) +
                   str(waferParticles + fluidParticles).rjust(10) +
