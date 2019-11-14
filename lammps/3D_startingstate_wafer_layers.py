@@ -6,7 +6,7 @@ import argparse
 from math import cos, sin, sqrt, pi, floor
 from numpy.random import ranf
 
-parser = argparse.ArgumentParser(description='Creates a LAMMPS starting configuration with a single wafer plane.\n Suggested values: 14 12 1.2 15 0.22')
+parser = argparse.ArgumentParser(description='Creates a LAMMPS starting configuration with a single wafer plane.\n Suggested values: 14 12 1.2 12.4 0.22')
 parser.add_argument('particlePerSideX', metavar='nPx', type=int, help='number of particles in the X side')
 parser.add_argument('particlePerSideY', metavar='nPy', type=int, help='number of particles in the Y side')
 parser.add_argument('spacing', metavar='s', type=float, help='spacing')
@@ -19,20 +19,19 @@ outputFile = open('IPC_startingstate_manner.txt','w')
 
 L = args.boxSide
 spacing = args.spacing
-ecc = args.ecc/L
+ecc = args.ecc
 nWaferX = args.particlePerSideX
 nWaferY = args.particlePerSideY
 nFluidX = int(L/spacing)
 nFluidY = int(L/spacing)
 nFluidZ = int(L/spacing) - 1
-spacing /= L
 
 print(nWaferX, nWaferY, spacing, L, ecc, nFluidX, nFluidY, nFluidZ)
 
 nIPCs = nWaferX*nWaferY + nFluidX*nFluidY*nFluidZ
 
 def absolutePBC(z):
-    return z - floor(z)
+    return z - L*floor(z/L)
 
 alpha = .45*pi
 beta = .93*pi
@@ -42,7 +41,9 @@ p = [ [ ecc*cos(alpha), ecc*sin(alpha), 0. ] ,
 
 
 outputFile.write("# 3D starting configuration for LAMMPS created with a script available at")
-outputFile.write("# https://gitlab.com/catnat/ipc_brownian_motion")
+outputFile.write("# https://github.com/Zirbo/IPCsim/tree/master/lammps")
+outputFile.write("# The plane particles are from 1 to " + str(nWaferX*nWaferY))
+
 outputFile.write("\n")
 outputFile.write("\n" + str(3*nIPCs).rjust(16) + " atoms")
 outputFile.write("\n" + str(2*nIPCs).rjust(16) + " bonds")
@@ -73,15 +74,15 @@ outputFile.write("\n#   atom-ID    mol-ID   atom-type    charge    x            
 
 # wafer layer
 waferParticles = 0
-z = 0.25/L
+z = 0.25
 for ix in range(nWaferX):
-    x = (1.5 + .5 + 1.0000000000001*cos30*ix)/L
+    x = (0.6 + 1.0000000000001*cos30*ix)
     for iy in range(nWaferY):
         waferParticles += 1
         atomNumber = (waferParticles - 1)*3 + 1
         # ipc center
         j = 0 if (iy + (int((ix + 1)/2))%2)%2==0 else 1
-        y = ( 1.5 + ( (.5 + 1.0000000000001*iy) if ix%2==0 else (1.0000000000001*iy) ) )/L
+        y = 0.6 + ( (.5 + 1.0000000000001*iy) if ix%2==0 else (1.0000000000001*iy) )
         outputFile.write("\n" + str(atomNumber).rjust(10) +
               str(waferParticles).rjust(10) +
               str(1).rjust(10) +

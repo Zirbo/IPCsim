@@ -39,17 +39,12 @@ pair_modify    mix geometric tail yes
 pair_coeff     1 1 potentials_for_lammps/BB.table BB
 pair_coeff     1 2 potentials_for_lammps/Bs1.table Bs1
 pair_coeff     2 2 potentials_for_lammps/s1s1.table s1s1
-#pair_coeff     1 1 0.0537 2.80    # C of CO2 (27 K = 0.0537 kcal/mol)
-#pair_coeff     2 2 0.1570 3.05    # O of CO2 (79 K = 0.1570 kcal/mol)
-#bond_coeff     1 999.9 1.16       # C=O (999.9 = fake number since not used)
 bond_coeff     1 999.9 0.22     # center-patch distance
 angle_coeff	   1 999.9 180.0    # patch-patch angle
 
 
 group          substrate_IPCs   id <> 1 504 # 168*3
 group          fluid_IPCs       id <> 505 5256
-#group          substrate_IPCs   id <> 1 9 # 168*3
-#group          fluid_IPCs       id <> 10 81
 
 
 compute        k_tr  fluid_IPCs  ke/rigid 1
@@ -70,20 +65,13 @@ dump           dumpcommand all atom 500 ${trajectoryfile}
 
 
 
-#velocity        substrate_IPCs set 0.0 0.0 0.0 units box
-#velocity        substrate_IPCs zero linear
-#velocity        substrate_IPCs zero angular
-#fix  noforce1   substrate_IPCs rigid/nve      single  torque 1 off off off force 1 on off off
-#fix  noforce2   substrate_IPCs setforce 0.0 0.0 0.0
-
-#neigh_modify    exclude group substrate_IPCs substrate_IPCs check no
-
-
-
 fix    1       fluid_IPCs rigid/nvt molecule temp ${Temp0} ${Temp0} 1
 velocity       fluid_IPCs create ${Temp0} 53244 dist gaussian rot yes
 run            0  # temperature may not be right due to the constraints not being applied yet
 velocity       fluid_IPCs scale ${Temp0}       # now it should be
+
+
+#fix    2       fluid_IPCs   gravity  0.1  chute 0.0
 
 
 
