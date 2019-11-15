@@ -39,7 +39,7 @@ private:
     bool printTrajectoryAndCorrelations;
 
     // state point
-    int nIPCs;
+    int nIPEs;
     double density, temperature;
     // simulation duration
     double simulationTotalDuration;
@@ -65,11 +65,11 @@ private:
     void initializeNewConfiguration();
     void computeSimulationStep();
 
-    double makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
+    void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
     double computePotentialDifference(IPE const& ipe);
     double computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell);
     double computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells);
-    double computeInteractionsBetweenTwoIPEs(const int firstIPC, const int secndIPC);
+    double computeInteractionsBetweenTwoIPEs(const int firstIPE, const int secndIPE);
 
     void computePotential();
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);

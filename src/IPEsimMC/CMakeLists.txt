@@ -10,6 +10,6 @@ set(ALL_FILES
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
-target_link_libraries(${PROJECT_NAME}) # helpers})
+target_link_libraries(${PROJECT_NAME} helpers)
 configure_file(input.in input.in)
 configure_file(stages.in stages.in)

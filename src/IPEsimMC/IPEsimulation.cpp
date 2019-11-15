@@ -32,7 +32,7 @@ IPEsimulation::IPEsimulation(SimulationStage const& stage) {
 
     if (printTrajectoryAndCorrelations) {
         // initialize g(r)
-        pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
+        pairCorrelation.initialize(20, simulationBoxSide, nIPEs);
 
         // initialize trajectory output file
         trajectoryFile.open("siml/trajectory.xyz");
@@ -75,7 +75,7 @@ void IPEsimulation::run() {
     // output g(r);
     if (printTrajectoryAndCorrelations) {
         const double g_r_integral = pairCorrelation.print("siml/g_r");
-        outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+        outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPEs-1 << std::endl;
     }
 }
 
@@ -130,14 +130,14 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     if(stage.inputRestoringPreviousSimulation) {
         outputFile << "Resuming a previous simulation. ";
         restorePreviousConfiguration();
-        outputFile << "Read " << nIPCs <<  " particles positions and velocities from file.\n";
+        outputFile << "Read " << nIPEs <<  " particles positions and velocities from file.\n";
         // we read nIPCs and simulationBoxSide from the starting configuration, so we can compute the density from them
-        density = double(nIPCs)/std::pow(simulationBoxSide, 3);
+        density = double(nIPEs)/std::pow(simulationBoxSide, 3);
     }
     else {
         outputFile << "Starting a new simulation.\n";
         // we read nIPCs and density from the input file, so we need to compute the simulationBoxSide from them
-        simulationBoxSide = std::cbrt(nIPCs/density);
+        simulationBoxSide = std::cbrt(nIPEs/density);
     }
 
     // process data
@@ -146,7 +146,7 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
 
 
     // output the data for future checks
-    outputFile << nIPCs << "\t" << density << "\t" << temperature << "\n";
+    outputFile << nIPEs << "\t" << density << "\t" << temperature << "\n";
     outputFile << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
     outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
     outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
@@ -156,8 +156,8 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     outputFile << forceAndEnergySamplingStep << "\n";
 
     outputFile << "\n*****************MC simulation in NVT ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
-    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
+    outputFile << "\nDensity = " << nIPEs << "/" << std::pow(simulationBoxSide,3) << " = ";
+    outputFile << nIPEs/std::pow(simulationBoxSide,3) << " = " << density;
     outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
 
     // scale the lenghts to be in a [0.0:1.0] simulation box
@@ -174,12 +174,12 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
     if(!stage.inputRestoringPreviousSimulation) {
-        outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
+        outputFile << "Placing " << nIPEs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration();
     }
 
     // cell list compilation
-    cells.initialize(1., interactionRange, nIPCs);
+    cells.initialize(1.0, interactionRange, nIPEs);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
 
     // first computation of the potential
@@ -196,7 +196,7 @@ void IPEsimulation::readInputFile() {
     }
     int N1;
     inputFile >> N1 >> density;
-    nIPCs = 4*N1*N1*N1;
+    nIPEs = 4*N1*N1*N1;
     inputFile >> printingInterval;
     inputFile >> e_BB >> e_Bs1 >> e_Bs2;
     inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
@@ -225,10 +225,10 @@ void IPEsimulation::restorePreviousConfiguration() {
         std::cerr << "File startingstate.xyz could not be opened. Aborting.\n";
         exit(1);
     }
-    startingConfigurationFile >> nIPCs >> simulationBoxSide >> unusedDouble;
-    nIPCs /= 3;
+    startingConfigurationFile >> nIPEs >> simulationBoxSide >> unusedDouble;
+    nIPEs /= 3;
 
-    particles.resize(nIPCs);
+    particles.resize(nIPEs);
     int counter = 0;
 
     for (IPE &ipe: particles) {
@@ -245,8 +245,8 @@ void IPEsimulation::restorePreviousConfiguration() {
             ipe.orientation[i] /= firstPatchEccentricity;
         }
     }
-    if (counter != nIPCs) {
-        std::cerr << "Placed " << counter << " IPCs, expected " << nIPCs << ", quitting.\n";
+    if (counter != nIPEs) {
+        std::cerr << "Placed " << counter << " IPCs, expected " << nIPEs << ", quitting.\n";
         exit(1);
     }
 
@@ -255,10 +255,10 @@ void IPEsimulation::restorePreviousConfiguration() {
 
 //************************************************************************//
 void IPEsimulation::initializeNewConfiguration() {
-    particles.resize(nIPCs);
+    particles.resize(nIPEs);
     RandomNumberGenerator rand;
 
-    int N1 = std::cbrt(0.25*nIPCs);
+    int N1 = std::cbrt(0.25*nIPEs);
     int N2 = N1*N1;
     int N3 = N2*N1;
 
@@ -329,7 +329,7 @@ void IPEsimulation::computeSimulationStep() {
 //************************************************************************//
 //************************************************************************//
 
-double IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator & ranGen) {
+void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator & ranGen) {
     // choose between a rotation and a translation
     if (ranGen.getRandom55() > 0) {
         // rotational move
@@ -341,29 +341,41 @@ double IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGener
 }
 //************************************************************************//
 double IPEsimulation::computePotentialDifference(IPE const& ipe) {
-  /*  int cell = cells.cellNumberFromPosition(ipe);
+    int cell = cells.cellNumberFromPosition(ipe);
     const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
     const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
     double dU = 0.;
     dU += computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell);
     dU += computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells);
-    return dU;*/
-    return 2;
+    return dU;
 }
 
 //************************************************************************//
 double IPEsimulation::computeInteractionsWithIPEsInTheSameCell(IPE const& ipe, std::list<int> const& ipesInCurrentCell) {
-    return 2;
+    double dU = 0.;
+    for (auto ins = ipesInCurrentCell.cbegin(); ins != ipesInCurrentCell.cend(); ++ins) {
+        if (ipe.number != *ins)
+            dU += computeInteractionsBetweenTwoIPEs(ipe.number, *ins);
+    }
+    return dU;
 }
 
 //************************************************************************//
 double IPEsimulation::computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells) {
-    return 2;
+    double dU = 0.;
+    for( auto ext = ipesInNeighbouringCells.cbegin(); ext != ipesInNeighbouringCells.cend(); ++ext) {
+        dU += computeInteractionsBetweenTwoIPEs(ipe.number, *ext);
+    }
+    return dU;
 }
 
 //************************************************************************//
-double IPEsimulation::computeInteractionsBetweenTwoIPEs(const int firstIPC, const int secndIPC) {
-    return 2;
+double IPEsimulation::computeInteractionsBetweenTwoIPEs(const int firstIPE, const int secndIPE) {
+
+    //IPE const& first = particles[firstIPE];
+    //IPE const& secnd = particles[secndIPE];
+
+    return 2.;
 }
 
 
