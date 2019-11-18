@@ -246,52 +246,10 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 
     simulationTime = 0;
 
-    int N1;
-    // read input.in file
-    std::ifstream inputFile("input.in");
-    if(inputFile.fail()) {
-        std::cerr << "File input.in could not be opened. Aborting.\n";
-        exit(1);
-    }
     initialTemperature = stage.inputStartingTemperature;
     simulationTotalDuration = stage.inputStageTotalDuration;
     printTrajectoryAndCorrelations = stage.inputPrintTrajectoryAndCorrelations;
-    inputFile >> N1 >> density;
-    nIPCs = 4*N1*N1*N1;
-    inputFile >> simulationTimeStep >> printingInterval;
-    inputFile >> e_BB >> e_Bs1 >> e_Bs2;
-    inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
-    inputFile >> e_min;
-    inputFile >> firstPatchEccentricity >> firstPatchRadius;
-    inputFile >> secndPatchEccentricity >> secndPatchRadius;
-    inputFile >> firstPatchMass >> secndPatchMass >> ipcCenterMass;
-    inputFile >> fakeHScoefficient >> fakeHSexponent;
-    inputFile >> forceAndEnergySamplingStep >> tollerance;
-    inputFile >> isFieldEnabled;
-    if(isFieldEnabled) {
-        inputFile >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
-        inputFile >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
-        // compute external fields
-        for (int i: {0, 1, 2}) {
-            externalFieldFirstPatch[i] = ratioChargeFirstPatchOverIpcCenter*externalFieldIpcCenter[i];
-            externalFieldSecndPatch[i] = ratioChargeSecndPatchOverIpcCenter*externalFieldIpcCenter[i];
-        }
-    }
-    inputFile.close();
-    if(isJanusSimulation) {
-        secndPatchRadius = 0.;
-        secndPatchEccentricity = 0.;
-        secndPatchMass = 0.;
-    }
-
-    // patch geometry integrity check
-    if ( isNotJanusSimulation() && std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
-        std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
-        std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
-        std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
-        std::cerr << "eccentricities and radii are not consistent!\n";
-        exit(1);
-    }
+    readInputFile();
 
     // if restoring, read state, so we get access to the real number of IPCs
     if(stage.inputRestoringPreviousSimulation) {
@@ -324,27 +282,7 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         binaryMixtureComposition = 0;
 
     // output the data for future checks
-    outputFile << nIPCs << "\t" << density << "\t" << initialTemperature << "\n";
-    outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
-    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
-    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
-    outputFile << e_min << "\n";
-    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
-    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
-    outputFile << firstPatchMass << "\t" << secndPatchMass << "\t" << ipcCenterMass << "\n";
-    outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
-    outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
-    outputFile << isFieldEnabled << "\n";
-    if(isFieldEnabled) {
-        outputFile << ratioChargeFirstPatchOverIpcCenter << "\t" << ratioChargeFirstPatchOverIpcCenter << "\n";
-        outputFile << externalFieldIpcCenter[0] << "\t" << externalFieldIpcCenter[1] << "\t" << externalFieldIpcCenter[2] << "\n";
-    }
-
-    outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
-    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
-    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
-    outputFile << "Total number of sites being simulated: " << (isJanusSimulation? 2*nIPCs : 3*nIPCs) << std::endl;
+    printInputFileToOutputFile();
 
     // potential sampling
     outputFile << "Printing potential plots in 'potentials.out'." << std::endl;
@@ -390,9 +328,9 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         outputFile << "Placing " << nIPCs <<  " IPCs on a FCC lattice.\n\n";
 
         if(isJanusSimulation)
-            initializeNewJanusConfiguration(N1);
+            initializeNewJanusConfiguration();
         else
-            initializeNewIPCconfiguration(N1);
+            initializeNewIPCconfiguration();
     }
 
     if (binaryMixtureComposition > 0) {
@@ -443,9 +381,75 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     }
 }
 
+void IPCsimulation::readInputFile() {
+    // read input.in file
+    std::ifstream inputFile("input.in");
+    if(inputFile.fail()) {
+        std::cerr << "File input.in could not be opened. Aborting.\n";
+        exit(1);
+    }
+    int N1;
+    inputFile >> N1 >> density;
+    nIPCs = 4*N1*N1*N1;
+    inputFile >> simulationTimeStep >> printingInterval;
+    inputFile >> e_BB >> e_Bs1 >> e_Bs2;
+    inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
+    inputFile >> e_min;
+    inputFile >> firstPatchEccentricity >> firstPatchRadius;
+    inputFile >> secndPatchEccentricity >> secndPatchRadius;
+    inputFile >> firstPatchMass >> secndPatchMass >> ipcCenterMass;
+    inputFile >> fakeHScoefficient >> fakeHSexponent;
+    inputFile >> forceAndEnergySamplingStep >> tollerance;
+    inputFile >> isFieldEnabled;
+    if(isFieldEnabled) {
+        inputFile >> ratioChargeFirstPatchOverIpcCenter >> ratioChargeSecndPatchOverIpcCenter;
+        inputFile >> externalFieldIpcCenter[0] >> externalFieldIpcCenter[1] >> externalFieldIpcCenter[2];
+        // compute external fields
+        for (int i: {0, 1, 2}) {
+            externalFieldFirstPatch[i] = ratioChargeFirstPatchOverIpcCenter*externalFieldIpcCenter[i];
+            externalFieldSecndPatch[i] = ratioChargeSecndPatchOverIpcCenter*externalFieldIpcCenter[i];
+        }
+    }
+    inputFile.close();
+    if(isJanusSimulation) {
+        secndPatchRadius = 0.;
+        secndPatchEccentricity = 0.;
+        secndPatchMass = 0.;
+    }
 
+    // patch geometry integrity check
+    if ( isNotJanusSimulation() && std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
+        std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
+        std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
+        std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
+        std::cerr << "eccentricities and radii are not consistent!\n";
+        exit(1);
+    }
+}
 
+void IPCsimulation::printInputFileToOutputFile() {
+    outputFile << nIPCs << "\t" << density << "\t" << initialTemperature << "\n";
+    outputFile << simulationTimeStep << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
+    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
+    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
+    outputFile << e_min << "\n";
+    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
+    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
+    outputFile << firstPatchMass << "\t" << secndPatchMass << "\t" << ipcCenterMass << "\n";
+    outputFile << fakeHScoefficient << "\t" << fakeHSexponent << "\n";
+    outputFile << forceAndEnergySamplingStep << "\t" << tollerance << "\n";
+    outputFile << isFieldEnabled << "\n";
+    if(isFieldEnabled) {
+        outputFile << ratioChargeFirstPatchOverIpcCenter << "\t" << ratioChargeFirstPatchOverIpcCenter << "\n";
+        outputFile << externalFieldIpcCenter[0] << "\t" << externalFieldIpcCenter[1] << "\t" << externalFieldIpcCenter[2] << "\n";
+    }
 
+    outputFile << "\n*****************MD simulation in EVN ensemble for CGDH potential.********************\n";
+    outputFile << "\nDensity = " << nIPCs << "/" << std::pow(simulationBoxSide,3) << " = ";
+    outputFile << nIPCs/std::pow(simulationBoxSide,3) << " = " << density;
+    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
+    outputFile << "Total number of sites being simulated: " << (isJanusSimulation? 2*nIPCs : 3*nIPCs) << std::endl;
+}
 
 /*****************************************************************************************/
 

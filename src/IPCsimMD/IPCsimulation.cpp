@@ -92,10 +92,11 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
 
 
 
-void IPCsimulation::initializeNewIPCconfiguration(int N1) {
+void IPCsimulation::initializeNewIPCconfiguration() {
     particles.resize(nIPCs);
     RandomNumberGenerator rand;
 
+    int N1 = std::cbrt(0.25*nIPCs);
     int N2 = N1*N1;
     int N3 = N2*N1;
     double vel_scaling = std::sqrt(1.6*initialTemperature)/simulationBoxSide;

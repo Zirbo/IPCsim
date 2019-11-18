@@ -121,10 +121,12 @@ private:
 
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
+    void readInputFile();
+    void printInputFileToOutputFile();
     void restorePreviousIPCconfiguration();
     void restorePreviousJanusConfiguration();
-    void initializeNewIPCconfiguration(int N1);
-    void initializeNewJanusConfiguration(int N1);
+    void initializeNewIPCconfiguration();
+    void initializeNewJanusConfiguration();
 
 
     void computeTrajectoryStep();
