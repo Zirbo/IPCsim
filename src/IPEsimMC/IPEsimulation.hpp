@@ -51,6 +51,7 @@ private:
     // work parameters
     double potentialEnergy, simulationBoxSide;
     double interactionRange, squaredInteractionRange;
+    double deltaTrans, deltaRot;
     //double patchDistance, squaredPatchDistance, inversePatchDistance;
 
     std::vector<IPE> particles;
@@ -61,6 +62,7 @@ private:
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
     void readInputFile();
+    void printInputFileToOutputFile();
     void restorePreviousConfiguration();
     void initializeNewConfiguration();
     void computeSimulationStep();

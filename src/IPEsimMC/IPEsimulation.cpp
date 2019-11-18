@@ -144,21 +144,8 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     ipcRadius = firstPatchEccentricity + firstPatchRadius;  // works for both 2patch and Janus
     interactionRange = 2*ipcRadius;
 
-
     // output the data for future checks
-    outputFile << nIPEs << "\t" << density << "\t" << temperature << "\n";
-    outputFile << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
-    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
-    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
-    outputFile << e_min << "\n";
-    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
-    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
-    outputFile << forceAndEnergySamplingStep << "\n";
-
-    outputFile << "\n*****************MC simulation in NVT ensemble for CGDH potential.********************\n";
-    outputFile << "\nDensity = " << nIPEs << "/" << std::pow(simulationBoxSide,3) << " = ";
-    outputFile << nIPEs/std::pow(simulationBoxSide,3) << " = " << density;
-    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
+    printInputFileToOutputFile();
 
     // scale the lenghts to be in a [0.0:1.0] simulation box
     ipcRadius /= simulationBoxSide;
@@ -203,7 +190,8 @@ void IPEsimulation::readInputFile() {
     inputFile >> e_min;
     inputFile >> firstPatchEccentricity >> firstPatchRadius;
     inputFile >> secndPatchEccentricity >> secndPatchRadius;
-    inputFile >> forceAndEnergySamplingStep;
+    inputFile >> deltaTrans >> deltaRot;
+    //inputFile >> forceAndEnergySamplingStep;
     inputFile.close();
 
     // patch geometry integrity check
@@ -214,6 +202,24 @@ void IPEsimulation::readInputFile() {
         std::cerr << "eccentricities and radii are not consistent!\n";
         exit(1);
     }
+}
+
+//************************************************************************//
+void IPEsimulation::printInputFileToOutputFile() {
+    outputFile << nIPEs << "\t" << density << "\t" << temperature << "\n";
+    outputFile << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
+    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
+    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
+    outputFile << e_min << "\n";
+    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
+    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
+    outputFile << deltaTrans << "\t" << deltaRot << "\n";
+    // outputFile << forceAndEnergySamplingStep << "\n";
+
+    outputFile << "\n*****************MC simulation in NVT ensemble for CGDH potential.********************\n";
+    outputFile << "\nDensity = " << nIPEs << "/" << std::pow(simulationBoxSide,3) << " = ";
+    outputFile << nIPEs/std::pow(simulationBoxSide,3) << " = " << density;
+    outputFile << "\nSide = " << simulationBoxSide << ", IPC size in reduced units: " << 1./simulationBoxSide << std::endl;
 }
 
 //************************************************************************//
@@ -330,13 +336,26 @@ void IPEsimulation::computeSimulationStep() {
 //************************************************************************//
 
 void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator & ranGen) {
-    // choose between a rotation and a translation
+    // choose between a translation and a rotation
     if (ranGen.getRandom55() > 0) {
-        // rotational move
-
-    } else {
         // translation
-
+        double delta_x[3];
+        generateRandomOrientation(delta_x, ranGen);
+        for (int i: {0, 1, 2})
+            ipe.cmPosition[i] += deltaTrans*delta_x[i];
+    } else {
+        // rotation
+        double delta_n[3];
+        generateRandomOrientation(delta_n, ranGen);
+        double norm = 0.;
+        for (int i: {0, 1, 2}) {
+            ipe.orientation[i] += deltaRot*delta_n[i];
+            norm += std::pow(ipe.orientation[i], 2);
+        }
+        norm = std::sqrt(norm);
+        for (int i: {0, 1, 2}) {
+            ipe.orientation[i] /= norm;
+        }
     }
 }
 //************************************************************************//
@@ -372,8 +391,9 @@ double IPEsimulation::computeInteractionsWithIPEsInNeighbouringCells(IPE const& 
 //************************************************************************//
 double IPEsimulation::computeInteractionsBetweenTwoIPEs(const int firstIPE, const int secndIPE) {
 
-    //IPE const& first = particles[firstIPE];
-    //IPE const& secnd = particles[secndIPE];
+ //   IPE const& first = particles[firstIPE];
+   // IPE const& secnd = particles[secndIPE];
+
 
     return 2.;
 }
