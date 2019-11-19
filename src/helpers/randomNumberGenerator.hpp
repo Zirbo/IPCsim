@@ -50,6 +50,9 @@ public:
     double getRandom11() {
         return getRandomDoubleInRange(-1., 1.);
     }
+    double getRandom01() {
+        return getRandomDoubleInRange(0., 1.);
+    }
 };
 
 #endif //__ZILRANDOM_HEADER_INCLUDED__

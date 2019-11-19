@@ -143,6 +143,7 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     // process data
     ipcRadius = firstPatchEccentricity + firstPatchRadius;  // works for both 2patch and Janus
     interactionRange = 2*ipcRadius;
+    inverseTemperature = 1./temperature;
 
     // output the data for future checks
     printInputFileToOutputFile();
@@ -316,14 +317,17 @@ void IPEsimulation::computeSimulationStep() {
     RandomNumberGenerator ranGen;
     for(IPE &ipe: particles) {
         // attempt rotation or translation move
-        IPE backup = ipe;
-        makeRotationOrTranslationMove(ipe, ranGen);
+        IPE potentialIPCmove = ipe;
+        makeRotationOrTranslationMove(potentialIPCmove, ranGen);
 
         // check pot diff
-        double dU = computePotentialDifference(ipe);
-        // if dU < 0 we are done, otherwise revert.
-        if (dU > 0.) {
-            ipe = backup;
+        double dU;
+        if(computePotentialDifference(potentialIPCmove, dU))
+            return;
+
+        // no overlap was detected; if dU negative always accept, otherwise accept with conditional probability
+        if (dU <= 0. || ranGen.getRandom01() < std::exp(-dU*inverseTemperature) ) {
+            ipe = potentialIPCmove;
         }
     }
 }
@@ -359,43 +363,61 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
     }
 }
 //************************************************************************//
-double IPEsimulation::computePotentialDifference(IPE const& ipe) {
+bool IPEsimulation::computePotentialDifference(IPE const& ipe, double &dU) {
+    // compute interactions of the IPE that was just moved
+    double tempativeU = 0.;
     int cell = cells.cellNumberFromPosition(ipe);
     const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
+    if (computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, tempativeU))
+        return true;
     const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
-    double dU = 0.;
-    dU += computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell);
-    dU += computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells);
-    return dU;
+    if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, tempativeU))
+        return true;
+
+    // now compute the interactions of the IPE before the move
+    double oldU = 0.;
+    if ( computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, oldU) ||
+         computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, oldU) )
+    {
+        // this is extremely bad, it means the previous configuration was fucked up and we didn't notice.
+        std::cerr << "Found overlap in the previous configuration. This should not be possible.\n";
+        exit(1);
+    }
+
+    dU = tempativeU - oldU;
+    return false;
 }
 
 //************************************************************************//
-double IPEsimulation::computeInteractionsWithIPEsInTheSameCell(IPE const& ipe, std::list<int> const& ipesInCurrentCell) {
-    double dU = 0.;
+bool IPEsimulation::computeInteractionsWithIPEsInTheSameCell(IPE const& ipe, std::list<int> const& ipesInCurrentCell, double& dU) {
     for (auto ins = ipesInCurrentCell.cbegin(); ins != ipesInCurrentCell.cend(); ++ins) {
-        if (ipe.number != *ins)
-            dU += computeInteractionsBetweenTwoIPEs(ipe.number, *ins);
+        if (ipe.number != *ins) { // avoid interaction with the original or itself
+            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*ins], tempativeU))
+                return true;
+        }
     }
-    return dU;
+    return false;
 }
 
 //************************************************************************//
-double IPEsimulation::computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells) {
-    double dU = 0.;
+bool IPEsimulation::computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells, double& dU) {
     for( auto ext = ipesInNeighbouringCells.cbegin(); ext != ipesInNeighbouringCells.cend(); ++ext) {
-        dU += computeInteractionsBetweenTwoIPEs(ipe.number, *ext);
+        if (ipe.number != *ext) { // avoid interaction with the original
+                                  // shouldn't be possible, since we don't recompute the list after the move, but just to be safe
+            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*ext], dU))
+                return true;
+        }
     }
-    return dU;
+    return false;
 }
 
 //************************************************************************//
-double IPEsimulation::computeInteractionsBetweenTwoIPEs(const int firstIPE, const int secndIPE) {
-
- //   IPE const& first = particles[firstIPE];
-   // IPE const& secnd = particles[secndIPE];
+bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const IPE &secndIPE, double& dU) {
 
 
-    return 2.;
+
+
+    return false;
 }
 
 
@@ -405,7 +427,9 @@ double IPEsimulation::computeInteractionsBetweenTwoIPEs(const int firstIPE, cons
 //************************************************************************//
 //************************************************************************//
 
-void IPEsimulation::computePotential() {}
+void IPEsimulation::computePotential() {
+
+}
 
 //************************************************************************//
 void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {}

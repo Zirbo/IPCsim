@@ -49,6 +49,7 @@ private:
     double ipcRadius, firstPatchRadius, firstPatchEccentricity, secndPatchRadius, secndPatchEccentricity;
     double forceAndEnergySamplingStep;
     // work parameters
+    double inverseTemperature;
     double potentialEnergy, simulationBoxSide;
     double interactionRange, squaredInteractionRange;
     double deltaTrans, deltaRot;
@@ -68,10 +69,11 @@ private:
     void computeSimulationStep();
 
     void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
-    double computePotentialDifference(IPE const& ipe);
-    double computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell);
-    double computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells);
-    double computeInteractionsBetweenTwoIPEs(const int firstIPE, const int secndIPE);
+    // the next four functions return true if an overlap was detected, in which case dU is not to be used!!!
+    bool computePotentialDifference(IPE const& ipe, double& dU);
+    bool computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell, double& dU);
+    bool computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells, double& dU);
+    bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& dU);
 
     void computePotential();
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
@@ -83,6 +85,3 @@ private:
     // Stores in 'a' a 3D random unit vector with the (I suppose!) Marsaglia algorithm
     void generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r);
 };
-
-
-void test();
