@@ -135,55 +135,61 @@ def computePotentials():
     ws1s2.append(g)
     ws2s2.append(h)
 
-  return Vv, Vh, wBB, wBS, wSS, thetas
+  return Vv, Vh, wBB, wBs1, wBs2, ws1s1, ws1s2, ws2s2, thetas
 
-fBB = computeOmega(bigRadius, bigRadius, HSdiameter)
-fBS = computeOmega(bigRadius, patchRadius, HSdiameter - ecc)
-fSS = computeOmega(patchRadius, patchRadius, HSdiameter - 2*ecc)
+fBB   = computeOmega(bigRadius,    bigRadius,    HSdiameter)
+fBs1  = computeOmega(bigRadius,    patch1Radius, HSdiameter - ecc1)
+fBs2  = computeOmega(bigRadius,    patch2Radius, HSdiameter - ecc2)
+fs1s1 = computeOmega(patch1Radius, patch1Radius, HSdiameter - ecc1 - ecc1)
+fs1s2 = computeOmega(patch1Radius, patch2Radius, HSdiameter - ecc1 - ecc2)
+fs1s2 = computeOmega(patch2Radius, patch2Radius, HSdiameter - ecc2 - ecc2)
 
 print("volumes at contact:")
-print( fBB, fBS, fSS)
+print( fBB, fBs1, fBs2, fs1s1, fs1s2, fs1s2)
 
 if usageMode == "yes":
-  eBB /= fBB
-  eBS /= fBS
-  eSS /= fSS
-  cBB = eBB / emin
-  cBS = eBS / emin
-  cSS = eSS / emin
+  eBB   /= fBB
+  eBs1  /= fBs1
+  eBs2  /= fBs2
+  es1s1 /= fs1s1
+  es1s2 /= fs1s2
+  es2s2 /= fs2s2
+  cBB    = eBB   / emin
+  cBs1   = eBs1  / emin
+  cBs2   = eBs2  / emin
+  cs1s1  = es1s1 / emin
+  cs1s2  = es1s2 / emin
+  cs2s2  = es2s2 / emin
   print("scaled OUTPUT:")
 elif usageMode == "no":
-  cBB = eBB * fBB / emin
-  cBS = eBS * fBS / emin
-  cSS = eSS * fSS / emin
+  cBB   = eBB   * fBB   / emin
+  cBs1  = eBs1  * fBs1  / emin
+  cBs2  = eBs2  * fBs2  / emin
+  cs1s2 = es1s1 * fs1s1 / emin
+  cs1s2 = es1s2 * fs1s2 / emin
+  cs1s2 = es2s2 * fs2s2 / emin
   print("multiplied OUTPUT:")
 else:
   print("mode does not exist")
   exit()
 
 
-print(str(cBB)[0:7].ljust(10) + str(cBS)[0:8].ljust(10) + str(cBS)[0:8].ljust(10))
-print(str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10))
+print(str(cBB)[0:7].ljust(10) +   str(cBs1)[0:8].ljust(10) +  str(cBs2)[0:8].ljust(10))
+print(str(cs1s1)[0:7].ljust(10) + str(cs1s2)[0:7].ljust(10) + str(cs2s2)[0:7].ljust(10))
 
-#print('{0: 1.5e}    {1: 1.5e}    {1: 1.5e}'.format(cBB, cBS))
-#print('{0: 1.5e}    {0: 1.5e}    {0: 1.5e}'.format(cSS))
-
-Vv, Vh, wBB, wBS, wSS, theta = computePotentials()
+Vv, Vh, wBB, wBs1, wBs2, ws1s1, ws1s2, ws2s2, theta = computePotentials()
 
 outputWns = open("wBB.txt", 'w')
 outputWss = open("wBBscaled.txt", 'w')
 outputPot = open("potential.txt", 'w')
-for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(Vv, Vh, wBB, wBS, wSS, theta):
+for Vvi, Vhi, wBBi, wBs1i, wBs2i, ws1s1i, ws1s2i, ws2s2i, thetai in zip(Vv, Vh, wBB, wBs1, wBs2, ws1s1, ws1s2, ws2s2, theta):
   outputWns.write(str(thetai).ljust(24) + str(wBBi).ljust(24) +
-                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
+                  str(wBs1i).ljust(24) + str(wBs2i).ljust(24) +
+                  str(ws1s1i).ljust(24) + str(ws1s2i).ljust(24) +
+                  str(ws2s2i).ljust(24) + "\n")
   outputWss.write(str(thetai).ljust(24) + str(wBBi/fBB).ljust(24) +
-                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
+                  str(wBs1i/fBs1).ljust(24) + str(wBs2i/fBs2).ljust(24) +
+                  str(ws1s1i/fs1s1).ljust(24) + str(ws1s2i/fs1s2).ljust(24) +
+                  str(ws2s2i/fs2s2).ljust(24) + "\n")
   outputPot.write(str(thetai).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
                   str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")
-#for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(reversed(Vv), reversed(Vh), reversed(wBB), reversed(wBS), reversed(wSS), theta):
-#  outputWns.write(str(thetai+0.5*pi).ljust(24) + str(wBBi).ljust(24) +
-#                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
-#  outputWss.write(str(thetai+0.5*pi).ljust(24) + str(wBBi/fBB).ljust(24) +
-#                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
-#  outputPot.write(str(thetai+0.5*pi).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
-#                  str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")

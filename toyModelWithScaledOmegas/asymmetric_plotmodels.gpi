@@ -1,0 +1,57 @@
+set terminal postscript eps color enhanced
+set output "potential.eps"
+set grid
+
+set xrange [0:pi]
+set xtics (0, pi/2, pi, 3*pi/2, 2*pi)
+
+set key center right
+
+p "models/potential_1_0_0.txt" lc 1 lw 3 t "-1, 0, 0 VV", "" u 1:3 w l lc 1 lw 3 t "-1, 0, 0 HV", \
+  "models/potential_0_1_2.txt" lc 2 lw 3 t "0, -1, 2 VV", "" u 1:3 w l lc 2 lw 3 t "0, -1, 2 HV", \
+  "models/potential_0_0_1.txt" lc 3 lw 3 t "0, 0, -1 VV", "" u 1:3 w l lc 3 lw 3 t "0, 0, -1 HV"
+
+#p "models/potential_45n.txt"      lc 3 lw 3 t "45n VV", "" u 1:3 w l lc 3 lw 3 t "45n HV", \
+#  "models/potential_01_11_61.txt" lc 6 lw 3 t "0.1,-1.1,6.1 VV", "" u 1:3 w l lc 6 lw 3 t "0.1,-1.1,6.1 HV", \
+#  "models/potential_45c.txt"      lc 4 lw 3 t "45c VV", "" u 1:3 w l lc 4 lw 3 t "45c HV", \
+#  "models/potential_02_12_24.txt" lc 7 lw 3 t "0.2,-1.2,2.4 VV", "" u 1:3 w l lc 7 lw 3 t "0.2,-1.2,2.4 HV"
+
+set key top right
+
+p "models/potential_45n.txt"      u 1:4 lc 3 lw 3 t "45n VV",          "" u 1:5 w l lc 3 lw 3 t "45n HV", \
+  "models/potential_01_11_61.txt" u 1:4 lc 6 lw 3 t "0.1, -1.1 ,6.1 VV", "" u 1:5 w l lc 6 lw 3 t "0.1, -1.1, 6.1 HV", \
+  "models/potential_45c.txt"      u 1:4 lc 4 lw 3 t "45c VV",          "" u 1:5 w l lc 4 lw 3 t "45c HV", \
+  "models/potential_02_12_24.txt" u 1:4 lc 7 lw 3 t "0.2, -1.2, 2.4 VV", "" u 1:5 w l lc 7 lw 3 t "0.2, -1.2, 2.4 HV"
+
+set xrange [1:1.2]
+set xtics (1., 1.1, 1.2)
+set yrange [-1:]
+set key bottom right
+
+p "models/potentials_001/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 0, 0, -1", \
+  "models/potentials_001/emanuela_r_ul.dat" lc 2 lw 3 t "EP 0, 0, -1", \
+  "models/potentials_001/emanuela_r_ll.dat" lc 3 lw 3 t "PP 0, 0, -1"
+
+p "models/potentials_012/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 0, -1, 2", \
+  "models/potentials_012/emanuela_r_ul.dat" lc 2 lw 3 t "EP 0, -1, 2", \
+  "models/potentials_012/emanuela_r_ll.dat" lc 3 lw 3 t "PP 0, -1, 2"
+
+p "models/potentials_100/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE -1, 0, 0", \
+  "models/potentials_100/emanuela_r_ul.dat" lc 2 lw 3 t "EP -1, 0, 0", \
+  "models/potentials_100/emanuela_r_ll.dat" lc 3 lw 3 t "PP -1, 0, 0"
+
+p "models/potentials_45n/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 45n", \
+  "models/potentials_45n/emanuela_r_ul.dat" lc 2 lw 3 t "EP 45n", \
+  "models/potentials_45n/emanuela_r_ll.dat" lc 3 lw 3 t "PP 45n"
+
+p "models/potentials_01_11_61/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 0.1, -1.1, 6.1", \
+  "models/potentials_01_11_61/emanuela_r_ul.dat" lc 2 lw 3 t "EP 0.1, -1.1, 6.1", \
+  "models/potentials_01_11_61/emanuela_r_ll.dat" lc 3 lw 3 t "PP 0.1, -1.1, 6.1"
+
+p "models/potentials_45c/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 45c", \
+  "models/potentials_45c/emanuela_r_ul.dat" lc 2 lw 3 t "EP 45c", \
+  "models/potentials_45c/emanuela_r_ll.dat" lc 3 lw 3 t "PP 45c"
+
+p "models/potentials_02_12_24/emanuela_r_uu.dat" w l lc 1 lw 3 t "EE 0.2, -1.2, 2.4", \
+  "models/potentials_02_12_24/emanuela_r_ul.dat" lc 2 lw 3 t "EP 0.2, -1.2, 2.4", \
+  "models/potentials_02_12_24/emanuela_r_ll.dat" lc 3 lw 3 t "PP 0.2, -1.2, 2.4"
