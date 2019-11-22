@@ -4,11 +4,16 @@ import argparse
 from math import sqrt, pi, fabs, cos
 from math import sin as sen
 
-helpString = """
+helpString = """Usage Modes: yes, no
+Example: no 0.2 0.22 .245728   -3.11694  21.2298   .142495 (45n)
+no 0.2 0.22  3.18802   -24.3562  58.9717   1.02726 (45c)
+yes 0.2 0.22 -1 0 0 1
+yes 0.2 0.22 0 0 -1 1
+yes 0.2 0.22 0 -1 2 1
 """
 
 parser = argparse.ArgumentParser(description=helpString)
-parser.add_argument('mode', metavar='m', type=str, help='usage mode')
+parser.add_argument('mode', metavar='m', type=str, help='do the e_ij include the omega-scaling?')
 parser.add_argument('delta', metavar='d', type=float, help='interaction range minus diameter')
 parser.add_argument('ecc', metavar='e', type=float, help='eccentricity')
 parser.add_argument('eBB', metavar='eBB', type=float, help='')
@@ -78,7 +83,7 @@ def computePotentialHorizontalParticle(theta):
   rB1B2 = HSdiameter
   rB1Q2 = sqrt( (HSdiameter - ecc*sen(theta))**2 + (ecc*cos(theta))**2 )
   rQ1P2 = sqrt( (HSdiameter - ecc*(1 - sen(theta)))**2 + (ecc*cos(theta))**2 )
-  rQ1B2 = ecc + HSdiameter
+  rQ1B2 = HSdiameter - ecc
   rQ1Q2 = sqrt( (HSdiameter - ecc*(1 + sen(theta)))**2 + (ecc*cos(theta))**2 )
 
   wSS = computeOmega(patchRadius, patchRadius, rQ1Q2)
@@ -97,7 +102,7 @@ def computePotentialHorizontalParticle(theta):
   return V, wSS
 
 def computePotentials():
-  thetas = [ i*0.5*pi/20. for i in range(21) ]
+  thetas = [ i*2.*pi/100. for i in range(101) ]
   Vh = []
   Vv = []
   wBB = []
@@ -122,12 +127,15 @@ fSS = computeOmega(patchRadius, patchRadius, HSdiameter - 2*ecc)
 print("volumes at contact:")
 print( fBB, fBS, fSS)
 
-if usageMode == "include":
-  cBB = eBB / (fBB * emin)
-  cBS = eBS / (fBS * emin)
-  cSS = eSS / (fSS * emin)
+if usageMode == "yes":
+  eBB /= fBB
+  eBS /= fBS
+  eSS /= fSS
+  cBB = eBB / emin
+  cBS = eBS / emin
+  cSS = eSS / emin
   print("scaled OUTPUT:")
-elif usageMode == "extract":
+elif usageMode == "no":
   cBB = eBB * fBB / emin
   cBS = eBS * fBS / emin
   cSS = eSS * fSS / emin
@@ -149,6 +157,16 @@ outputWns = open("wBB.txt", 'w')
 outputWss = open("wBBscaled.txt", 'w')
 outputPot = open("potential.txt", 'w')
 for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(Vv, Vh, wBB, wBS, wSS, theta):
-  outputWns.write(str(thetai).ljust(24) + str(wBBi).ljust(24) + str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
-  outputWss.write(str(thetai).ljust(24) + str(wBBi/fBB).ljust(24) + str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
-  outputPot.write(str(thetai).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) + "\n")
+  outputWns.write(str(thetai).ljust(24) + str(wBBi).ljust(24) +
+                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
+  outputWss.write(str(thetai).ljust(24) + str(wBBi/fBB).ljust(24) +
+                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
+  outputPot.write(str(thetai).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
+                  str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")
+#for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(reversed(Vv), reversed(Vh), reversed(wBB), reversed(wBS), reversed(wSS), theta):
+#  outputWns.write(str(thetai+0.5*pi).ljust(24) + str(wBBi).ljust(24) +
+#                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
+#  outputWss.write(str(thetai+0.5*pi).ljust(24) + str(wBBi/fBB).ljust(24) +
+#                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
+#  outputPot.write(str(thetai+0.5*pi).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
+#                  str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")
