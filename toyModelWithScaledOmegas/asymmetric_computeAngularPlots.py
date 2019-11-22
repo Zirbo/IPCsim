@@ -5,11 +5,6 @@ from math import sqrt, pi, fabs, cos
 from math import sin as sen
 
 helpString = """Usage Modes: yes, no
-Example: no 0.2 0.22 .245728   -3.11694  21.2298   .142495 (45n)
-no 0.2 0.22  3.18802   -24.3562  58.9717   1.02726 (45c)
-yes 0.2 0.22 -1 0 0 1
-yes 0.2 0.22 0 0 -1 1
-yes 0.2 0.22 0 -1 2 1
 """
 
 parser = argparse.ArgumentParser(description=helpString)
@@ -28,7 +23,8 @@ parser.add_argument('emin', metavar='emin', type=float, help='')
 args = parser.parse_args()
 
 usageMode = args.mode
-ecc = args.ecc
+ecc1 = args.ecc1
+ecc2 = args.ecc2
 delta = args.delta
 eBB = args.eBB
 eBs1 = args.eBs1
@@ -63,26 +59,26 @@ def computePotentialVerticalParticle(theta):
   rB1P2 = sqrt( (HSdiameter + ecc1*sen(theta))**2 + (ecc1*cos(theta))**2 )
   rB1B2 = HSdiameter
   rB1Q2 = sqrt( (HSdiameter - ecc2*sen(theta))**2 + (ecc2*cos(theta))**2 )
-  rQ1P2 = sqrt( (HSdiameter + ecc1*sen(theta))**2 + (ecc2 + ecc1cos(theta))**2 )
+  rQ1P2 = sqrt( (HSdiameter + ecc1*sen(theta))**2 + (ecc2 + ecc1*cos(theta))**2 )
   rQ1B2 = sqrt( ecc2*2 + HSdiameter**2 )
   rQ1Q2 = sqrt( (HSdiameter - ecc2*sen(theta))**2 + (ecc2*(1 - cos(theta)))**2 )
 
   wBB  = computeOmega(bigRadius, bigRadius,    rB1B2)
-  wBs1 = computeOmega(bigRadius, patch1Radius, rB1Q2)
-  wBs2 = computeOmega(bigRadius, patch2Radius, rB1Q2)
+  wBs1 = computeOmega(bigRadius, patch1radius, rB1Q2)
+  wBs2 = computeOmega(bigRadius, patch2radius, rB1Q2)
   
   V = (
         eBB*    computeOmega(bigRadius,    bigRadius,    rB1B2) +
-        eBs1*(  computeOmega(patch1Radius, bigRadius,    rP1B2) +
-                computeOmega(bigRadius,    patch1Radius, rB1P2) ) +
-        eBs2*(  computeOmega(bigRadius,    patch2Radius, rB1Q2) +
-                computeOmega(patch2Radius, bigRadius,    rQ1B2) ) +
-        es1s1*  computeOmega(patch1Radius, patch1Radius, rP1P2) +
-        es1s2*( computeOmega(patch1Radius, patch2Radius, rP1Q2) +
-                computeOmega(patch2Radius, patch1Radius, rQ1P2) ) +
-        es2s2*  computeOmega(patch2Radius, patch2Radius, rQ1Q2)
+        eBs1*(  computeOmega(patch1radius, bigRadius,    rP1B2) +
+                computeOmega(bigRadius,    patch1radius, rB1P2) ) +
+        eBs2*(  computeOmega(bigRadius,    patch2radius, rB1Q2) +
+                computeOmega(patch2radius, bigRadius,    rQ1B2) ) +
+        es1s1*  computeOmega(patch1radius, patch1radius, rP1P2) +
+        es1s2*( computeOmega(patch1radius, patch2radius, rP1Q2) +
+                computeOmega(patch2radius, patch1radius, rQ1P2) ) +
+        es2s2*  computeOmega(patch2radius, patch2radius, rQ1Q2)
       )
-  return V, wBB, wBs1
+  return V, wBB, wBs1, wBs2
 
 def computePotentialHorizontalParticle(theta):
   rP1P2 = sqrt( (HSdiameter + ecc1*(1 + sen(theta)))**2 + (ecc1*cos(theta))**2 )
@@ -90,25 +86,25 @@ def computePotentialHorizontalParticle(theta):
   rP1Q2 = sqrt( (HSdiameter - ecc1 - ecc2*sen(theta))**2 + (ecc2*cos(theta))**2 )
   rB1P2 = sqrt( (HSdiameter + ecc1*sen(theta))**2 + (ecc1*cos(theta))**2 )
   rB1B2 = HSdiameter
-  rB1Q2 = sqrt( (HSdiameter - ecc*sen(theta))**2 + (ecc*cos(theta))**2 )
+  rB1Q2 = sqrt( (HSdiameter - ecc2*sen(theta))**2 + (ecc2*cos(theta))**2 )
   rQ1P2 = sqrt( (HSdiameter - ecc2 - ecc1*sen(theta))**2 + (ecc1*cos(theta))**2 )
   rQ1B2 = HSdiameter - ecc2
   rQ1Q2 = sqrt( (HSdiameter - ecc2*(1 + sen(theta)))**2 + (ecc2*cos(theta))**2 )
 
-  ws1s1 = computeOmega(patch1Radius, patch1Radius, rP1P2)
-  ws1s2 = computeOmega(patch1Radius, patch2Radius, rP1Q2)
-  ws2s2 = computeOmega(patch2Radius, patch2Radius, rQ1Q2)
-  
+  ws1s1 = computeOmega(patch1radius, patch1radius, rP1P2)
+  ws1s2 = computeOmega(patch1radius, patch2radius, rP1Q2)
+  ws2s2 = computeOmega(patch2radius, patch2radius, rQ1Q2)
+
   V = (
         eBB*    computeOmega(bigRadius,    bigRadius,    rB1B2) +
-        eBs1*(  computeOmega(patch1Radius, bigRadius,    rP1B2) +
-                computeOmega(bigRadius,    patch1Radius, rB1P2) ) +
-        eBs2*(  computeOmega(bigRadius,    patch2Radius, rB1Q2) +
-                computeOmega(patch2Radius, bigRadius,    rQ1B2) ) +
-        es1s1*  computeOmega(patch1Radius, patch1Radius, rP1P2) +
-        es1s2*( computeOmega(patch1Radius, patch2Radius, rP1Q2) +
-                computeOmega(patch2Radius, patch1Radius, rQ1P2) ) +
-        es2s2*  computeOmega(patch2Radius, patch2Radius, rQ1Q2)
+        eBs1*(  computeOmega(patch1radius, bigRadius,    rP1B2) +
+                computeOmega(bigRadius,    patch1radius, rB1P2) ) +
+        eBs2*(  computeOmega(bigRadius,    patch2radius, rB1Q2) +
+                computeOmega(patch2radius, bigRadius,    rQ1B2) ) +
+        es1s1*  computeOmega(patch1radius, patch1radius, rP1P2) +
+        es1s2*( computeOmega(patch1radius, patch2radius, rP1Q2) +
+                computeOmega(patch2radius, patch1radius, rQ1P2) ) +
+        es2s2*  computeOmega(patch2radius, patch2radius, rQ1Q2)
       )
   return V, ws1s1, ws1s2, ws2s2
 
@@ -138,14 +134,14 @@ def computePotentials():
   return Vv, Vh, wBB, wBs1, wBs2, ws1s1, ws1s2, ws2s2, thetas
 
 fBB   = computeOmega(bigRadius,    bigRadius,    HSdiameter)
-fBs1  = computeOmega(bigRadius,    patch1Radius, HSdiameter - ecc1)
-fBs2  = computeOmega(bigRadius,    patch2Radius, HSdiameter - ecc2)
-fs1s1 = computeOmega(patch1Radius, patch1Radius, HSdiameter - ecc1 - ecc1)
-fs1s2 = computeOmega(patch1Radius, patch2Radius, HSdiameter - ecc1 - ecc2)
-fs1s2 = computeOmega(patch2Radius, patch2Radius, HSdiameter - ecc2 - ecc2)
+fBs1  = computeOmega(bigRadius,    patch1radius, HSdiameter - ecc1)
+fBs2  = computeOmega(bigRadius,    patch2radius, HSdiameter - ecc2)
+fs1s1 = computeOmega(patch1radius, patch1radius, HSdiameter - ecc1 - ecc1)
+fs1s2 = computeOmega(patch1radius, patch2radius, HSdiameter - ecc1 - ecc2)
+fs2s2 = computeOmega(patch2radius, patch2radius, HSdiameter - ecc2 - ecc2)
 
 print("volumes at contact:")
-print( fBB, fBs1, fBs2, fs1s1, fs1s2, fs1s2)
+print( fBB, fBs1, fBs2, fs1s1, fs1s2, fs2s2)
 
 if usageMode == "yes":
   eBB   /= fBB
@@ -165,9 +161,9 @@ elif usageMode == "no":
   cBB   = eBB   * fBB   / emin
   cBs1  = eBs1  * fBs1  / emin
   cBs2  = eBs2  * fBs2  / emin
-  cs1s2 = es1s1 * fs1s1 / emin
+  cs1s1 = es1s1 * fs1s1 / emin
   cs1s2 = es1s2 * fs1s2 / emin
-  cs1s2 = es2s2 * fs2s2 / emin
+  cs2s2 = es2s2 * fs2s2 / emin
   print("multiplied OUTPUT:")
 else:
   print("mode does not exist")
