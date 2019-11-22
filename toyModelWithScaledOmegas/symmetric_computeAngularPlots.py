@@ -102,7 +102,7 @@ def computePotentialHorizontalParticle(theta):
   return V, wSS
 
 def computePotentials():
-  thetas = [ i*2.*pi/100. for i in range(101) ]
+  thetas = [ i*pi/50. for i in range(51) ]
   Vh = []
   Vv = []
   wBB = []
