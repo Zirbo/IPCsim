@@ -29,3 +29,7 @@ echo
 echo 02_12_24
 ./symmetric_computeAngularPlots.py yes 0.2 0.22 0.2 -1.2 2.4 1.0
 mv potential.txt models/potential_02_12_24.txt
+
+gnuplot symmetric_plotmodels.gpi
+#gnuplot symmetric_plotmodelsPNG.gpi
+evince potentials.eps
