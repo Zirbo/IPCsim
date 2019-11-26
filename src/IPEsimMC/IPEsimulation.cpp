@@ -97,20 +97,6 @@ void IPEsimulation::generateRandomOrientation(double (&a)[3], RandomNumberGenera
     double norm = 2.*sqrt(1.-quad);  a[0]=x*norm;  a[1]=y*norm;  a[2]=1.-2.*quad;
 }
 
-// compute overlap values between two spheres of radius Ra and Rb, at distance rab
-double IPEsimulation::computeOmega(double Ra, double Rb, double rab) {
-    // BKL paper, formula 18
-    if ( rab > Ra+Rb )
-        return 0.;
-    else if ( rab <= std::fabs(Ra-Rb) )
-        return 8.*std::pow(std::min(Ra,Rb),3);
-    else {
-        const double tempSum = (Ra*Ra-Rb*Rb)/(2.*rab);
-        return 2.*( (2.*Ra+tempSum+rab/2.)*pow(Ra-tempSum-rab/2.,2)
-                  + (2.*Rb-tempSum+rab/2.)*pow(Rb+tempSum-rab/2.,2) );
-    }
-}
-
 //************************************************************************//
 //************************************************************************//
 //************************************************************************//
@@ -141,8 +127,11 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     }
 
     // process data
-    ipcRadius = firstPatchEccentricity + firstPatchRadius;  // works for both 2patch and Janus
-    interactionRange = 2*ipcRadius;
+    ipcRadius = 0.5;
+    deltaPotential = deltaOverSigma*ipcRadius;
+    ipcDiameter = 2.*ipcRadius;
+    BBinteractionRange = 2*ipcRadius + deltaOverSigma;
+    patchRadius = ipcRadius - patchEccentricity;
     inverseTemperature = 1./temperature;
 
     // output the data for future checks
@@ -150,15 +139,19 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
 
     // scale the lenghts to be in a [0.0:1.0] simulation box
     ipcRadius /= simulationBoxSide;
-    interactionRange /= simulationBoxSide;
-    firstPatchRadius /= simulationBoxSide;
-    firstPatchEccentricity /= simulationBoxSide;
-    secndPatchRadius /= simulationBoxSide;
-    secndPatchEccentricity /= simulationBoxSide;
-    forceAndEnergySamplingStep /= simulationBoxSide;
+    ipcDiameter /= simulationBoxSide;
+    BBinteractionRange /= simulationBoxSide;
+    patchRadius /= simulationBoxSide;
+    deltaPotential /= simulationBoxSide;
 
     // finish processing data
-    squaredInteractionRange = std::pow(interactionRange,2);
+    BBsquaredInteractionRange = std::pow(BBinteractionRange,2);
+    BsSquaredInteractionRange = std::pow(ipcRadius + 0.5*deltaPotential + patchRadius,2);
+    ssSquaredInteractionRange = std::pow(2.*patchRadius, 2);
+
+    coeff_BB = e_BB / (e_min * deltaPotential);
+    coeff_Bs = e_Bs / (e_min * deltaPotential );
+    coeff_ss = e_ss / (e_min * deltaPotential);
 
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
     if(!stage.inputRestoringPreviousSimulation) {
@@ -167,12 +160,22 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     }
 
     // cell list compilation
-    cells.initialize(1.0, interactionRange, nIPEs);
+    cells.initialize(1.0, BBinteractionRange, nIPEs);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
 
     // first computation of the potential
     cells.compileLists(particles);
-    computePotential();
+
+    for (IPE &ipe: particles) {
+        double potential;
+        if(computePotentialOfAnIPC(ipe, potential)) {
+            std::cerr << "Detected overlap in the initial configuration!\n";
+            exit(1);
+        }
+        ipe.potential = potential;
+    }
+
+    computeTotalPotential();
 }
 
 //************************************************************************//
@@ -186,36 +189,21 @@ void IPEsimulation::readInputFile() {
     inputFile >> N1 >> density;
     nIPEs = 4*N1*N1*N1;
     inputFile >> printingInterval;
-    inputFile >> e_BB >> e_Bs1 >> e_Bs2;
-    inputFile >> e_s1s1 >> e_s2s2 >> e_s1s2;
+    inputFile >> e_BB >> e_Bs >> e_ss;
     inputFile >> e_min;
-    inputFile >> firstPatchEccentricity >> firstPatchRadius;
-    inputFile >> secndPatchEccentricity >> secndPatchRadius;
+    inputFile >> deltaOverSigma >> patchEccentricity;
     inputFile >> deltaTrans >> deltaRot;
-    //inputFile >> forceAndEnergySamplingStep;
     inputFile.close();
-
-    // patch geometry integrity check
-    if ( std::abs( (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) ) >= 1e-10 ) {
-        std::cerr << firstPatchEccentricity << "+" << firstPatchRadius << "=" << firstPatchEccentricity+firstPatchRadius << "-";
-        std::cerr << secndPatchEccentricity << "+" << secndPatchRadius << "=" << secndPatchEccentricity+secndPatchRadius << "=\n";
-        std::cerr << (firstPatchEccentricity+firstPatchRadius)-(secndPatchEccentricity+secndPatchRadius) << std::endl;
-        std::cerr << "eccentricities and radii are not consistent!\n";
-        exit(1);
-    }
 }
 
 //************************************************************************//
 void IPEsimulation::printInputFileToOutputFile() {
     outputFile << nIPEs << "\t" << density << "\t" << temperature << "\n";
     outputFile << "\t" << printingInterval << "\t" << simulationTotalDuration << "\n";
-    outputFile << e_BB << "\t" << e_Bs1 << "\t" << e_Bs2 << "\n";
-    outputFile << e_s1s2 << "\t" << e_s1s1 << "\t" << e_s2s2 << "\n";
+    outputFile << e_BB << "\t" << e_Bs << "\t" << e_ss << "\n";
     outputFile << e_min << "\n";
-    outputFile << firstPatchEccentricity << "\t" << firstPatchRadius << "\n";
-    outputFile << secndPatchEccentricity << "\t" << secndPatchRadius << "\n";
+    outputFile << deltaOverSigma << "\t" << patchEccentricity << "\n";
     outputFile << deltaTrans << "\t" << deltaRot << "\n";
-    // outputFile << forceAndEnergySamplingStep << "\n";
 
     outputFile << "\n*****************MC simulation in NVT ensemble for CGDH potential.********************\n";
     outputFile << "\nDensity = " << nIPEs << "/" << std::pow(simulationBoxSide,3) << " = ";
@@ -249,7 +237,7 @@ void IPEsimulation::restorePreviousConfiguration() {
         for (int i: {0, 1, 2}) {
             ipe.orientation[i] = ipe.cmPosition[i] - ipe.orientation[i];
             relativePBC(ipe.orientation[i]);
-            ipe.orientation[i] /= firstPatchEccentricity;
+            ipe.orientation[i] /= patchEccentricity;
         }
     }
     if (counter != nIPEs) {
@@ -362,29 +350,27 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
         }
     }
 }
+
+//************************************************************************//
+bool IPEsimulation::computePotentialOfAnIPC(IPE const& ipe, double &dU) {
+    dU = 0.;
+    int cell = cells.cellNumberFromPosition(ipe);
+    const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
+    if (computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, dU))
+        return true;
+    const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
+    if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, dU))
+        return true;
+    return false;
+}
+
 //************************************************************************//
 bool IPEsimulation::computePotentialDifference(IPE const& ipe, double &dU) {
     // compute interactions of the IPE that was just moved
     double tempativeU = 0.;
-    int cell = cells.cellNumberFromPosition(ipe);
-    const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
-    if (computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, tempativeU))
+    if (computePotentialOfAnIPC(ipe, tempativeU))
         return true;
-    const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
-    if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, tempativeU))
-        return true;
-
-    // now compute the interactions of the IPE before the move
-    double oldU = 0.;
-    if ( computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, oldU) ||
-         computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, oldU) )
-    {
-        // this is extremely bad, it means the previous configuration was fucked up and we didn't notice.
-        std::cerr << "Found overlap in the previous configuration. This should not be possible.\n";
-        exit(1);
-    }
-
-    dU = tempativeU - oldU;
+    dU = tempativeU - ipe.potential;
     return false;
 }
 
@@ -392,7 +378,7 @@ bool IPEsimulation::computePotentialDifference(IPE const& ipe, double &dU) {
 bool IPEsimulation::computeInteractionsWithIPEsInTheSameCell(IPE const& ipe, std::list<int> const& ipesInCurrentCell, double& dU) {
     for (auto ins = ipesInCurrentCell.cbegin(); ins != ipesInCurrentCell.cend(); ++ins) {
         if (ipe.number != *ins) { // avoid interaction with the original or itself
-            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*ins], tempativeU))
+            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*ins], dU))
                 return true;
         }
     }
@@ -413,13 +399,92 @@ bool IPEsimulation::computeInteractionsWithIPEsInNeighbouringCells(IPE const& ip
 
 //************************************************************************//
 bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const IPE &secndIPE, double& dU) {
+    double centerCenterSeparation[3];
+    for (int i: {0, 1, 2}) {
+        centerCenterSeparation[i] = firstIPE.cmPosition[i] - secndIPE.cmPosition[i];
+        relativePBC(centerCenterSeparation[i]);
+    }
+    double centerCenterSeparationModulus = std::pow(centerCenterSeparation[0], 2)
+                                         + std::pow(centerCenterSeparation[1], 2)
+                                         + std::pow(centerCenterSeparation[2], 2);
 
+    if (centerCenterSeparationModulus < minimumSquaredDistance)
+        minimumSquaredDistance = centerCenterSeparationModulus;
 
+    // if the CENTERS are too far, no interactions, skip this couple of IPCs
+    if (centerCenterSeparationModulus >= BBsquaredInteractionRange)
+        return false;
 
+    // we are inside the interaction range, check the overlap
+    if (detectOverlap(firstIPE, secndIPE, centerCenterSeparationModulus))
+        return true;
+
+    // no overlap, let's do the real potential computation
+    dU += computePotentialBetweenTwoIPEsInsideRange(firstIPE, secndIPE, centerCenterSeparationModulus);
 
     return false;
 }
 
+//************************************************************************//
+bool IPEsimulation::detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double r) {
+    if(r < ipcDiameter)
+        return true;
+    return false;
+}
+
+//************************************************************************//
+double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r) {
+    double dU = 0.;
+    // compute the interaction between centers
+    dU -= coeff_BB*(std::sqrt(r) - BBinteractionRange);
+
+    // compute all the other 8 site-site separations
+    double siteSiteSeparation[8][3];
+    for (int i: {0, 1, 2}) {
+        double fCM = firstIPE.cmPosition[i];
+        double fP1 = fCM + patchEccentricity*firstIPE.orientation[i];    absolutePBC(fP1);
+        double fP2 = fCM - patchEccentricity*firstIPE.orientation[i];    absolutePBC(fP1);
+        double sCM = secndIPE.cmPosition[i];
+        double sP1 = sCM + patchEccentricity*secndIPE.orientation[i];    absolutePBC(sP1);
+        double sP2 = sCM - patchEccentricity*secndIPE.orientation[i];    absolutePBC(sP1);
+
+        siteSiteSeparation[0][i] = fCM - sP1;
+        siteSiteSeparation[1][i] = fCM - sP2;
+        siteSiteSeparation[2][i] = fP1 - sCM;
+        siteSiteSeparation[3][i] = fP2 - sCM;
+        siteSiteSeparation[4][i] = fP1 - sP1;
+        siteSiteSeparation[5][i] = fP1 - sP2;
+        siteSiteSeparation[6][i] = fP2 - sP1;
+        siteSiteSeparation[7][i] = fP2 - sP2;
+        for (int j = 0; j < 8; ++j)
+            relativePBC(siteSiteSeparation[j][i]);
+    }
+
+    for (int j = 0; j < 8; ++j) {
+        double siteSiteSeparationModulus = std::pow(siteSiteSeparation[j][0], 2)
+                                         + std::pow(siteSiteSeparation[j][1], 2)
+                                         + std::pow(siteSiteSeparation[j][2], 2);
+
+        if (j < 4) { // Bs
+            // if we are too far, no interaction, skip to the next site-site pair
+            if (siteSiteSeparationModulus >= BsSquaredInteractionRange)
+             continue;
+
+            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+            dU -= coeff_Bs*(siteSiteSeparationModulus - BBinteractionRange);
+        }
+        else { // ss
+            // if we are too far, no interaction, skip to the next site-site pair
+            if (siteSiteSeparationModulus >= ssSquaredInteractionRange)
+             continue;
+
+            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+            dU -= coeff_ss*(siteSiteSeparationModulus - ssInteractionRange);
+        }
+    }
+
+    return dU;
+}
 
 //************************************************************************//
 //************************************************************************//
@@ -427,7 +492,8 @@ bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const
 //************************************************************************//
 //************************************************************************//
 
-void IPEsimulation::computePotential() {
+void IPEsimulation::computeTotalPotential() {
+
 
 }
 

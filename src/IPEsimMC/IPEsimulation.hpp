@@ -31,10 +31,6 @@ private:
     std::ofstream outputFile;
     std::ofstream trajectoryFile;
     std::ofstream energyTrajectoryFile;
-    // force and potential tables computation
-    std::vector<double> uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
-    //void compilePotentialTables();
-    double computeOmega(double Ra, double Rb, double rab);
 
     bool printTrajectoryAndCorrelations;
 
@@ -45,15 +41,22 @@ private:
     double simulationTotalDuration;
     unsigned long printingInterval;
     // potential
-    double e_BB, e_Bs1, e_Bs2, e_s1s2, e_s1s1, e_s2s2, e_min;
-    double ipcRadius, firstPatchRadius, firstPatchEccentricity, secndPatchRadius, secndPatchEccentricity;
-    double forceAndEnergySamplingStep;
+    double e_BB, e_Bs, e_ss, e_min;
+    double deltaOverSigma;
+    double patchEccentricity;
     // work parameters
+    double deltaPotential;
+    double ipcRadius, ipcDiameter, patchRadius;
     double inverseTemperature;
     double potentialEnergy, simulationBoxSide;
-    double interactionRange, squaredInteractionRange;
+    double BBinteractionRange, BBsquaredInteractionRange;
+    double BsinteractionRange, BsSquaredInteractionRange;
+    double ssInteractionRange, ssSquaredInteractionRange;
     double deltaTrans, deltaRot;
+    double coeff_BB, coeff_Bs, coeff_ss;
     //double patchDistance, squaredPatchDistance, inversePatchDistance;
+    // accounting
+    double minimumSquaredDistance;
 
     std::vector<IPE> particles;
     cell_lists cells;
@@ -69,13 +72,16 @@ private:
     void computeSimulationStep();
 
     void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
-    // the next four functions return true if an overlap was detected, in which case dU is not to be used!!!
+    // the next functions return true if an overlap was detected, in which case dU is not to be used!!!
+    bool computePotentialOfAnIPC(IPE const& ipe, double &dU);
     bool computePotentialDifference(IPE const& ipe, double& dU);
     bool computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell, double& dU);
     bool computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells, double& dU);
     bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& dU);
+    bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double r);
+    double computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r);
 
-    void computePotential();
+    void computeTotalPotential();
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
