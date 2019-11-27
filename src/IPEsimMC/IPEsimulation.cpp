@@ -353,6 +353,16 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
 }
 
 //************************************************************************//
+bool IPEsimulation::computePotentialDifference(IPE const& ipe, double &dU) {
+    // compute interactions of the IPE that was just moved
+    double tempativeU = 0.;
+    if (computePotentialOfAnIPC(ipe, tempativeU))
+        return true;
+    dU = tempativeU - ipe.potential;
+    return false;
+}
+
+//************************************************************************//
 bool IPEsimulation::computePotentialOfAnIPC(IPE const& ipe, double &dU) {
     dU = 0.;
     int cell = cells.cellNumberFromPosition(ipe);
@@ -362,16 +372,6 @@ bool IPEsimulation::computePotentialOfAnIPC(IPE const& ipe, double &dU) {
     const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
     if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, dU))
         return true;
-    return false;
-}
-
-//************************************************************************//
-bool IPEsimulation::computePotentialDifference(IPE const& ipe, double &dU) {
-    // compute interactions of the IPE that was just moved
-    double tempativeU = 0.;
-    if (computePotentialOfAnIPC(ipe, tempativeU))
-        return true;
-    dU = tempativeU - ipe.potential;
     return false;
 }
 
@@ -494,8 +494,21 @@ double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &first
 //************************************************************************//
 
 void IPEsimulation::computeTotalPotential() {
-
-
+    // this needs to go in every cell, loop on the ipes of the cell,
+    // compute interaction for i>j, and all those in external cells that are above/right
+    U = 0.;
+    for (int m = 0; m < cells.getNumberofCells(); ++m) {
+        const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
+        //for(int ipes: ipesInCell) {
+        //    cacca
+        //}
+        /*if (computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, dU))
+            return true;
+        const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
+        if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, dU))
+            return true;
+            */
+    }
 }
 
 //************************************************************************//
