@@ -316,6 +316,7 @@ void IPEsimulation::computeSimulationStep() {
         // no overlap was detected; if dU negative always accept, otherwise accept with conditional probability
         if (dU <= 0. || ranGen.getRandom01() < std::exp(-dU*inverseTemperature) ) {
             ipe = potentialIPCmove;
+            ipe.potential += dU;
         }
     }
 }
@@ -468,7 +469,7 @@ double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &first
         if (j < 4) { // Bs
             // if we are too far, no interaction, skip to the next site-site pair
             if (siteSiteSeparationModulus >= BsSquaredInteractionRange)
-             continue;
+                continue;
 
             siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
             dU -= coeff_Bs*(siteSiteSeparationModulus - BBinteractionRange);
@@ -476,7 +477,7 @@ double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &first
         else { // ss
             // if we are too far, no interaction, skip to the next site-site pair
             if (siteSiteSeparationModulus >= ssSquaredInteractionRange)
-             continue;
+                continue;
 
             siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
             dU -= coeff_ss*(siteSiteSeparationModulus - ssInteractionRange);

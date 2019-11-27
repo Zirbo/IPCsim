@@ -25,6 +25,7 @@ struct JanusIPC : public IPCbase {
 struct IPE {
     double cmPosition[3], orientation[3];
     int number;
+    double potential;
 };
 
 
