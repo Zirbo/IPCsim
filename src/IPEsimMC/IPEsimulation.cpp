@@ -45,6 +45,7 @@ IPEsimulation::IPEsimulation(SimulationStage const& stage) {
 void IPEsimulation::run() {
     time_t simulationStartTime, simulationEndTime;
 
+    outputSystemEnergies(energyTrajectoryFile);
     // simulation begins
     time(&simulationStartTime);
     while(simulationTime < simulationTotalDuration) {
@@ -130,9 +131,11 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     ipcRadius = 0.5;
     deltaPotential = deltaOverSigma*ipcRadius;
     ipcDiameter = 2.*ipcRadius;
-    BBinteractionRange = 2*ipcRadius + deltaOverSigma;
     patchRadius = ipcRadius - patchEccentricity;
     inverseTemperature = 1./temperature;
+    BBinteractionRange = 2*ipcRadius + deltaPotential;
+    BsinteractionRange = ipcRadius + 0.5*deltaPotential + patchRadius;
+    ssInteractionRange = 2.*patchRadius;
 
     // output the data for future checks
     printInputFileToOutputFile();
@@ -141,13 +144,18 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     ipcRadius /= simulationBoxSide;
     ipcDiameter /= simulationBoxSide;
     BBinteractionRange /= simulationBoxSide;
+    BsinteractionRange /= simulationBoxSide;
+    ssInteractionRange /= simulationBoxSide;
+    patchEccentricity /= simulationBoxSide;
     patchRadius /= simulationBoxSide;
     deltaPotential /= simulationBoxSide;
+    deltaTrans /= simulationBoxSide;
 
     // finish processing data
+    ipcDiameterSquared        = std::pow(ipcDiameter, 2);
     BBsquaredInteractionRange = std::pow(BBinteractionRange,2);
-    BsSquaredInteractionRange = std::pow(ipcRadius + 0.5*deltaPotential + patchRadius,2);
-    ssSquaredInteractionRange = std::pow(2.*patchRadius, 2);
+    BsSquaredInteractionRange = std::pow(BsinteractionRange, 2);
+    ssSquaredInteractionRange = std::pow(ssInteractionRange, 2);
 
     coeff_BB = e_BB / (e_min * deltaPotential);
     coeff_Bs = e_Bs / (e_min * deltaPotential );
@@ -174,8 +182,6 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
         }
         ipe.potential = potential;
     }
-
-    computeTotalPotential();
 }
 
 //************************************************************************//
@@ -335,7 +341,7 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
         double delta_x[3];
         generateRandomOrientation(delta_x, ranGen);
         for (int i: {0, 1, 2})
-            ipe.cmPosition[i] += deltaTrans*delta_x[i];
+            ipe.cmPosition[i] += deltaTrans*ranGen.getRandom01()*delta_x[i];
     } else {
         // rotation
         double delta_n[3];
@@ -428,7 +434,7 @@ bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const
 
 //************************************************************************//
 bool IPEsimulation::detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double r) {
-    if(r < ipcDiameter)
+    if(r < ipcDiameterSquared)
         return true;
     return false;
 }
@@ -493,26 +499,45 @@ double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &first
 //************************************************************************//
 //************************************************************************//
 
-void IPEsimulation::computeTotalPotential() {
+bool IPEsimulation::computeTotalPotential(double &U) {
     // this needs to go in every cell, loop on the ipes of the cell,
     // compute interaction for i>j, and all those in external cells that are above/right
     U = 0.;
-    for (int m = 0; m < cells.getNumberofCells(); ++m) {
+    for (int cell = 0; cell < cells.getNumberofCells(); ++cell) {
         const std::list<int> & ipesInCell = cells.getIPCsInCell(cell);
-        //for(int ipes: ipesInCell) {
-        //    cacca
-        //}
-        /*if (computeInteractionsWithIPEsInTheSameCell(ipe, ipesInCell, dU))
-            return true;
         const std::list<int> ipesInNeighbouringCells = cells.getIPCsInNeighbouringCells(cell);
-        if (computeInteractionsWithIPEsInNeighbouringCells(ipe, ipesInNeighbouringCells, dU))
-            return true;
-            */
+        for(std::list<int>::const_iterator ipe = ipesInCell.cbegin(); ipe != ipesInCell.cend(); ++ipe) {
+            const std::list<int> remainingIPEsInTheCell(std::next(ipe), ipesInCell.cend());
+            if (computeInteractionsWithIPEsInTheSameCell(particles[*ipe], remainingIPEsInTheCell, U))
+                return true;
+            if (computeInteractionsWithIPEsInNeighbouringCells(particles[*ipe], ipesInNeighbouringCells, U))
+                return true;
+        }
     }
+    return false;
 }
 
 //************************************************************************//
-void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {}
+void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
+    outputTrajectoryFile << 3*nIPEs << "\n" << simulationBoxSide << "\t" << simulationTime << "\n";
+    for (IPE &ipe: particles) {
+        outputTrajectoryFile << "C" << "\t"
+                             << ipe.cmPosition[0] << "\t" << ipe.cmPosition[1] << "\t" << ipe.cmPosition[2] << "\n";
+        outputTrajectoryFile << "P" << "\t"
+                             << ipe.cmPosition[0] + patchEccentricity*ipe.orientation[0] << "\t"
+                             << ipe.cmPosition[1] + patchEccentricity*ipe.orientation[1] << "\t"
+                             << ipe.cmPosition[2] + patchEccentricity*ipe.orientation[2] << "\n";
+        outputTrajectoryFile << "Q" << "\t"
+                             << ipe.cmPosition[0] - patchEccentricity*ipe.orientation[0] << "\t"
+                             << ipe.cmPosition[1] - patchEccentricity*ipe.orientation[1] << "\t"
+                             << ipe.cmPosition[2] - patchEccentricity*ipe.orientation[2] << "\n";
+    }
+    outputTrajectoryFile << std::endl;
+}
 
 //************************************************************************//
-void IPEsimulation::outputSystemEnergies(std::ofstream &energyTrajectoryFile) {}
+void IPEsimulation::outputSystemEnergies(std::ofstream &energyTrajectoryFile) {
+    double U;
+    computeTotalPotential(U);
+    energyTrajectoryFile << simulationTime << "\t" << U << "\n";
+}

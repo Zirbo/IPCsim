@@ -48,6 +48,7 @@ private:
     double deltaPotential;
     double ipcRadius, ipcDiameter, patchRadius;
     double inverseTemperature;
+    double ipcDiameterSquared;
     double potentialEnergy, simulationBoxSide;
     double BBinteractionRange, BBsquaredInteractionRange;
     double BsinteractionRange, BsSquaredInteractionRange;
@@ -81,7 +82,7 @@ private:
     bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double r);
     double computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r);
 
-    void computeTotalPotential();
+    bool computeTotalPotential(double &U);
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
