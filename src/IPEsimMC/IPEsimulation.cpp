@@ -20,7 +20,6 @@ IPEsimulation::IPEsimulation(SimulationStage const& stage) {
     outputFile.open("siml/output.out");
     energyTrajectoryFile.open("siml/evolution.out");
     energyTrajectoryFile << std::scientific << std::setprecision(6);
-    energyTrajectoryFile << "#t\t\t\tT\t\t\tK\t\t\tU\t\t\tE\t\t\trmin\n";
 
     // initialize system
     initializeSystem(stage);
@@ -45,7 +44,6 @@ IPEsimulation::IPEsimulation(SimulationStage const& stage) {
 void IPEsimulation::run() {
     time_t simulationStartTime, simulationEndTime;
 
-    outputSystemEnergies(energyTrajectoryFile);
     // simulation begins
     time(&simulationStartTime);
     while(simulationTime < simulationTotalDuration) {
@@ -166,6 +164,11 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
         outputFile << "Placing " << nIPEs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration();
     }
+    else {
+        std::ofstream smerdojectory("smerdojectory.xyz");
+        smerdojectory << std::scientific << std::setprecision(24);
+        outputSystemTrajectory(smerdojectory);
+    }
 
     // cell list compilation
     cells.initialize(1.0, BBinteractionRange, nIPEs);
@@ -232,6 +235,8 @@ void IPEsimulation::restorePreviousConfiguration() {
     particles.resize(nIPEs);
     int counter = 0;
 
+    const double scaledEcc = simulationBoxSide/patchEccentricity;
+
     for (IPE &ipe: particles) {
         ipe.number = counter++;
         startingConfigurationFile >> unusedPatchName
@@ -241,9 +246,8 @@ void IPEsimulation::restorePreviousConfiguration() {
         startingConfigurationFile >> unusedPatchName
            >> unusedDouble >> unusedDouble >> unusedDouble;
         for (int i: {0, 1, 2}) {
-            ipe.orientation[i] = ipe.cmPosition[i] - ipe.orientation[i];
-            relativePBC(ipe.orientation[i]);
-            ipe.orientation[i] /= patchEccentricity;
+            ipe.orientation[i] -= ipe.cmPosition[i];
+            ipe.orientation[i] *= scaledEcc;
         }
     }
     if (counter != nIPEs) {
@@ -309,6 +313,7 @@ void IPEsimulation::initializeNewConfiguration() {
 //************************************************************************//
 void IPEsimulation::computeSimulationStep() {
     RandomNumberGenerator ranGen;
+    minimumSquaredDistance = 1.0;
     for(IPE &ipe: particles) {
         // attempt rotation or translation move
         IPE potentialIPCmove = ipe;
@@ -340,8 +345,10 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
         // translation
         double delta_x[3];
         generateRandomOrientation(delta_x, ranGen);
-        for (int i: {0, 1, 2})
+        for (int i: {0, 1, 2}) {
             ipe.cmPosition[i] += deltaTrans*ranGen.getRandom01()*delta_x[i];
+            absolutePBC(ipe.cmPosition[i]);
+        }
     } else {
         // rotation
         double delta_n[3];
@@ -539,5 +546,5 @@ void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile)
 void IPEsimulation::outputSystemEnergies(std::ofstream &energyTrajectoryFile) {
     double U;
     computeTotalPotential(U);
-    energyTrajectoryFile << simulationTime << "\t" << U << "\n";
+    energyTrajectoryFile << simulationTime << "\t" << U << "\t" << simulationBoxSide*std::sqrt(minimumSquaredDistance) << "\n";
 }
