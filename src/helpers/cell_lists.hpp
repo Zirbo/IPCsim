@@ -8,9 +8,13 @@
 class cell_lists
 {
 public:
+    enum SimulationType {
+        MonteCarlo,
+        MolecularDynamics
+    };
     cell_lists() {}
     // initialize --- simulationBoxSide and interactionRange have to be in the same units of length that are used by the ipcs vector passed in compileLists
-    void initialize(double simulationBoxSide, double interactionRange, int howManyParticles);
+    void initialize(double simulationBoxSide, double interactionRange, int howManyParticles, SimulationType simulationType = SimulationType::MolecularDynamics);
     template <typename IPCtype>
     void compileLists(std::vector<IPCtype> const& ipcs) {
         // consistency check --- this should probably be done using enable_if or other template-specific helpers, but this works and it's much more readable

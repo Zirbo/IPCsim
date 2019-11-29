@@ -164,14 +164,9 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
         outputFile << "Placing " << nIPEs <<  " IPCs on a FCC lattice.\n\n";
         initializeNewConfiguration();
     }
-    else {
-        std::ofstream smerdojectory("smerdojectory.xyz");
-        smerdojectory << std::scientific << std::setprecision(24);
-        outputSystemTrajectory(smerdojectory);
-    }
 
     // cell list compilation
-    cells.initialize(1.0, BBinteractionRange, nIPEs);
+    cells.initialize(1.0, BBinteractionRange, nIPEs, cell_lists::SimulationType::MonteCarlo);
     outputFile << "Total number of cells: " << cells.getNumberofCells() << std::endl;
 
     // first computation of the potential
@@ -526,18 +521,18 @@ bool IPEsimulation::computeTotalPotential(double &U) {
 
 //************************************************************************//
 void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile) {
-    outputTrajectoryFile << 3*nIPEs << "\n" << simulationBoxSide << "\t" << simulationTime << "\n";
+    outputTrajectoryFile << 3*nIPEs << "\n" << simulationBoxSide << "\t" << simulationTime;
     for (IPE &ipe: particles) {
-        outputTrajectoryFile << "C" << "\t"
-                             << ipe.cmPosition[0] << "\t" << ipe.cmPosition[1] << "\t" << ipe.cmPosition[2] << "\n";
-        outputTrajectoryFile << "P" << "\t"
+        outputTrajectoryFile << "\n" << "C" << "\t"
+                             << ipe.cmPosition[0] << "\t" << ipe.cmPosition[1] << "\t" << ipe.cmPosition[2];
+        outputTrajectoryFile << "\n" << "P" << "\t"
                              << ipe.cmPosition[0] + patchEccentricity*ipe.orientation[0] << "\t"
                              << ipe.cmPosition[1] + patchEccentricity*ipe.orientation[1] << "\t"
-                             << ipe.cmPosition[2] + patchEccentricity*ipe.orientation[2] << "\n";
-        outputTrajectoryFile << "Q" << "\t"
+                             << ipe.cmPosition[2] + patchEccentricity*ipe.orientation[2];
+        outputTrajectoryFile << "\n" << "Q" << "\t"
                              << ipe.cmPosition[0] - patchEccentricity*ipe.orientation[0] << "\t"
                              << ipe.cmPosition[1] - patchEccentricity*ipe.orientation[1] << "\t"
-                             << ipe.cmPosition[2] - patchEccentricity*ipe.orientation[2] << "\n";
+                             << ipe.cmPosition[2] - patchEccentricity*ipe.orientation[2];
     }
     outputTrajectoryFile << std::endl;
 }
