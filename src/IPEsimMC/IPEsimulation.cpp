@@ -541,5 +541,5 @@ void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile)
 void IPEsimulation::outputSystemEnergies(std::ofstream &energyTrajectoryFile) {
     double U;
     computeTotalPotential(U);
-    energyTrajectoryFile << simulationTime << "\t" << U << "\t" << simulationBoxSide*std::sqrt(minimumSquaredDistance) << "\n";
+    energyTrajectoryFile << simulationTime << "\t" << U/nIPEs << "\t" << simulationBoxSide*std::sqrt(minimumSquaredDistance) << std::endl;
 }
