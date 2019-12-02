@@ -41,7 +41,7 @@ int main( int argc, char *argv[] ) {
     std::cout << std::boolalpha;
 
     // read each line of the stagesFile and run a simulation with its temperature and duration
-    while(stagesFile >> currentStage.inputTemperature
+    while(stagesFile >> currentStage.inputTemperature >> currentStage.deltaTrans >> currentStage.deltaRot
                      >> currentStage.inputPrintTrajectoryAndCorrelations >> currentStage.inputStageTotalDuration) {
         ++simulatedStages;
         std::cout << "Simulation stage " << simulatedStages << " starting; set temperature: " << currentStage.inputTemperature << std::endl;

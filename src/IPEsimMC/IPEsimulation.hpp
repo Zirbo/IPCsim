@@ -14,8 +14,12 @@ struct SimulationStage {
     bool inputRestoringPreviousSimulation;
     bool inputPrintTrajectoryAndCorrelations;
 
+    double deltaTrans;
+    double deltaRot;
+
     SimulationStage() : inputTemperature{0.}, inputStageTotalDuration{0L},
-                        inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false} {}
+                        inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
+                        deltaTrans{0.0}, deltaRot{0.0} {}
  };
 
 class IPEsimulation {
