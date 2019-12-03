@@ -51,8 +51,8 @@ p = [ [ ecc*cos(alpha), ecc*sin(alpha), 0. ] ,
       [ ecc*cos(beta),  ecc*sin(beta),  0. ] ]
 
 
-outputFile.write("# 3D starting configuration for LAMMPS created with a script available at")
-outputFile.write("# https://github.com/Zirbo/IPCsim/tree/master/lammps")
+outputFile.write("# 3D starting configuration for LAMMPS created with a script available at\n")
+outputFile.write("# https://github.com/Zirbo/IPCsim/tree/master/lammps\n")
 outputFile.write("# The plane particles are from 1 to " + str(nWaferX*nWaferY))
 
 outputFile.write("\n")
