@@ -109,6 +109,8 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     temperature = stage.inputTemperature;
     simulationTotalDuration = stage.inputStageTotalDuration;
     printTrajectoryAndCorrelations = stage.inputPrintTrajectoryAndCorrelations;
+    deltaTrans = stage.deltaTrans;
+    deltaRot = stage.deltaRot;
     readInputFile();
 
     // if restoring, read state, so we get access to the real number of IPCs
@@ -196,7 +198,6 @@ void IPEsimulation::readInputFile() {
     inputFile >> e_BB >> e_Bs >> e_ss;
     inputFile >> e_min;
     inputFile >> deltaOverSigma >> patchEccentricity;
-    inputFile >> deltaTrans >> deltaRot;
     inputFile.close();
 }
 

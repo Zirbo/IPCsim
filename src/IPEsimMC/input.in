@@ -3,7 +3,6 @@
 0.1       -1.1      6.1
 1.0
 0.4       0.22
-0.2       0.2
 ________________________________________________________________
 |               explanation                                     |
 |                                                               |
@@ -13,4 +12,3 @@ inputFile >> printingInterval;
 inputFile >> e_BB >> e_Bs >> e_ss;
 inputFile >> e_min;
 inputFile >> deltaOverSigma >> patchEccentricity;
-inputFile >> deltaTrans >> deltaRot;
