@@ -161,6 +161,13 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
     coeff_Bs = e_Bs / (e_min * deltaPotential );
     coeff_ss = e_ss / (e_min * deltaPotential);
 
+    //--------------------------
+    coeff_BB = e_BB / e_min;
+    coeff_Bs = e_Bs / e_min;
+    coeff_ss = e_ss / e_min;
+    //--------------------------
+
+
     // if not restoring, we need to initialize the system here, so that the eccentricities have already been scaled
     if(!stage.inputRestoringPreviousSimulation) {
         outputFile << "Placing " << nIPEs <<  " IPCs on a FCC lattice.\n\n";
@@ -418,9 +425,6 @@ bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const
                                          + std::pow(centerCenterSeparation[1], 2)
                                          + std::pow(centerCenterSeparation[2], 2);
 
-    if (centerCenterSeparationModulus < minimumSquaredDistance)
-        minimumSquaredDistance = centerCenterSeparationModulus;
-
     // if the CENTERS are too far, no interactions, skip this couple of IPCs
     if (centerCenterSeparationModulus >= BBsquaredInteractionRange)
         return false;
@@ -431,6 +435,9 @@ bool IPEsimulation::computeInteractionsBetweenTwoIPEs(const IPE &firstIPE, const
 
     // no overlap, let's do the real potential computation
     dU += computePotentialBetweenTwoIPEsInsideRange(firstIPE, secndIPE, centerCenterSeparationModulus);
+
+    if (centerCenterSeparationModulus < minimumSquaredDistance)
+        minimumSquaredDistance = centerCenterSeparationModulus;
 
     return false;
 }
@@ -446,7 +453,8 @@ bool IPEsimulation::detectOverlap(const IPE &firstIPE, const IPE &secndIPE, cons
 double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r) {
     double dU = 0.;
     // compute the interaction between centers
-    dU -= coeff_BB*(std::sqrt(r) - BBinteractionRange);
+    //dU -= coeff_BB*(std::sqrt(r) - BBinteractionRange);
+    dU += coeff_BB;
 
     // compute all the other 8 site-site separations
     double siteSiteSeparation[8][3];
@@ -480,16 +488,18 @@ double IPEsimulation::computePotentialBetweenTwoIPEsInsideRange(const IPE &first
             if (siteSiteSeparationModulus >= BsSquaredInteractionRange)
                 continue;
 
-            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
-            dU -= coeff_Bs*(siteSiteSeparationModulus - BBinteractionRange);
+            //siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+            //dU -= coeff_Bs*(siteSiteSeparationModulus - BBinteractionRange);
+            dU += coeff_Bs;
         }
         else { // ss
             // if we are too far, no interaction, skip to the next site-site pair
             if (siteSiteSeparationModulus >= ssSquaredInteractionRange)
                 continue;
 
-            siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
-            dU -= coeff_ss*(siteSiteSeparationModulus - ssInteractionRange);
+            //siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+            //dU -= coeff_ss*(siteSiteSeparationModulus - ssInteractionRange);
+            dU += coeff_ss;
         }
     }
 
