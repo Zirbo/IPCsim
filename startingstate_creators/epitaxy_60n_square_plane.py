@@ -2,20 +2,19 @@
 
 # writes a configuration with a single square plane of ipcs, and other ipcs above it.
 
-from math import cos, sin, sqrt, pi, floor
+from math import sqrt, floor
 from numpy.random import ranf as ran
 
 outputFile = open('startingstate.xyz','w')
 
-NPx = 14           # particles in a side
-NPy = 14           # particles in a side
-spacing = 1.2      # distance between fluid particles
-L   = 14.2         # scaling (box side)
+NPx = 12           # particles in a side
+NPy = 12           # particles in a side
+spacing = 1.1      # distance between fluid particles
+L   = 12.100       # scaling (box side)
 ecc = 0.16         # eccentricity
 
 
 ecc /= L
-cos30 = sqrt(3)*.5
 NFx = int(L/spacing)
 NFy = int(L/spacing)
 NFz = int(L/spacing) - 1
@@ -26,14 +25,12 @@ def absolutePBC(z):
 
 tempN = 3*(NPx*NPy + NFx*NFy*NFz)
 print('Estimate of the number of particles: ', tempN)
-outputFile.write(str(tempN) + '\n0.0000\n')
+outputFile.write(str(tempN) + '\n' + str(L) + '\t' + '0.0000\n')
 
 vm = sqrt(.3)
 def vel():
     return vm*(2.*ran()-1.)/L
 
-alpha = .45*pi
-beta = .93*pi
 p = [ [ ecc, 0., 0. ] ,
       [ 0., ecc, 0. ] ]
 wafer, fluid = 0,0
@@ -42,16 +39,15 @@ wafer, fluid = 0,0
 # wafer layer
 z = 0.25/L
 for ix in range(NPx):
-    x = (0.1 + .5 + 1.0000000000001*ix)/L
+    x = ( .5 + 1.002*ix)/L
     for iy in range(NPy):
         wafer += 1
         # ipc center
-        y = (0.1 + .5 + 1.0000000000001*iy)/L
+        j = 0 if ( (ix + iy) % 2 == 0 ) else 1
+        y = ( .5 + 1.002*iy )/L
         vx = vy = vz = 0.
         outputFile.write('W\t' + str(x).ljust(20) + '\t' + str(y).ljust(20) + '\t' + str(z).ljust(20) + '\t')
         outputFile.write(str(vx).ljust(20) + '\t' + str(vy).ljust(20) + '\t' + str(vz).ljust(20) + '\n')
-        # patch ordering
-        j = 0 if (ix + iy)%2==0 else 1
         # first patch
         px = x + p[j][0];    px = absolutePBC(px)
         py = y + p[j][1];    py = absolutePBC(py)
