@@ -319,7 +319,9 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
         cP2c = patchDistance*firstPatchEccentricity*iI*ipcCenterInverseMass;
         alpha_1 = 1. - secndPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
         alpha_2 = 1. + firstPatchEccentricity*iI*(secndPatchEccentricity*firstPatchInverseMass - firstPatchEccentricity*secndPatchInverseMass);
-        alpha_sum = alpha_1 + alpha_2;
+        alpha_1_firstPatchInverseMass = alpha_1*firstPatchInverseMass;
+        alpha_2_secndPatchInverseMass = alpha_2*secndPatchInverseMass;
+        alpha_sum = alpha_1_firstPatchInverseMass + alpha_2_secndPatchInverseMass;
         inverseAlpha_sumSquaredPatchDistance = 1./(alpha_sum*squaredPatchDistance);
     }
 

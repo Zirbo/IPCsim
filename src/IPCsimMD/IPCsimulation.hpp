@@ -106,7 +106,8 @@ private:
     double patchDistance, squaredPatchDistance, inversePatchDistance;
     double halfDtFirstPatchInverseMass, halfDtSecndPatchInverseMass;
     double inverseAlpha_sumSquaredPatchDistance;
-    double cP11, cP12, cP1c, cP21, cP22, cP2c, alpha_1, alpha_2, alpha_sum;
+    double cP11, cP12, cP1c, cP21, cP22, cP2c;
+    double alpha_1, alpha_2, alpha_sum, alpha_1_firstPatchInverseMass, alpha_2_secndPatchInverseMass;
     int nPrints;
     // external electric field
     bool isFieldEnabled;

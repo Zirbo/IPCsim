@@ -35,14 +35,14 @@ void IPCsimulation::computeVerletHalfStepForIPC(IPC & ipc) {
         for (int i: {0, 1, 2}) {
             double DXi = g*dxOld[i];
 
-            ipc.firstPatch.v[i] -= alpha_1*DXi;
-            ipc.secndPatch.v[i] += alpha_2*DXi;
+            ipc.firstPatch.v[i] -= DXi*alpha_1_firstPatchInverseMass;
+            ipc.secndPatch.v[i] += DXi*alpha_2_secndPatchInverseMass;
 
             DXi *= dt;
 
-            ipc.firstPatch.x[i] -= DXi*alpha_1;
+            ipc.firstPatch.x[i] -= DXi*alpha_1_firstPatchInverseMass;
             absolutePBC(ipc.firstPatch.x[i]);
-            ipc.secndPatch.x[i]  += DXi*alpha_2;
+            ipc.secndPatch.x[i]  += DXi*alpha_2_secndPatchInverseMass;
             absolutePBC(ipc.secndPatch.x[i] );
 
             dxNew[i] = ipc.firstPatch.x[i] - ipc.secndPatch.x[i];
@@ -77,8 +77,8 @@ void IPCsimulation::finishVerletStepForIPC(IPC & ipc) {
         // compute and apply corrections
         for (int i: {0, 1, 2}) {
             const double DVi = k*dx[i];
-            ipc.firstPatch.v[i] -= DVi*alpha_1;
-            ipc.secndPatch.v[i] += DVi*alpha_2;
+            ipc.firstPatch.v[i] -= DVi*alpha_1_firstPatchInverseMass;
+            ipc.secndPatch.v[i] += DVi*alpha_2_secndPatchInverseMass;
             dv[i] = ipc.firstPatch.v[i] - ipc.secndPatch.v[i];
         }
         // recompute the violation of the constraints
