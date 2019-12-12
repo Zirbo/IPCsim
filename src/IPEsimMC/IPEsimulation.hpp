@@ -81,8 +81,7 @@ private:
     void evaluateError(IPE const& firstIPE, IPE const& secndIPE);
     // the next functions return true if an overlap was detected, in which case dU is not to be used!!!
     const std::list<int> findAllTheIPEsInRange(IPE const& ipe);
-    bool computePotentialOfAnIPEmove(IPE const& ipe, double& dU);
-    bool computeInteractionsWithIPEsInList(const IPE &ipe, std::list<int> const& listOfIPEs, double& dU);
+    bool computePotentialOfAnIPEmove(IPE const& move, double& dU);
     bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& U);
     bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double rSquared);
     double computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r);

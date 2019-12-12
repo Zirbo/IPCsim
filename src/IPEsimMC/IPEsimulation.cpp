@@ -343,6 +343,9 @@ double IPEsimulation::computeTotalPotential() {
 
 
 void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE) {
+    std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << "!\n";
+    std::cerr << firstIPE.cmPosition[0] << "\t" << firstIPE.cmPosition[1] << "\t" << firstIPE.cmPosition[2] << "\n";
+    std::cerr << secndIPE.cmPosition[0] << "\t" << secndIPE.cmPosition[1] << "\t" << secndIPE.cmPosition[2] << "\n";
     double centerCenterSeparation[3];
     for (int i: {0, 1, 2}) {
         centerCenterSeparation[i] = firstIPE.cmPosition[i] - secndIPE.cmPosition[i];
@@ -352,7 +355,7 @@ void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE) {
                                          + std::pow(centerCenterSeparation[1], 2)
                                          + std::pow(centerCenterSeparation[2], 2);
     centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus)*simulationBoxSide;
-    std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << ", at distance " << centerCenterSeparationModulus <<"!\n";
+    std::cerr << "At distance " << centerCenterSeparationModulus << "\n";
     exit(EXIT_FAILURE);
 }
 
@@ -394,35 +397,24 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
 }
 
 //************************************************************************//
-bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& ipe, double &dU) {
+bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& move, double &dU) {
     // compute interactions of the IPE that was just moved
-    std::list<int> allNearbyIPEs = findAllTheIPEsInRange(ipe);
+    std::list<int> allNearbyIPEs = findAllTheIPEsInRange(move);
 
     for (auto otherIPE = allNearbyIPEs.cbegin(); otherIPE != allNearbyIPEs.cend(); ++otherIPE) {
-        if (ipe.number != *otherIPE) { // avoid interaction with the original or itself
+        if (move.number != *otherIPE) { // avoid interaction with the original or itself
             double Unew = 0.;
-            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*otherIPE], Unew))
+            if (computeInteractionsBetweenTwoIPEs(move, particles[*otherIPE], Unew))
                 return true;
 
             double Uold = 0.;
-            if (computeInteractionsBetweenTwoIPEs(particles[ipe.number], particles[*otherIPE], Uold))
+            if (computeInteractionsBetweenTwoIPEs(particles[move.number], particles[*otherIPE], Uold))
                 return true;
 
             dU += Unew - Uold;
         }
     }
 
-    return false;
-}
-
-//************************************************************************//
-bool IPEsimulation::computeInteractionsWithIPEsInList(const IPE &ipe, std::list<int> const& listOfIPEs, double& dU) {
-    for (auto otherIPE = listOfIPEs.cbegin(); otherIPE != listOfIPEs.cend(); ++otherIPE) {
-        if (ipe.number != *otherIPE) { // avoid interaction with the original or itself
-            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*otherIPE], dU))
-                return true;
-        }
-    }
     return false;
 }
 
