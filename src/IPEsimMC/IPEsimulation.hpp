@@ -76,17 +76,24 @@ private:
     void initializeNewConfiguration();
     void computeSimulationStep();
 
+    struct potentialChange {
+        int particleIndex;
+        double dU;
+        potentialChange(int n, double du) : particleIndex{n}, dU{du} {}
+    };
+    typedef std::list<potentialChange> potentialChangeList;
+
     void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
     // the next functions return true if an overlap was detected, in which case dU is not to be used!!!
-    bool computePotentialOfAnIPC(IPE const& ipe, double &dU);
-    bool computePotentialDifference(IPE const& ipe, double& dU);
-    bool computeInteractionsWithIPEsInTheSameCell(const IPE &ipe, std::list<int> const& ipesInCurrentCell, double& dU);
-    bool computeInteractionsWithIPEsInNeighbouringCells(IPE const& ipe, std::list<int> const& ipesInNeighbouringCells, double& dU);
-    bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& dU);
-    bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double r);
+    bool computeFullPotentialOfAnIPE(IPE const& ipe, double &U);
+    const std::list<int> findAllTheIPEsInRange(IPE const& ipe);
+    bool computePotentialOfAnIPEmove(IPE const& ipe, double& dU, potentialChangeList& changes);
+    bool computeInteractionsWithIPEsInList(const IPE &ipe, std::list<int> const& listOfIPEs, double& dU);
+    bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& U);
+    bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double rSquared);
     double computePotentialBetweenTwoIPEsInsideRange(const IPE &firstIPE, const IPE &secndIPE, const double r);
+    const double computeOmega(const double Ra, const double Rb, const double rab);
 
-    bool computeTotalPotential(double &U);
     void outputSystemTrajectory(std::ofstream & outputTrajectoryFile);
     void outputSystemEnergies(std::ofstream &energyTrajectoryFile);
 
