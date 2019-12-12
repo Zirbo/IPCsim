@@ -76,18 +76,12 @@ private:
     void initializeNewConfiguration();
     void computeSimulationStep();
 
-    struct potentialChange {
-        int particleIndex;
-        double dU;
-        potentialChange(int n, double du) : particleIndex{n}, dU{du} {}
-    };
-    typedef std::list<potentialChange> potentialChangeList;
-
     void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
+    double computeTotalPotential();
+    void evaluateError(IPE const& firstIPE, IPE const& secndIPE);
     // the next functions return true if an overlap was detected, in which case dU is not to be used!!!
-    bool computeFullPotentialOfAnIPE(IPE const& ipe, double &U);
     const std::list<int> findAllTheIPEsInRange(IPE const& ipe);
-    bool computePotentialOfAnIPEmove(IPE const& ipe, double& dU, potentialChangeList& changes);
+    bool computePotentialOfAnIPEmove(IPE const& ipe, double& dU);
     bool computeInteractionsWithIPEsInList(const IPE &ipe, std::list<int> const& listOfIPEs, double& dU);
     bool computeInteractionsBetweenTwoIPEs(IPE const& firstIPE, IPE const& secndIPE, double& U);
     bool detectOverlap(const IPE &firstIPE, const IPE &secndIPE, const double rSquared);

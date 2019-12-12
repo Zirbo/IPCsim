@@ -174,15 +174,6 @@ void IPEsimulation::initializeSystem(SimulationStage const& stage) {
 
     // first computation of the potential
     cells.compileLists(particles);
-
-    for (IPE &ipe: particles) {
-        double potential;
-        if(computeFullPotentialOfAnIPE(ipe, potential)) {
-            std::cerr << "Detected overlap in the initial configuration!\n";
-            exit(1);
-        }
-        ipe.potential = potential;
-    }
 }
 
 //************************************************************************//
@@ -317,17 +308,13 @@ void IPEsimulation::computeSimulationStep() {
         makeRotationOrTranslationMove(potentialIPCmove, ranGen);
 
         // check pot diff
-        double dU;
-        potentialChangeList changes;
-        if(computePotentialOfAnIPEmove(potentialIPCmove, dU, changes))
+        double dU = 0.;
+        if(computePotentialOfAnIPEmove(potentialIPCmove, dU))
             return;
 
         // no overlap was detected; if dU negative always accept, otherwise accept with conditional probability
         if (dU <= 0. || ranGen.getRandom01() < std::exp(-dU*inverseTemperature) ) {
             ipe = potentialIPCmove;
-            for (potentialChange change: changes) {
-                particles[change.particleIndex].potential += change.dU;
-            }
         }
     }
 }
@@ -339,18 +326,34 @@ void IPEsimulation::computeSimulationStep() {
 //************************************************************************//
 //************************************************************************//
 
-
-bool IPEsimulation::computeFullPotentialOfAnIPE(IPE const& ipe, double &U) {
-    U = 0.;
-    std::list<int> allNearbyIPEs = findAllTheIPEsInRange(ipe);
-
-    for (auto otherIPE = allNearbyIPEs.cbegin(); otherIPE != allNearbyIPEs.cend(); ++otherIPE) {
-        if (ipe.number != *otherIPE) { // avoid interaction with itself
-            if (computeInteractionsBetweenTwoIPEs(ipe, particles[*otherIPE], U))
-                return true;
+double IPEsimulation::computeTotalPotential() {
+    double U = 0.;
+    for (IPE ipe: particles) {
+        const std::list<int> allNearbyIPEs = findAllTheIPEsInRange(ipe);
+        for (auto otherIPE = allNearbyIPEs.cbegin(); otherIPE != allNearbyIPEs.cend(); ++otherIPE) {
+            if (ipe.number != *otherIPE) { // avoid interaction with itself
+                if (computeInteractionsBetweenTwoIPEs(ipe, particles[*otherIPE], U)) {
+                    evaluateError(ipe, particles[*otherIPE]);
+                }
+            }
         }
     }
-    return false;
+    return 0.5*U;
+}
+
+
+void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE) {
+    double centerCenterSeparation[3];
+    for (int i: {0, 1, 2}) {
+        centerCenterSeparation[i] = firstIPE.cmPosition[i] - secndIPE.cmPosition[i];
+        relativePBC(centerCenterSeparation[i]);
+    }
+    double centerCenterSeparationModulus = std::pow(centerCenterSeparation[0], 2)
+                                         + std::pow(centerCenterSeparation[1], 2)
+                                         + std::pow(centerCenterSeparation[2], 2);
+    centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus)*simulationBoxSide;
+    std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << ", at distance " << centerCenterSeparationModulus <<"!\n";
+    exit(EXIT_FAILURE);
 }
 
 //************************************************************************//
@@ -391,7 +394,7 @@ void IPEsimulation::makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerat
 }
 
 //************************************************************************//
-bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& ipe, double &dU, potentialChangeList &changes) {
+bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& ipe, double &dU) {
     // compute interactions of the IPE that was just moved
     std::list<int> allNearbyIPEs = findAllTheIPEsInRange(ipe);
 
@@ -405,9 +408,7 @@ bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& ipe, double &dU, pote
             if (computeInteractionsBetweenTwoIPEs(particles[ipe.number], particles[*otherIPE], Uold))
                 return true;
 
-            const double deltaUpair = Unew - Uold;
-            changes.push_back(potentialChange(*otherIPE, deltaUpair));
-            dU += deltaUpair;
+            dU += Unew - Uold;
         }
     }
 
@@ -551,11 +552,6 @@ void IPEsimulation::outputSystemTrajectory(std::ofstream & outputTrajectoryFile)
 
 //************************************************************************//
 void IPEsimulation::outputSystemEnergies(std::ofstream &energyTrajectoryFile) {
-    double U = 0.;
-    for (IPE const& ipe: particles) {
-        U += ipe.potential;
-    }
-    U /= 2.*nIPEs;
-
+    const double U = computeTotalPotential();
     energyTrajectoryFile << simulationTime << "\t" << U <<"\t" << simulationBoxSide*std::sqrt(minimumSquaredDistance) << std::endl;
 }
