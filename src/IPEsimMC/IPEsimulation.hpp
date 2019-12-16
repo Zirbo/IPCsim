@@ -78,7 +78,7 @@ private:
 
     void makeRotationOrTranslationMove(IPE & ipe, RandomNumberGenerator &ranGen);
     double computeTotalPotential();
-    void evaluateError(IPE const& firstIPE, IPE const& secndIPE);
+    void evaluateError(IPE const& firstIPE, IPE const& secndIPE, std::string const& message);
     // the next functions return true if an overlap was detected, in which case dU is not to be used!!!
     const std::list<int> findAllTheIPEsInRange(IPE const& ipe);
     bool computePotentialOfAnIPEmove(IPE const& move, double& dU);

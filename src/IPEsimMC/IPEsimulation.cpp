@@ -333,7 +333,7 @@ double IPEsimulation::computeTotalPotential() {
         for (auto otherIPE = allNearbyIPEs.cbegin(); otherIPE != allNearbyIPEs.cend(); ++otherIPE) {
             if (ipe.number != *otherIPE) { // avoid interaction with itself
                 if (computeInteractionsBetweenTwoIPEs(ipe, particles[*otherIPE], U)) {
-                    evaluateError(ipe, particles[*otherIPE]);
+                    evaluateError(ipe, particles[*otherIPE], "while computing the total potential of the current configuration");
                 }
             }
         }
@@ -342,10 +342,11 @@ double IPEsimulation::computeTotalPotential() {
 }
 
 
-void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE) {
-    std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << "!\n";
-    std::cerr << firstIPE.cmPosition[0] << "\t" << firstIPE.cmPosition[1] << "\t" << firstIPE.cmPosition[2] << "\n";
-    std::cerr << secndIPE.cmPosition[0] << "\t" << secndIPE.cmPosition[1] << "\t" << secndIPE.cmPosition[2] << "\n";
+void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE, const std::string &message) {
+    std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << ",\n"
+              << message << ".\nThe two IPCs were located in:\n"
+              << firstIPE.cmPosition[0] << "\t" << firstIPE.cmPosition[1] << "\t" << firstIPE.cmPosition[2] << "\n"
+              << secndIPE.cmPosition[0] << "\t" << secndIPE.cmPosition[1] << "\t" << secndIPE.cmPosition[2] << "\n";
     double centerCenterSeparation[3];
     for (int i: {0, 1, 2}) {
         centerCenterSeparation[i] = firstIPE.cmPosition[i] - secndIPE.cmPosition[i];
@@ -408,8 +409,9 @@ bool IPEsimulation::computePotentialOfAnIPEmove(IPE const& move, double &dU) {
                 return true;
 
             double Uold = 0.;
-            if (computeInteractionsBetweenTwoIPEs(particles[move.number], particles[*otherIPE], Uold))
-                return true;
+            if (computeInteractionsBetweenTwoIPEs(particles[move.number], particles[*otherIPE], Uold)) {
+                evaluateError(particles[move.number], particles[*otherIPE], "in the previous configuration, while computing dU for a move");
+            }
 
             dU += Unew - Uold;
         }
