@@ -343,10 +343,12 @@ double IPEsimulation::computeTotalPotential() {
 
 
 void IPEsimulation::evaluateError(IPE const& firstIPE, IPE const& secndIPE, const std::string &message) {
+    std::cerr << std::scientific << std::setprecision(8);
     std::cerr << "Found overlap between IPC " << firstIPE.number << " and " << secndIPE.number << ",\n"
               << message << ".\nThe two IPCs were located in:\n"
-              << firstIPE.cmPosition[0] << "\t" << firstIPE.cmPosition[1] << "\t" << firstIPE.cmPosition[2] << "\n"
-              << secndIPE.cmPosition[0] << "\t" << secndIPE.cmPosition[1] << "\t" << secndIPE.cmPosition[2] << "\n";
+              << firstIPE.cmPosition[0]*simulationBoxSide << "\t" << firstIPE.cmPosition[1]*simulationBoxSide << "\t" << firstIPE.cmPosition[2]*simulationBoxSide << "\n"
+              << secndIPE.cmPosition[0]*simulationBoxSide << "\t" << secndIPE.cmPosition[1]*simulationBoxSide << "\t" << secndIPE.cmPosition[2]*simulationBoxSide << "\n"
+              << "the box side is " << simulationBoxSide << "\n";
     double centerCenterSeparation[3];
     for (int i: {0, 1, 2}) {
         centerCenterSeparation[i] = firstIPE.cmPosition[i] - secndIPE.cmPosition[i];
