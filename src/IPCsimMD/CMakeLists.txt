@@ -10,6 +10,7 @@ set(ALL_FILES
     IPCsimulation.cpp
     IPCsimulationJanus.cpp
     IPCsimulationPrint.cpp
+    IPCsimulationAnalysis.cpp
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})

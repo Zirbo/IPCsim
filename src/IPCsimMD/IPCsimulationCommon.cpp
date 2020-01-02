@@ -39,6 +39,16 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
         trajectoryFile.open("siml/trajectory.xyz");
         trajectoryFile << std::scientific << std::setprecision(24);
         outputSystemTrajectory(trajectoryFile, printForces);
+
+        // initialize mean square displacement file and helpers
+        meanSquaredDisplFile.open("siml/meanSquaredDisplacement.out");
+        meanSquaredDisplFile << std::scientific << std::setprecision(6);
+        ipcCentersPreviousPositions.resize(nIPCs, {0.0, 0.0, 0.0});
+        displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
+
+        histogramOfBondedNeighbours.resize(18, 0);
+        numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
+        numberOfNeighboursFile << std::scientific << std::setprecision(6);
     }
 }
 
@@ -65,11 +75,13 @@ double IPCsimulation::run() {
             // compute and output energies
             computeSystemEnergy();
             outputSystemEnergies(energyTrajectoryFile);
-            // output trajectory and compute g(r)
+
+            // output trajectory and compute analysis
             if (printTrajectoryAndCorrelations) {
-                // g(r)
                 pairCorrelation.compute(particles);
                 outputSystemTrajectory(trajectoryFile, printForces);
+                computeMSD();
+                computeStaticProperties();
             }
             // compute averages
             ++sampleSizeForAverages;
@@ -100,10 +112,11 @@ double IPCsimulation::run() {
     outputFile << "Standard deviation of kT during the simulation run = " << std::sqrt(temperatureVariance) << std::endl;
     outputFile << "Average potential energy during the simulation run = " << averagePotentialEnergy/nIPCs << std::endl;
 
-    // output g(r);
+    // output analysis
     if (printTrajectoryAndCorrelations) {
         const double g_r_integral = pairCorrelation.print("siml/g_r");
         outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+        printFinalHistogramOfBondedNeighbours();
     }
 
     return averageTemperature;

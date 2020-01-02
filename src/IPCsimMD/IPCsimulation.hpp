@@ -71,6 +71,7 @@ private:
     std::ofstream energyTrajectoryFile;
     std::ofstream trajectoryFile;
 
+    typedef std::vector<std::array<double, 3>> spaceVector;
     // force and potential tables computation
     std::vector<double> uHS, uBB, uBs1, uBs2, us1s2, us1s1, us2s2;
     std::vector<double> fHS, fBB, fBs1, fBs2, fs1s2, fs1s1, fs2s2;
@@ -140,9 +141,9 @@ private:
 
     void computeFreeForces();
     struct loopVariables {
-        std::vector<std::array<double, 3>> ipcCenterF;
-        std::vector<std::array<double, 3>> firstPatchF;
-        std::vector<std::array<double, 3>> secndPatchF;
+        spaceVector ipcCenterF;
+        spaceVector firstPatchF;
+        spaceVector secndPatchF;
         double U, minimumSquaredDistance;
         loopVariables(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
             ipcCenterF.resize(nIPCs, {0.0, 0.0, 0.0});
@@ -152,8 +153,8 @@ private:
     };
     void computeFreeJanusForces();
     struct loopVariablesJanus {
-        std::vector<std::array<double, 3>> ipcCenterF;
-        std::vector<std::array<double, 3>> janusPatchF;
+        spaceVector ipcCenterF;
+        spaceVector janusPatchF;
         double U, minimumSquaredDistance;
         loopVariablesJanus(size_t nIPCs) : U{0.}, minimumSquaredDistance{1.} {
             ipcCenterF.resize(nIPCs, {0.0, 0.0, 0.0});
@@ -182,6 +183,19 @@ private:
     void generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r);
 
 
+    std::ofstream meanSquaredDisplFile;
+    spaceVector ipcCentersPreviousPositions;
+    spaceVector displacementOfEachIPCs;
+    void computeMSD();
+
+
+    void computeStaticProperties();
+    std::vector<int> histogramOfBondedNeighbours;
+    std::ofstream numberOfNeighboursFile;
+    std::vector<std::list<int>> computeListOfBondedNeighbours();
+    void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
+    double computePotentialBetweenTwoIPCs(const int firstIPC, const int secndIPC);
+    void printFinalHistogramOfBondedNeighbours();
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__
