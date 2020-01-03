@@ -182,7 +182,7 @@ double IPCsimulation::computePotentialBetweenTwoIPCs(const int firstIPC, const i
 
 void IPCsimulation::printFinalHistogramOfBondedNeighbours() {
     double norm = printingInterval/simulationTotalDuration;
-    std::ofstream averageNumberOfNeighboursFile("siml/numberOfNeighbours.out");
+    std::ofstream averageNumberOfNeighboursFile("siml/averageNumberOfNeighbours.out");
     averageNumberOfNeighboursFile << std::scientific << std::setprecision(6);
 
     int i = 0;
