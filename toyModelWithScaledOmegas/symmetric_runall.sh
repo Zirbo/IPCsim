@@ -14,38 +14,41 @@ echo minIPC
 ./symmetric_computeAngularPlots.py yes 0.2 0.22 0 -1 2 1
 mv potential.txt models/potential_minIPC.txt
 echo
-echo 45n
-./symmetric_computeAngularPlots.py no 0.2 0.22 .245728 -3.11694 21.2298 .142495
-mv potential.txt models/potential_45n.txt
-echo
-echo 45n-0
+echo target
 ./symmetric_computeAngularPlots.py yes 0.2 0.22 0.1 -1.1 6.1 1.0
-mv potential.txt models/potential_45n-0.txt
+mv potential.txt models/potential_target.txt
 echo
-echo 45n-1
-./symmetric_computeAngularPlots.py yes 0.2 0.22 0.0 -1.0 6.0 1.0
-mv potential.txt models/potential_45n-1.txt
-echo
-echo 45n-2
-./symmetric_computeAngularPlots.py yes 0.2 0.22 0.1 -1.1 2.1 1.0
-mv potential.txt models/potential_45n-2.txt
-echo
-echo 45c
-./symmetric_computeAngularPlots.py no 0.2 0.22 3.18802 -24.3562 58.9717 1.02726
-mv potential.txt models/potential_45c.txt
-echo
-echo 45c-0
-./symmetric_computeAngularPlots.py yes 0.2 0.22 0.2 -1.2 2.4 1.0
-mv potential.txt models/potential_45c-0.txt
-echo
-echo 45c-I
+echo PP1
 ./symmetric_computeAngularPlots.py yes 0.2 0.22 0.0 -1.0 2.2 1.0
-mv potential.txt models/potential_45c-1.txt
+mv potential.txt models/potential_PP1.txt
 echo
-echo 45c-II
+echo PP2
+./symmetric_computeAngularPlots.py yes 0.2 0.22 0.0 -1.0 4.0 1.0
+mv potential.txt models/potential_PP2.txt
+echo
+echo PP3
+./symmetric_computeAngularPlots.py yes 0.2 0.22 0.0 -1.0 6.0 1.0
+mv potential.txt models/potential_PP3.txt
+echo
+echo EE1
+./symmetric_computeAngularPlots.py yes 0.2 0.22 0.1 -1.1 2.1 1.0
+mv potential.txt models/potential_EE1.txt
+echo
+echo EE2
 ./symmetric_computeAngularPlots.py yes 0.2 0.22 0.2 -1.2 2.2 1.0
-mv potential.txt models/potential_45c-2.txt
+mv potential.txt models/potential_EE2.txt
+echo
+echo EE3
+./symmetric_computeAngularPlots.py yes 0.2 0.22 0.5 -1.5 2.5 1.0
+mv potential.txt models/potential_EE3.txt
+echo
+echo EE4
+./symmetric_computeAngularPlots.py yes 0.2 0.22 1.0 -2.0 3.0 1.0
+mv potential.txt models/potential_EE3.txt
 
 gnuplot symmetric_plotmodels.gpi
-#gnuplot symmetric_plotmodelsPNG.gpi
-mv *.eps models/
+for file in *.eps; do
+  epspdf $file 
+done
+rm *.eps
+mv *.pdf models/

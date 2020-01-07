@@ -124,8 +124,8 @@ fBB = computeOmega(bigRadius, bigRadius, HSdiameter)
 fBS = computeOmega(bigRadius, patchRadius, HSdiameter - ecc)
 fSS = computeOmega(patchRadius, patchRadius, HSdiameter - 2*ecc)
 
-print("volumes at contact:")
-print( fBB, fBS, fSS)
+#print("volumes at contact:")
+#print( fBB, fBS, fSS)
 
 if usageMode == "yes":
   eBB /= fBB
@@ -134,12 +134,12 @@ if usageMode == "yes":
   cBB = eBB / emin
   cBS = eBS / emin
   cSS = eSS / emin
-  print("scaled OUTPUT:")
+#  print("scaled OUTPUT:")
 elif usageMode == "no":
   cBB = eBB * fBB / emin
   cBS = eBS * fBS / emin
   cSS = eSS * fSS / emin
-  print("multiplied OUTPUT:")
+#  print("multiplied OUTPUT:")
 else:
   print("mode does not exist")
   exit()
