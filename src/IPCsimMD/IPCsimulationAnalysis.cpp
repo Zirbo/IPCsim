@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <set>
 #include "IPCsimulation.hpp"
 
 
@@ -48,24 +49,6 @@ std::vector<std::list<int>> IPCsimulation::computeListOfBondedNeighbours() {
             }
         }
     }
-
-    /*
-    for (int i = 0; i < nIPCs; ++i) {
-        for (int j = i + 1; j < nIPCs; ++j) {
-            double distance = 0.;
-            for (int d: {0, 1, 2}) {
-                double distance_d = particles[i].ipcCenter.x[d] - particles[j].ipcCenter.x[d];
-                relativePBC(distance_d);
-                distance += std::pow(distance_d, 2);
-            }
-            // if they are too far, it does not count
-            if (distance > squaredInteractionRange)
-                continue;
-            //else
-            localListOfNeighbours[i].push_back(j);
-            localListOfNeighbours[j].push_back(i);
-        }
-    }*/
     return listOfNeighbours;
 }
 
@@ -190,4 +173,60 @@ void IPCsimulation::printFinalHistogramOfBondedNeighbours() {
         averageNumberOfNeighboursFile << i << "\t" << n*norm << "\n";
         ++i;
     }
+}
+
+void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNeighbours) {
+    // /home/bianchi/IPC-QUASI-2D-MC/IPC-Quasi2D-PostProcessing-NEW/ipc-postprocessing.f90
+    // subdivide the IPCs into clusters
+    std::list<std::set<int>> clusters;
+    for (int i = 0; i < nIPCs; ++i) {
+        bool clusterFound = false;
+        std::list<std::set<int>>::iterator clusterMatch;
+        // check if any of its bonded neighbours belong to an existing cluster
+        for (auto j: listOfNeighbours[i]) {
+            // if j > i, j was not analysed and it's not in any cluster yet, so no point in checking
+            if (j > i)
+                continue;
+
+            for (auto & cl: clusters) {
+                if (cl.count(j) != 0) {
+                    // found a match!
+                    if (clusterFound == false) {
+                        // add i to j's cluster
+                        cl.insert(i);
+                        // it was the first match; let's note it down
+                        clusterFound = true;
+                        *clusterMatch = cl;
+                    }
+                    else {
+                        // this is not the first match, so we need to merge j's cluster to i's!
+                        clusterMatch->insert(cl.begin(), cl.end());  // copy all elements
+                        cl.clear();  // empty the merged one (I will remove empty ones as soon as I understand how...)
+                    }
+                }
+            }
+        }
+        // if no match was found for i, start a new cluster
+        if (!clusterFound) {
+            std::set<int> a;
+            a.insert(i);
+            clusters.push_back(a);
+        }
+    }
+
+    // analyze the clusters
+
+    for (auto i: clusters) {
+        //
+    }
+
+    /*
+    // print and add to the averaged final histogram
+    int i = 0;
+    for(int n: histogramOfNeighbours) {
+        numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << i << "\t" << n << "\n";
+        histogramOfBondedNeighbours[i] += n;
+
+        ++i;
+    }*/
 }

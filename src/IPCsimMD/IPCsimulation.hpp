@@ -188,7 +188,7 @@ private:
     spaceVector displacementOfEachIPCs;
     void computeMSD();
 
-
+    // data analysis
     void computeStaticProperties();
     std::vector<int> histogramOfBondedNeighbours;
     std::ofstream numberOfNeighboursFile;
@@ -196,6 +196,8 @@ private:
     void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     double computePotentialBetweenTwoIPCs(const int firstIPC, const int secndIPC);
     void printFinalHistogramOfBondedNeighbours();
+    void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
+
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__
