@@ -114,9 +114,7 @@ double IPCsimulation::run() {
 
     // output analysis
     if (printTrajectoryAndCorrelations) {
-        const double g_r_integral = pairCorrelation.print("siml/g_r.out");
-        outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
-        printFinalHistogramOfBondedNeighbours();
+        printStaticProperties();
     }
 
     return averageTemperature;

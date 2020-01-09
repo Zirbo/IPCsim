@@ -23,6 +23,14 @@ void IPCsimulation::computeMSD() {
 void IPCsimulation::computeStaticProperties() {
     const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
     computeHistogramOfBondedNeighbours(listOfNeighbours);
+    computeClusters(listOfNeighbours);
+}
+
+void IPCsimulation::printStaticProperties() {
+    const double g_r_integral = pairCorrelation.print("siml/g_r.out");
+    outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+    printHistogramOfBondedNeighbours();
+    printClusterSizes();
 }
 
 std::vector<std::list<int>> IPCsimulation::computeListOfBondedNeighbours() {
@@ -163,7 +171,7 @@ double IPCsimulation::computePotentialBetweenTwoIPCs(const int firstIPC, const i
     return uij;
 }
 
-void IPCsimulation::printFinalHistogramOfBondedNeighbours() {
+void IPCsimulation::printHistogramOfBondedNeighbours() {
     double norm = printingInterval/simulationTotalDuration;
     std::ofstream averageNumberOfNeighboursFile("siml/averageNumberOfNeighbours.out");
     averageNumberOfNeighboursFile << std::scientific << std::setprecision(6);
@@ -181,7 +189,7 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
     std::list<std::set<int>> clusters;
     for (int i = 0; i < nIPCs; ++i) {
         bool clusterFound = false;
-        std::list<std::set<int>>::iterator clusterMatch;
+        std::set<int> *clusterMatch;
         // check if any of its bonded neighbours belong to an existing cluster
         for (auto j: listOfNeighbours[i]) {
             // if j > i, j was not analysed and it's not in any cluster yet, so no point in checking
@@ -196,7 +204,7 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
                         cl.insert(i);
                         // it was the first match; let's note it down
                         clusterFound = true;
-                        *clusterMatch = cl;
+                        clusterMatch = &cl;
                     }
                     else {
                         // this is not the first match, so we need to merge j's cluster to i's!
@@ -215,18 +223,42 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
     }
 
     // analyze the clusters
-
+    std::map<int, int> localClusterSizes;
     for (auto i: clusters) {
-        //
+        const int size = i.size();
+        if (localClusterSizes.count(size) == 0) {
+            localClusterSizes[size] = 1;
+        }
+        else {
+            localClusterSizes[size] += 1;
+        }
     }
 
-    /*
     // print and add to the averaged final histogram
-    int i = 0;
-    for(int n: histogramOfNeighbours) {
-        numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << i << "\t" << n << "\n";
-        histogramOfBondedNeighbours[i] += n;
+    for(std::pair<int, int> n: localClusterSizes) {
+        if (n.first == 0)
+            continue;
+        if (clusterSizes.count(n.first) == 0) {
+            clusterSizes[n.first] = n.second;
+        }
+        else {
+            clusterSizes[n.first] += n.second;
+        }
+    }
+}
 
+void IPCsimulation::printClusterSizes() {
+    double norm = printingInterval/simulationTotalDuration;
+    std::ofstream clusterSizesFile("siml/clusterSizes.out");
+    clusterSizesFile << std::scientific << std::setprecision(6);
+
+    int i = 0;
+    int integral = 0;
+    for(auto n: clusterSizes) {
+        clusterSizesFile << n.first << "\t" << norm*n.second << "\n";
+        integral += n.first*n.second;
         ++i;
-    }*/
+    }
+    clusterSizesFile << "#" << integral << " = " << nIPCs;
+    clusterSizesFile.close();
 }

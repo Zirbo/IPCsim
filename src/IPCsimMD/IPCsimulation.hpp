@@ -29,6 +29,7 @@
 #include <fstream>
 #include <vector>
 #include <array>
+#include <map>
 #include <string>
 #include <cmath>
 #include "../IPC.hpp"
@@ -190,13 +191,16 @@ private:
 
     // data analysis
     void computeStaticProperties();
+    void printStaticProperties();
     std::vector<int> histogramOfBondedNeighbours;
     std::ofstream numberOfNeighboursFile;
     std::vector<std::list<int>> computeListOfBondedNeighbours();
     void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     double computePotentialBetweenTwoIPCs(const int firstIPC, const int secndIPC);
-    void printFinalHistogramOfBondedNeighbours();
+    void printHistogramOfBondedNeighbours();
     void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
+    std::map<int, int> clusterSizes;
+    void printClusterSizes();
 
 };
 
