@@ -66,22 +66,30 @@ void IPCsimulation::computeHistogramOfBondedNeighbours(std::vector<std::list<int
     for (int i = 0; i < nIPCs; ++i)
         numberOfNeighbours[i] = listOfNeighbours[i].size();
     // compute the histogram of neighbours
-    const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
-    std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
-    for(int neighboursOfThisParticle: numberOfNeighbours)
-        ++histogramOfNeighbours[neighboursOfThisParticle];
+    std::map<int, int> histogramOfNeighbours;
+    //const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
+    //std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
 
-    // print and add to the averaged final histogram
-    int i = 0;
-    for(int n: histogramOfNeighbours) {
-        numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << i << "\t" << n << "\n";
-
-        ++i;
-        if (histogramOfBondedNeighbours.count(i) == 0) {
-            histogramOfBondedNeighbours[i] = n;
+    for(int neighboursOfThisParticle: numberOfNeighbours) {
+        if (histogramOfNeighbours.count(neighboursOfThisParticle) == 0) {
+            histogramOfNeighbours[neighboursOfThisParticle] = 1;
         }
         else {
-            histogramOfBondedNeighbours[i] += n;
+            histogramOfNeighbours[neighboursOfThisParticle] += 1;
+        }
+    }
+
+        //++histogramOfNeighbours[neighboursOfThisParticle];
+
+    // print and add to the averaged final histogram
+    for(auto n: histogramOfNeighbours) {
+        numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
+
+        if (histogramOfBondedNeighbours.count(n.first) == 0) {
+            histogramOfBondedNeighbours[n.first] = n.second;
+        }
+        else {
+            histogramOfBondedNeighbours[n.first] += n.second;
         }
     }
 }
