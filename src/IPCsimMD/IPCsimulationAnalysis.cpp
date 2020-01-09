@@ -75,9 +75,14 @@ void IPCsimulation::computeHistogramOfBondedNeighbours(std::vector<std::list<int
     int i = 0;
     for(int n: histogramOfNeighbours) {
         numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << i << "\t" << n << "\n";
-        histogramOfBondedNeighbours[i] += n;
 
         ++i;
+        if (histogramOfBondedNeighbours.count(i) == 0) {
+            histogramOfBondedNeighbours[i] = n;
+        }
+        else {
+            histogramOfBondedNeighbours[i] += n;
+        }
     }
 }
 
@@ -176,10 +181,8 @@ void IPCsimulation::printHistogramOfBondedNeighbours() {
     std::ofstream averageNumberOfNeighboursFile("siml/averageNumberOfNeighbours.out");
     averageNumberOfNeighboursFile << std::scientific << std::setprecision(6);
 
-    int i = 0;
-    for(int n: histogramOfBondedNeighbours) {
-        averageNumberOfNeighboursFile << i << "\t" << n*norm << "\n";
-        ++i;
+    for(auto n: histogramOfBondedNeighbours) {
+        averageNumberOfNeighboursFile << n.first << "\t" << norm*n.second << "\n";
     }
 }
 

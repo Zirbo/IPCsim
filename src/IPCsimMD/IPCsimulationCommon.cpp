@@ -46,7 +46,6 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
         ipcCentersPreviousPositions.resize(nIPCs, {0.0, 0.0, 0.0});
         displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
 
-        histogramOfBondedNeighbours.resize(18, 0);
         numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
         numberOfNeighboursFile << std::scientific << std::setprecision(6);
     }

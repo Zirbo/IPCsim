@@ -192,7 +192,7 @@ private:
     // data analysis
     void computeStaticProperties();
     void printStaticProperties();
-    std::vector<int> histogramOfBondedNeighbours;
+    std::map<int, int> histogramOfBondedNeighbours;
     std::ofstream numberOfNeighboursFile;
     std::vector<std::list<int>> computeListOfBondedNeighbours();
     void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
