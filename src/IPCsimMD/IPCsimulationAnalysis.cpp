@@ -196,42 +196,54 @@ void IPCsimulation::printHistogramOfBondedNeighbours() {
 
 void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNeighbours) {
     // /home/bianchi/IPC-QUASI-2D-MC/IPC-Quasi2D-PostProcessing-NEW/ipc-postprocessing.f90
+
     // subdivide the IPCs into clusters
     std::list<std::set<int>> clusters;
     for (int i = 0; i < nIPCs; ++i) {
-        bool clusterFound = false;
-        std::set<int> *clusterMatch;
+        bool aClusterWasFound = false;
+        std::set<int>* clusterMatch;
+
+        // is this IPC already in a cluster? if yes, skip it
+        for (auto &cl: clusters) {
+            if (cl.count(i) == 1) {
+                aClusterWasFound = true;
+                clusterMatch = &cl;
+                break;
+            }
+        }
+
         // check if any of its bonded neighbours belong to an existing cluster
         for (auto j: listOfNeighbours[i]) {
-            // if j > i, j was not analysed and it's not in any cluster yet, so no point in checking
-            if (j > i)
-                continue;
-
-            for (auto & cl: clusters) {
-                if (cl.count(j) != 0) {
-                    // found a match!
-                    if (clusterFound == false) {
-                        // add i to j's cluster
-                        cl.insert(i);
-                        // it was the first match; let's note it down
-                        clusterFound = true;
+            // find in current clusters
+            for (auto &cl: clusters) {
+                if (cl.count(j) == 1) {
+                    if (!aClusterWasFound) {
+                        // found a first match with a cluster
+                        cl.insert(i); // this line is fucking up everything...
+                        aClusterWasFound = true;
                         clusterMatch = &cl;
                     }
                     else {
-                        // this is not the first match, so we need to merge j's cluster to i's!
-                        clusterMatch->insert(cl.begin(), cl.end());  // copy all elements
-                        cl.clear();  // empty the merged one (I will remove empty ones as soon as I understand how...)
+                        // found a new match; we need to merge the cluster of the first match with the one we just found
+                        clusterMatch->insert(cl.begin(), cl.end());
+                        // then clean the new one
+                        cl.clear();
                     }
                 }
             }
         }
-        // if no match was found for i, start a new cluster
-        if (!clusterFound) {
+        if (!aClusterWasFound) {
+            // no cluster was found at all; let's create a new one
             std::set<int> a;
             a.insert(i);
+            for (auto j: listOfNeighbours[i])
+                a.insert(j);
             clusters.push_back(a);
         }
     }
+
+    clusters.remove(std::set<int>());
+
 
     // analyze the clusters
     std::map<int, int> localClusterSizes;
@@ -246,15 +258,19 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
     }
 
     // print and add to the averaged final histogram
+    int integral = 0;
     for(std::pair<int, int> n: localClusterSizes) {
-        if (n.first == 0)
-            continue;
+        integral += n.first*n.second;
         if (clusterSizes.count(n.first) == 0) {
             clusterSizes[n.first] = n.second;
         }
         else {
             clusterSizes[n.first] += n.second;
         }
+    }
+    if(integral != nIPCs) {
+        std::cerr << "error";
+        exit(1);
     }
 }
 
