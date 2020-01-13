@@ -202,6 +202,12 @@ private:
     std::ofstream clusterSizesFile;
     void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
     void printClusterSizes();
+    spaceVector ipcOrientations;
+    std::ofstream nematicOrderParameterFile;
+    std::vector<double> nematicOrderParameter;
+    void updateOrientations();
+    void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
+    void printNematicOrderPatameter();
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__

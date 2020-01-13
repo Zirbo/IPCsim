@@ -51,6 +51,11 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
 
         clusterSizesFile.open("siml/clusterSizes.out");
         clusterSizesFile << std::scientific << std::setprecision(6);
+
+        ipcOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
+        nematicOrderParameter.resize(nIPCs, 0.0);
+        nematicOrderParameterFile.open("siml/NOP.out");
+        nematicOrderParameterFile << std::scientific << std::setprecision(6);
     }
 }
 

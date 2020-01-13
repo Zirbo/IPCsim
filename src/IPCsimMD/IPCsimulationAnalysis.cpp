@@ -24,6 +24,9 @@ void IPCsimulation::computeStaticProperties() {
     const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
     computeHistogramOfBondedNeighbours(listOfNeighbours);
     computeClusters(listOfNeighbours);
+
+    updateOrientations();
+    computeNematicOrderParameter(listOfNeighbours);
 }
 
 void IPCsimulation::printStaticProperties() {
@@ -31,6 +34,7 @@ void IPCsimulation::printStaticProperties() {
     outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
     printHistogramOfBondedNeighbours();
     printClusterSizes();
+    printNematicOrderPatameter();
 }
 
 std::vector<std::list<int>> IPCsimulation::computeListOfBondedNeighbours() {
@@ -65,11 +69,9 @@ void IPCsimulation::computeHistogramOfBondedNeighbours(std::vector<std::list<int
     std::vector<int> numberOfNeighbours(nIPCs, 0);
     for (int i = 0; i < nIPCs; ++i)
         numberOfNeighbours[i] = listOfNeighbours[i].size();
+
     // compute the histogram of neighbours
     std::map<int, int> histogramOfNeighbours;
-    //const int maxNumberOfNeighbours = *std::max_element(numberOfNeighbours.cbegin(), numberOfNeighbours.cend());
-    //std::vector<int> histogramOfNeighbours(maxNumberOfNeighbours+1, 0);
-
     for(int neighboursOfThisParticle: numberOfNeighbours) {
         if (histogramOfNeighbours.count(neighboursOfThisParticle) == 0) {
             histogramOfNeighbours[neighboursOfThisParticle] = 1;
@@ -78,9 +80,6 @@ void IPCsimulation::computeHistogramOfBondedNeighbours(std::vector<std::list<int
             histogramOfNeighbours[neighboursOfThisParticle] += 1;
         }
     }
-
-        //++histogramOfNeighbours[neighboursOfThisParticle];
-
     // print and add to the averaged final histogram
     for(auto n: histogramOfNeighbours) {
         numberOfNeighboursFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
@@ -273,7 +272,7 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
 
 void IPCsimulation::printClusterSizes() {
     double norm = printingInterval/simulationTotalDuration;
-    std::ofstream clusterSizesFile("siml/averagedClusterSizes.out");
+    std::ofstream clusterSizesFile("siml/averageClusterSizes.out");
     clusterSizesFile << std::scientific << std::setprecision(6);
 
     int i = 0;
@@ -285,4 +284,54 @@ void IPCsimulation::printClusterSizes() {
     }
     clusterSizesFile << "#" << integral << " = " << nIPCs;
     clusterSizesFile.close();
+}
+
+void IPCsimulation::updateOrientations() {
+    const double norm = 1./firstPatchEccentricity;
+    for (IPC ipc: particles) {
+        for (int d: {0, 1, 2}) {
+            ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
+            relativePBC(ipcOrientations[ipc.number][d]);
+            ipcOrientations[ipc.number][d] *= norm;
+        }
+    }
+}
+
+void IPCsimulation::computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours) {
+    // loop on the lists of neighbours
+    double averageNOP = 0.0;
+    for (int i = 0; i < nIPCs; ++i) {
+        double modulusNOPi = 0.;
+        // loop on the neighbours inside the list
+        for (int j: listOfNeighbours[i]) {
+            double modulusNOPij = 0.;
+            for (int d: {0, 1, 2}) {
+                modulusNOPij += ipcOrientations[i][d]*ipcOrientations[j][d];
+            }
+            modulusNOPi += std::pow(modulusNOPij,2);
+        }
+        // normalize and print
+        if(!listOfNeighbours[i].empty())
+            modulusNOPi = 1.5*modulusNOPi/listOfNeighbours[i].size() - 0.5;
+        nematicOrderParameterFile << simulationTime*simulationTimeStep << "\t" << i << "\t" << modulusNOPi << "\n";
+        nematicOrderParameter[i] += modulusNOPi;
+        averageNOP += modulusNOPi;
+    }
+    nematicOrderParameterFile << "# Global average of the nematic order parameter at time "
+                              << simulationTime*simulationTimeStep <<": " << averageNOP/nIPCs << "!\n";
+}
+
+void IPCsimulation::printNematicOrderPatameter() {
+    double norm = printingInterval/simulationTotalDuration;
+    std::ofstream nematicOrderParameterFile("siml/averageNOP.out");
+    nematicOrderParameterFile << std::scientific << std::setprecision(6);
+
+    double averageNOP = 0.0;
+    for (int i = 0; i < nIPCs; ++i) {
+        nematicOrderParameterFile << i << "\t" << nematicOrderParameter[i]*norm << "\n";
+        averageNOP += nematicOrderParameter[i];
+    }
+    averageNOP *= norm;
+    nematicOrderParameterFile << "# Average of the final NOP: " << averageNOP/nIPCs << std::endl;
+    nematicOrderParameterFile.close();
 }
