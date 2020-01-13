@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
-#include <set>
+#include <unordered_set>
 #include "IPCsimulation.hpp"
 
 
@@ -197,58 +197,53 @@ void IPCsimulation::printHistogramOfBondedNeighbours() {
 void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNeighbours) {
     // /home/bianchi/IPC-QUASI-2D-MC/IPC-Quasi2D-PostProcessing-NEW/ipc-postprocessing.f90
 
-    // subdivide the IPCs into clusters
-    std::list<std::set<int>> clusters;
+    std::map<int, std::unordered_set<int>> clusters;
+
     for (int i = 0; i < nIPCs; ++i) {
-        bool aClusterWasFound = false;
-        std::set<int>* clusterMatch;
-
-        // is this IPC already in a cluster? if yes, skip it
-        for (auto &cl: clusters) {
-            if (cl.count(i) == 1) {
-                aClusterWasFound = true;
-                clusterMatch = &cl;
-                break;
-            }
+        std::unordered_set<int> currentGroup;
+        currentGroup.insert(i);
+        for (int j: listOfNeighbours[i]) {
+            currentGroup.insert(j);
         }
+        // find if any IPC of this group is present in any enstablished cluster
+        std::unordered_set<int> matches;
 
-        // check if any of its bonded neighbours belong to an existing cluster
-        for (auto j: listOfNeighbours[i]) {
-            // find in current clusters
-            for (auto &cl: clusters) {
-                if (cl.count(j) == 1) {
-                    if (!aClusterWasFound) {
-                        // found a first match with a cluster
-                        cl.insert(i); // this line is fucking up everything...
-                        aClusterWasFound = true;
-                        clusterMatch = &cl;
-                    }
-                    else {
-                        // found a new match; we need to merge the cluster of the first match with the one we just found
-                        clusterMatch->insert(cl.begin(), cl.end());
-                        // then clean the new one
-                        cl.clear();
-                    }
+        for (int ipc: currentGroup) {
+            for (auto cluster: clusters) {
+                if (cluster.second.count(ipc) == 1) {
+                    // match found!
+                    matches.insert(cluster.first);
                 }
             }
         }
-        if (!aClusterWasFound) {
-            // no cluster was found at all; let's create a new one
-            std::set<int> a;
-            a.insert(i);
-            for (auto j: listOfNeighbours[i])
-                a.insert(j);
-            clusters.push_back(a);
+        // if any match has been found, add the current group to the smallest head of chain;
+        // if more than one match is present, merge to the smallest head of chain all the others
+        if(!matches.empty()) {
+            // find the smallest head of chain
+            int minimum = *std::min_element(matches.cbegin(), matches.cend());
+            // added the current group
+            for (int ipc: currentGroup)
+                clusters[minimum].insert(ipc);
+            // add all the others
+            for (auto head: matches) {
+                if (head == minimum)
+                    continue;
+                for (int ipc: clusters[head])
+                    clusters[minimum].insert(ipc);
+                clusters.erase(head);
+            }
+        }
+        else {
+            // create new cluster
+            clusters.insert( std::make_pair(i, currentGroup) );
         }
     }
-
-    clusters.remove(std::set<int>());
 
 
     // analyze the clusters
     std::map<int, int> localClusterSizes;
     for (auto i: clusters) {
-        const int size = i.size();
+        const int size = i.second.size();
         if (localClusterSizes.count(size) == 0) {
             localClusterSizes[size] = 1;
         }
@@ -260,6 +255,8 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
     // print and add to the averaged final histogram
     int integral = 0;
     for(std::pair<int, int> n: localClusterSizes) {
+        clusterSizesFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
+
         integral += n.first*n.second;
         if (clusterSizes.count(n.first) == 0) {
             clusterSizes[n.first] = n.second;
@@ -269,14 +266,14 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
         }
     }
     if(integral != nIPCs) {
-        std::cerr << "error";
+        std::cerr << __func__ << ": something really shitty is going on in the cluster size analysis.";
         exit(1);
     }
 }
 
 void IPCsimulation::printClusterSizes() {
     double norm = printingInterval/simulationTotalDuration;
-    std::ofstream clusterSizesFile("siml/clusterSizes.out");
+    std::ofstream clusterSizesFile("siml/averagedClusterSizes.out");
     clusterSizesFile << std::scientific << std::setprecision(6);
 
     int i = 0;

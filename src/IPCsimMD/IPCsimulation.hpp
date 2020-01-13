@@ -198,10 +198,10 @@ private:
     void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     double computePotentialBetweenTwoIPCs(const int firstIPC, const int secndIPC);
     void printHistogramOfBondedNeighbours();
-    void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
     std::map<int, int> clusterSizes;
+    std::ofstream clusterSizesFile;
+    void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
     void printClusterSizes();
-
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__

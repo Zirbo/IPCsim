@@ -48,6 +48,9 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
 
         numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
         numberOfNeighboursFile << std::scientific << std::setprecision(6);
+
+        clusterSizesFile.open("siml/clusterSizes.out");
+        clusterSizesFile << std::scientific << std::setprecision(6);
     }
 }
 
