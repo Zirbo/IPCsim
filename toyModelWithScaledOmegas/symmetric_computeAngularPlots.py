@@ -1,12 +1,22 @@
 #! /usr/bin/python3
 
+
 import argparse
 from math import sqrt, pi, fabs, cos
 from math import sin as sen
 
-helpString = """Usage Modes: yes, no
-Example: no 0.2 0.22 .245728   -3.11694  21.2298   .142495 (45n)
+helpString = """Computes w_ij and potential of two IPCs.
+The first IPC is fixed in the origin,
+in a vertical or horizontal orientation;
+the second IPC starts vertical and it is rotated.
+
+The usage mode means: do the e_ij include the omega-scaling?
+
+Sample calls:
+from original models:
+no 0.2 0.22  .245728   -3.11694  21.2298   .142495 (45n)
 no 0.2 0.22  3.18802   -24.3562  58.9717   1.02726 (45c)
+from toys:
 yes 0.2 0.22 -1 0 0 1
 yes 0.2 0.22 0 0 -1 1
 yes 0.2 0.22 0 -1 2 1
@@ -37,7 +47,7 @@ bigRadius = HSradius + delta/2
 patchRadius = bigRadius - ecc
 
 def computeOmega(Ra, Rb, rab):
-  # BKL paper, formula 18
+  """ overlap volumes: according to BKL paper, formula 18 """
   if ( rab > Ra+Rb ):
     return 0.
   elif ( rab <= fabs(Ra-Rb) ):
@@ -49,6 +59,10 @@ def computeOmega(Ra, Rb, rab):
                (2.*Rb-tempSum+rab/2.)*(Rb+tempSum-rab/2.)**2 )
 
 def computePotentialVerticalParticle(theta):
+  """ Computes the interaction potential between two IPCs, one vertical in the origin,
+      the second in (2sigma, 0, 0) and rotated from vertical by an angle theta).
+      Returns the potential, and the interaction volumes BB and BS (SS would be zero)
+  """
   rP1P2 = sqrt( (HSdiameter + ecc*sen(theta))**2 + (ecc*(1 - cos(theta)))**2 )
   rP1B2 = sqrt( ecc*2 + HSdiameter**2 )
   rP1Q2 = sqrt( (HSdiameter - ecc*sen(theta))**2 + (ecc*(1 + cos(theta)))**2 )
@@ -76,6 +90,10 @@ def computePotentialVerticalParticle(theta):
   return V, wBB, wBS
 
 def computePotentialHorizontalParticle(theta):
+  """ Computes the interaction potential between two IPCs, one horizontal in the origin,
+      the second in (2sigma, 0, 0) and rotated from vertical by an angle theta).
+      Returns the potential, and the interaction volumes BB and BS (SS would be zero)
+  """
   rP1P2 = sqrt( (HSdiameter + ecc*(1 + sen(theta)))**2 + (ecc*cos(theta))**2 )
   rP1B2 = ecc + HSdiameter
   rP1Q2 = sqrt( (HSdiameter + ecc*(1 - sen(theta)))**2 + (ecc*cos(theta))**2 )
@@ -102,6 +120,7 @@ def computePotentialHorizontalParticle(theta):
   return V, wSS
 
 def computePotentials():
+  """Computes the potential along the two orientations and the three overlap volumes."""
   thetas = [ i*pi/50. for i in range(51) ]
   Vh = []
   Vv = []
@@ -120,53 +139,44 @@ def computePotentials():
 
   return Vv, Vh, wBB, wBS, wSS, thetas
 
-fBB = computeOmega(bigRadius, bigRadius, HSdiameter)
-fBS = computeOmega(bigRadius, patchRadius, HSdiameter - ecc)
-fSS = computeOmega(patchRadius, patchRadius, HSdiameter - 2*ecc)
+if __name__ == "__main__":
 
-#print("volumes at contact:")
-#print( fBB, fBS, fSS)
-
-if usageMode == "yes":
-  eBB /= fBB
-  eBS /= fBS
-  eSS /= fSS
-  cBB = eBB / emin
-  cBS = eBS / emin
-  cSS = eSS / emin
-#  print("scaled OUTPUT:")
-elif usageMode == "no":
-  cBB = eBB * fBB / emin
-  cBS = eBS * fBS / emin
-  cSS = eSS * fSS / emin
-#  print("multiplied OUTPUT:")
-else:
-  print("mode does not exist")
-  exit()
-
-
-print(str(cBB)[0:7].ljust(10) + str(cBS)[0:8].ljust(10) + str(cBS)[0:8].ljust(10))
-print(str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10))
-
-#print('{0: 1.5e}    {1: 1.5e}    {1: 1.5e}'.format(cBB, cBS))
-#print('{0: 1.5e}    {0: 1.5e}    {0: 1.5e}'.format(cSS))
-
-Vv, Vh, wBB, wBS, wSS, theta = computePotentials()
-
-outputWns = open("wBB.txt", 'w')
-outputWss = open("wBBscaled.txt", 'w')
-outputPot = open("potential.txt", 'w')
-for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(Vv, Vh, wBB, wBS, wSS, theta):
-  outputWns.write(str(thetai).ljust(24) + str(wBBi).ljust(24) +
-                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
-  outputWss.write(str(thetai).ljust(24) + str(wBBi/fBB).ljust(24) +
-                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
-  outputPot.write(str(thetai).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
-                  str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")
-#for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(reversed(Vv), reversed(Vh), reversed(wBB), reversed(wBS), reversed(wSS), theta):
-#  outputWns.write(str(thetai+0.5*pi).ljust(24) + str(wBBi).ljust(24) +
-#                  str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
-#  outputWss.write(str(thetai+0.5*pi).ljust(24) + str(wBBi/fBB).ljust(24) +
-#                  str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
-#  outputPot.write(str(thetai+0.5*pi).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
-#                  str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")
+  # compute maximum overlap volumes
+  fBB = computeOmega(bigRadius, bigRadius, HSdiameter)
+  fBS = computeOmega(bigRadius, patchRadius, HSdiameter - ecc)
+  fSS = computeOmega(patchRadius, patchRadius, HSdiameter - 2*ecc)
+  
+  # compute coefficients
+  if usageMode == "yes":
+    eBB /= fBB
+    eBS /= fBS
+    eSS /= fSS
+    cBB = eBB / emin
+    cBS = eBS / emin
+    cSS = eSS / emin
+  elif usageMode == "no":
+    cBB = eBB * fBB / emin
+    cBS = eBS * fBS / emin
+    cSS = eSS * fSS / emin
+  else:
+    print("mode does not exist")
+    exit()
+  
+  # log the coefficients on screen
+  print(str(cBB)[0:7].ljust(10) + str(cBS)[0:8].ljust(10) + str(cBS)[0:8].ljust(10))
+  print(str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10) + str(cSS)[0:7].ljust(10))
+  
+  # compute the potentials
+  Vv, Vh, wBB, wBS, wSS, theta = computePotentials()
+  
+  # output to file
+  outputWns = open("wBB.txt", 'w')
+  outputWss = open("wBBscaled.txt", 'w')
+  outputPot = open("potential.txt", 'w')
+  for Vvi, Vhi, wBBi, wBSi, wSSi, thetai in zip(Vv, Vh, wBB, wBS, wSS, theta):
+    outputWns.write(str(thetai).ljust(24) + str(wBBi).ljust(24) +
+                    str(wBSi).ljust(24) + str(wSSi).ljust(24) + "\n")
+    outputWss.write(str(thetai).ljust(24) + str(wBBi/fBB).ljust(24) +
+                    str(wBSi/fBS).ljust(24) + str(wSSi/fSS).ljust(24) + "\n")
+    outputPot.write(str(thetai).ljust(24) + str(Vvi).ljust(24) + str(Vhi).ljust(24) +
+                    str(Vvi/emin).ljust(24) + str(Vhi/emin).ljust(24) + "\n")

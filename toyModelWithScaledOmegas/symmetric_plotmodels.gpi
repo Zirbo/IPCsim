@@ -101,3 +101,8 @@ p "models/potentials_EE4/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
   "models/potentials_EE4/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
   "models/potentials_EE4/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
 
+set output "EE5.eps"
+set title "EE5"
+p "models/potentials_EE5/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
+  "models/potentials_EE5/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
+  "models/potentials_EE5/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
