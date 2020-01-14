@@ -1,0 +1,77 @@
+#################################
+#                               #
+# script for lammps to create   #
+# a 3D simulation of IPCs!      #
+#                               #
+#################################
+
+variable       inputfile        index   IPC_startingstate_manner.txt
+variable       outputfile       index   outputFile.txt
+variable       trajectoryfile   index   trajectory.lammpstrj
+
+#
+dimension      3
+units          lj
+boundary       p p p
+atom_style     full
+
+# read starting configuration
+read_data      ${inputfile}
+#read_restart   cacca.new
+
+# interaction potential
+pair_style     table linear 12000
+bond_style     harmonic
+angle_style    harmonic
+pair_modify    mix geometric tail yes
+
+
+# force field parameters
+pair_coeff     1 1 potential/BB.table BB
+pair_coeff     1 2 potential/Bs1.table Bs1
+pair_coeff     2 2 potential/s1s1.table s1s1
+bond_coeff     1 999.9 0.22     # center-patch distance
+angle_coeff	   1 999.9 180.0    # patch-patch angle
+
+
+neighbor       0.3 bin
+neigh_modify   every 1 check yes
+thermo         500
+
+thermo_style   custom step   temp pe #c_fluid_temp c_substrate_temp
+
+# print logs and trajectory
+log            ${outputfile}
+# dump ID particle-type format print-interval file
+dump           dumpcommand all atom 1000 ${trajectoryfile}
+
+
+#variable       Temp0            index   0.0
+#fix    1       all rigid/nvt/small molecule temp ${Temp0} ${Temp0} 1 # $(100.0*dt)
+velocity       all create 0.001 53244 dist gaussian rot yes
+#run            0  # temperature may not be right due to the constraints not being applied yet
+#velocity       all scale ${Temp0}       # now it should be
+
+
+timestep       0.0005
+
+
+#region        lower block 0.0 20.0 0.0 20.0 0.0  2.5
+#region        upper block 0.0 20.0 0.0 20.0 17.5 20.0 
+#region            fluid block 0.0 20.0 0.0 20.0  2.5 17.5
+#group         wallH region upper
+#group         wallL region lower
+
+#region         left    block 0.0 12.4 0.0  12.4 0.0 12.4
+region         right   block 0.0 12.4 12.4 24.8 0.0 12.4
+#group          leftG   region left
+group          rightG  region right
+
+
+fix    1       rightG rigid/nvt/small molecule temp 1.000 1.000 10.0
+run            50000
+unfix  1
+fix    1       all    rigid/nvt/small molecule temp 0.120 0.120 10.0
+run            100000
+
+write_restart  cacca.new
