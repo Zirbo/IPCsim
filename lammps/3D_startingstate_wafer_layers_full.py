@@ -7,8 +7,8 @@ from math import cos, sin, sqrt, pi, floor
 from numpy.random import ranf
 
 helpString = """Creates a LAMMPS starting configuration with a fully formed wafer layer structure.\n
-Suggested values for a cubic box: 14 12 1.2 1.2 12.4 12.4 0.22\n
-Suggested values for an elongates box for gravity experiments: 14 12 1.2 sz 12.4 Lz 0.22\n"""
+Sample values for a cubic box:      14 12 6 12.4 12.4 12.0 0.22\n
+Sample values for an elongated box: 14 24 6 12.4 24.8 12.0 0.22\n"""
 
 parser = argparse.ArgumentParser(description=helpString)
 parser.add_argument('particlePerSideX', metavar='nPx', type=int, help='number of IPCs in the X side')
@@ -29,12 +29,14 @@ Lz = args.boxSideZ
 ecc = args.ecc
 nWaferX = args.particlePerSideX
 nWaferY = args.particlePerSideY
-nFluidY = int(nWaferY/(0.8*2))
 nWaferZ = args.numberOfLayersZ
+nFluidX = int(nWaferX/2)
+nFluidY = int(nWaferY/1.6)
+nFluidZ = nWaferZ
 
-totalWaferIPCs = nWaferX*nWaferY*nWaferZ
-totalChocoIPCs = int( (nWaferX/2) * nFluidY * nWaferZ )
-nIPCs = int(totalWaferIPCs + totalChocoIPCs)
+totalWaferIPCs = nWaferX * nWaferY * nWaferZ
+totalChocoIPCs = nFluidX * nFluidY * nFluidZ
+nIPCs = totalWaferIPCs + totalChocoIPCs
 
 def absolutePBCx(x):
     return x - Lx*floor(x/Lx)
@@ -130,14 +132,14 @@ for iz in range(nWaferZ):
                  '{:3.8f}'.format(pz).rjust(16) )
 # chocolate layer
 chocoIPCs = 0
-for iz in range(nWaferZ):
+for iz in range(nFluidZ):
     z = 1.5 + 2.0000000000001*iz
-    for ix in range(0, nWaferX,2):
-        x = 0.6 + 1.0000000000001*cos30*(ix+0.5)
-        for iy in range(0, 2*nFluidY,2):
+    for ix in range(nFluidX):
+        x = 0.6 + 1.0000000000001*cos30*(2*ix+0.5)
+        for iy in range(nFluidY):
             chocoIPCs += 1
             atomNumber = 3*totalWaferIPCs + (chocoIPCs - 1)*3 + 1
-            y = .6 + 0.8*iy
+            y = .6 + 1.6*iy
             outputFile.write("\n" + str(atomNumber).rjust(10) +
                   str(totalWaferIPCs + chocoIPCs).rjust(10) +
                   str(1).rjust(10) +
