@@ -120,8 +120,6 @@ private:
     std::vector<JanusIPC> janusParticles;
     cell_lists cells;
 
-    IsotropicPairCorrelationFunction pairCorrelation;
-
     // selfexplanatory
     void initializeSystem(SimulationStage const& stage);
     void readInputFile();
@@ -184,14 +182,26 @@ private:
     void generateRandomOrientation(double (&a)[3], RandomNumberGenerator & r);
 
 
+
+    // data analysis
+    void initializeDataAnalysis();
+    void doDataAnalysis();
+    void printDataAnalysis();
+    // MSD
     std::ofstream meanSquaredDisplFile;
     spaceVector ipcCentersPreviousPositions;
     spaceVector displacementOfEachIPCs;
     void computeMSD();
-
-    // data analysis
-    void computeStaticProperties();
-    void printStaticProperties();
+    // autocorrelations
+    spaceVector ipcOrientations;
+    void updateOrientations();
+    std::ofstream autocorrelationsFile;
+    spaceVector initialOrientations;
+    spaceVector initialVelocities;
+    void initializeAutocorrelations();
+    void computeAutocorrelations();
+    // static properties
+    IsotropicPairCorrelationFunction pairCorrelation;
     std::map<int, int> histogramOfBondedNeighbours;
     std::ofstream numberOfNeighboursFile;
     std::vector<std::list<int>> computeListOfBondedNeighbours();
@@ -202,10 +212,8 @@ private:
     std::ofstream clusterSizesFile;
     void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
     void printClusterSizes();
-    spaceVector ipcOrientations;
     std::ofstream nematicOrderParameterFile;
     std::vector<double> nematicOrderParameter;
-    void updateOrientations();
     void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
     void printNematicOrderPatameter();
 };

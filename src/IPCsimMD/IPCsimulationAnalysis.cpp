@@ -6,6 +6,48 @@
 #include "IPCsimulation.hpp"
 
 
+
+void IPCsimulation::initializeDataAnalysis() {
+    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
+
+    meanSquaredDisplFile.open("siml/meanSquaredDisplacement.out");
+    meanSquaredDisplFile << std::scientific << std::setprecision(6);
+    ipcCentersPreviousPositions.resize(nIPCs, {0.0, 0.0, 0.0});
+    displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
+
+    numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
+    numberOfNeighboursFile << std::scientific << std::setprecision(6);
+
+    clusterSizesFile.open("siml/clusterSizes.out");
+    clusterSizesFile << std::scientific << std::setprecision(6);
+
+    ipcOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
+    nematicOrderParameter.resize(nIPCs, 0.0);
+    nematicOrderParameterFile.open("siml/NOP.out");
+    nematicOrderParameterFile << std::scientific << std::setprecision(6);
+}
+
+void IPCsimulation::doDataAnalysis() {
+    const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
+    computeHistogramOfBondedNeighbours(listOfNeighbours);
+    computeClusters(listOfNeighbours);
+
+    updateOrientations();
+    computeNematicOrderParameter(listOfNeighbours);
+}
+
+void IPCsimulation::printDataAnalysis() {
+    const double g_r_integral = pairCorrelation.print("siml/g_r.out");
+    outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+    printHistogramOfBondedNeighbours();
+    printClusterSizes();
+    printNematicOrderPatameter();
+}
+
+/******************************************************************************
+ ****************DYNAMIC PROPERTIES*******************************************
+ ******************************************************************************/
+
 void IPCsimulation::computeMSD() {
     double meanSquaredDisplacement = 0.0;
     for (IPC ipc: particles) {
@@ -20,22 +62,26 @@ void IPCsimulation::computeMSD() {
     meanSquaredDisplFile << simulationTime*simulationTimeStep << "\t" << meanSquaredDisplacement << "\n";
 }
 
-void IPCsimulation::computeStaticProperties() {
-    const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
-    computeHistogramOfBondedNeighbours(listOfNeighbours);
-    computeClusters(listOfNeighbours);
+void IPCsimulation::updateOrientations() {
+    const double norm = 1./firstPatchEccentricity;
+    for (IPC ipc: particles) {
+        for (int d: {0, 1, 2}) {
+            ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
+            relativePBC(ipcOrientations[ipc.number][d]);
+            ipcOrientations[ipc.number][d] *= norm;
+        }
+    }
+}
+void IPCsimulation::initializeAutocorrelations() {
 
-    updateOrientations();
-    computeNematicOrderParameter(listOfNeighbours);
+}
+void IPCsimulation::computeAutocorrelations() {
+
 }
 
-void IPCsimulation::printStaticProperties() {
-    const double g_r_integral = pairCorrelation.print("siml/g_r.out");
-    outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
-    printHistogramOfBondedNeighbours();
-    printClusterSizes();
-    printNematicOrderPatameter();
-}
+/******************************************************************************
+ ****************STATIC PROPERTIES*********************************************
+ ******************************************************************************/
 
 std::vector<std::list<int>> IPCsimulation::computeListOfBondedNeighbours() {
     std::vector<std::list<int>> listOfNeighbours(nIPCs);
@@ -284,17 +330,6 @@ void IPCsimulation::printClusterSizes() {
     }
     clusterSizesFile << "#" << integral << " = " << nIPCs;
     clusterSizesFile.close();
-}
-
-void IPCsimulation::updateOrientations() {
-    const double norm = 1./firstPatchEccentricity;
-    for (IPC ipc: particles) {
-        for (int d: {0, 1, 2}) {
-            ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
-            relativePBC(ipcOrientations[ipc.number][d]);
-            ipcOrientations[ipc.number][d] *= norm;
-        }
-    }
 }
 
 void IPCsimulation::computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours) {

@@ -32,30 +32,12 @@ IPCsimulation::IPCsimulation(SimulationStage const& stage) {
 
 
     if (printTrajectoryAndCorrelations) {
-        // initialize g(r)
-        pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
-
         // initialize trajectory output file
         trajectoryFile.open("siml/trajectory.xyz");
         trajectoryFile << std::scientific << std::setprecision(24);
         outputSystemTrajectory(trajectoryFile, printForces);
 
-        // initialize mean square displacement file and helpers
-        meanSquaredDisplFile.open("siml/meanSquaredDisplacement.out");
-        meanSquaredDisplFile << std::scientific << std::setprecision(6);
-        ipcCentersPreviousPositions.resize(nIPCs, {0.0, 0.0, 0.0});
-        displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
-
-        numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
-        numberOfNeighboursFile << std::scientific << std::setprecision(6);
-
-        clusterSizesFile.open("siml/clusterSizes.out");
-        clusterSizesFile << std::scientific << std::setprecision(6);
-
-        ipcOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
-        nematicOrderParameter.resize(nIPCs, 0.0);
-        nematicOrderParameterFile.open("siml/NOP.out");
-        nematicOrderParameterFile << std::scientific << std::setprecision(6);
+        initializeDataAnalysis();
     }
 }
 
@@ -88,7 +70,7 @@ double IPCsimulation::run() {
                 pairCorrelation.compute(particles);
                 outputSystemTrajectory(trajectoryFile, printForces);
                 computeMSD();
-                computeStaticProperties();
+                doDataAnalysis();
             }
             // compute averages
             ++sampleSizeForAverages;
@@ -121,7 +103,7 @@ double IPCsimulation::run() {
 
     // output analysis
     if (printTrajectoryAndCorrelations) {
-        printStaticProperties();
+        printDataAnalysis();
     }
 
     return averageTemperature;
