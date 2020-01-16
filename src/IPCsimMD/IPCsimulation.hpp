@@ -199,6 +199,8 @@ private:
     spaceVector initialOrientations;
     spaceVector initialVelocities;
     void initializeAutocorrelations();
+    double normOfCv;
+    double normOfCn;
     void computeAutocorrelations();
     // static properties
     IsotropicPairCorrelationFunction pairCorrelation;

@@ -21,24 +21,28 @@ void IPCsimulation::initializeDataAnalysis() {
     clusterSizesFile.open("siml/clusterSizes.out");
     clusterSizesFile << std::scientific << std::setprecision(6);
 
-    ipcOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
+    initializeAutocorrelations();
+
     nematicOrderParameter.resize(nIPCs, 0.0);
     nematicOrderParameterFile.open("siml/NOP.out");
     nematicOrderParameterFile << std::scientific << std::setprecision(6);
 }
 
 void IPCsimulation::doDataAnalysis() {
+    computeMSD();
+    updateOrientations();
+    computeAutocorrelations();
+
+    pairCorrelation.compute(particles);
     const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
     computeHistogramOfBondedNeighbours(listOfNeighbours);
     computeClusters(listOfNeighbours);
-
-    updateOrientations();
     computeNematicOrderParameter(listOfNeighbours);
 }
 
 void IPCsimulation::printDataAnalysis() {
     const double g_r_integral = pairCorrelation.print("siml/g_r.out");
-    outputFile << "The integral of g(r) is " << g_r_integral << " and is should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
+    outputFile << "The integral of g(r) is " << g_r_integral << " and it should be equal to the number of particles minus one, " << nIPCs-1 << std::endl;
     printHistogramOfBondedNeighbours();
     printClusterSizes();
     printNematicOrderPatameter();
@@ -73,10 +77,42 @@ void IPCsimulation::updateOrientations() {
     }
 }
 void IPCsimulation::initializeAutocorrelations() {
+    ipcOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
+    initialOrientations.resize(nIPCs, {0.0, 0.0, 0.0});
+    initialVelocities.resize(nIPCs, {0.0, 0.0, 0.0});
+    updateOrientations();
 
+    normOfCv = 0.0;
+    for(int i = 0; i < nIPCs; ++i) {
+        for (int d: {0, 1, 2}) {
+            initialOrientations[i][d] = ipcOrientations[i][d];
+            initialVelocities[i][d] = particles[i].ipcCenter.v[d];
+            normOfCv += std::pow(initialVelocities[i][d],2);
+        }
+    }
+    normOfCv = 1./normOfCv;
+    normOfCn = 1./nIPCs;
+
+    autocorrelationsFile.open("siml/autocorrelations.out");
+    autocorrelationsFile << std::scientific << std::setprecision(6);
+
+    computeAutocorrelations();
 }
-void IPCsimulation::computeAutocorrelations() {
 
+void IPCsimulation::computeAutocorrelations() {
+    double Cn = 0.0;
+    double Cv = 0.0;
+    for(int i = 0; i < nIPCs; ++i) {
+        for (int d: {0, 1, 2}) {
+            Cn += ipcOrientations[i][d]*initialOrientations[i][d];
+            Cv += particles[i].ipcCenter.v[d]*initialVelocities[i][d];
+        }
+    }
+    Cn *= normOfCn;
+    Cv *= normOfCv;
+
+    autocorrelationsFile << simulationTime*simulationTimeStep << "\t"
+                         << Cn << "\t" << Cv << "\n";
 }
 
 /******************************************************************************

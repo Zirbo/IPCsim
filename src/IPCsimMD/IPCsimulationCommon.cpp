@@ -67,9 +67,7 @@ double IPCsimulation::run() {
 
             // output trajectory and compute analysis
             if (printTrajectoryAndCorrelations) {
-                pairCorrelation.compute(particles);
                 outputSystemTrajectory(trajectoryFile, printForces);
-                computeMSD();
                 doDataAnalysis();
             }
             // compute averages
