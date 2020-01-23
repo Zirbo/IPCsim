@@ -46,10 +46,11 @@ struct SimulationStage {
     bool janusSimulation;
     int binaryMixturePercentage;
     bool printForces;
+    bool overrideTypeWithNumberOfNeighbours;
 
     SimulationStage() : inputStartingTemperature{0.}, inputStageTotalDuration{0.},
                         inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
-                        janusSimulation{false}, printForces{false}
+                        janusSimulation{false}, printForces{false}, overrideTypeWithNumberOfNeighbours{false}
                     {}
 };
 
@@ -67,6 +68,7 @@ private:
     int binaryMixtureComposition;
     bool isNotJanusSimulation() { return !isJanusSimulation; } // needed because I am blind
     bool printForces;
+    bool overrideTypeWithNumberOfNeighbours;
     unsigned long simulationTime;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;

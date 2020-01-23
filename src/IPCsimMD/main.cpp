@@ -17,15 +17,17 @@ int main ( int argc, char *argv[] ) {
                 << " * \"old\": resume an old simulation; you need the files input.in, stages.in, and a startingstate.xyz;\n"
                 << " * \"printpot\": print potentials in lammps format in potentials.out, then exit.\n"
                 << "\nOPTIONAL FLAGS:\n"
-                << "   --janus        - Run a simulation with only one patch.\n"
+                << "   --janus, -j    * Run a simulation with only one patch.\n"
                 << "                    Information in input.in regarding the second patch will be ignored.\n"
-                << "   --binary       - Run a system with a binary mixture of oppositely charged particles.\n"
+                << "   --binary       * Run a system with a binary mixture of oppositely charged particles.\n"
                 << "                    You must specify the percentage of unlike-charged particles like this:\n"
                 << "                          --binary=P\n"
                 << "                    where P is an integer number between 1 and 50.\n"
-                << "  --printforces   - Prints also the forces in the trajectory.xyz file (only in the stages where it is created).\n"
-                << "                    Be careful, the postprocess program does not support this format.\n"
-                << "                    The startingstate.xyz file will not be affected."
+                << "  --printforces,  * Prints also the forces in the trajectory.xyz file (only in the stages where it is created).\n"
+                << "           -pf      Be careful, the postprocess program does not support this format.\n"
+                << "                    The startingstate.xyz file will not be affected.\n"
+                << "  --NoNoverride,  * Overrides the type of the IPC with the number of neighbours the IPC has;\n"
+                << "          -NoN      This has been used in the analysis of chains but can be used everywhere.\n"
                 << "\n\nEXAMPLES:\n"
                 << "./IPCsim printpot\n"
                 << "./IPCsim new --binary=40\n"
@@ -36,7 +38,7 @@ int main ( int argc, char *argv[] ) {
                 << "./IPCsim new --BINARY 40        or\n./IPCsim old --prntfrcs\nwould be silently ignored!\n";
 
     // parse number of arguments
-   if(argc < 2 || argc > 4) {
+   if(argc < 2 || argc > 5) {
         std::cerr << helpMessage.str();
         return EXIT_FAILURE;
     }
@@ -60,6 +62,7 @@ int main ( int argc, char *argv[] ) {
     // boolean flags
     bool janusSimulation = getFlag(argc, argv, "--janus") || getFlag(argc, argv, "-j");
     bool printForces = getFlag(argc, argv, "--printforces") || getFlag(argc, argv, "-pf");
+    bool overridedNoN = getFlag(argc, argv, "--NoNoverride") || getFlag(argc, argv, "-NoN");
 
 
     // if we have to print the potentials, do that and not think too much
@@ -83,6 +86,7 @@ int main ( int argc, char *argv[] ) {
     currentStage.inputRestoringPreviousSimulation = (usageMode == "old");
     currentStage.binaryMixturePercentage = binaryMixturePercentage;
     currentStage.printForces = printForces;
+    currentStage.overrideTypeWithNumberOfNeighbours = overridedNoN;
     int simulatedStages = 0;
     double tollerance = 0.;
     std::cout << std::boolalpha;

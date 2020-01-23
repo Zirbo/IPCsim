@@ -241,6 +241,12 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
 {
     isJanusSimulation = stage.janusSimulation;
     printForces = stage.printForces;
+    overrideTypeWithNumberOfNeighbours = stage.overrideTypeWithNumberOfNeighbours;
+    if(stage.binaryMixturePercentage > 0 && overrideTypeWithNumberOfNeighbours) {
+        std::cerr << "Binary mixture and overrideTypeWithNumberOfNeighbours are both on.\n"
+                  << "This is currently not supported.\n";
+        exit(1);
+    }
 
     simulationTime = 0;
 
