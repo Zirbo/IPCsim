@@ -327,6 +327,23 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
         }
     }
 
+    // if requested, override the IPC type with a random cluster ID so that it gets printed
+    if(overrideTypeWithClusterID) {
+        int counter = 0;
+        for(auto cluster: clusters) {
+            ++counter;
+            counter %= 24;
+            char clusterID = 'A' + counter;
+            if (clusterID == 'P')
+                clusterID = 'Y';
+            if (clusterID == 'Q')
+                clusterID = 'Z';
+            for (auto ipc: cluster.second) {
+                particles[ipc].type = clusterID;
+            }
+        }
+    }
+
 
     // analyze the clusters
     std::map<int, int> localClusterSizes;

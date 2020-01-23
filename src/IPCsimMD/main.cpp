@@ -28,6 +28,8 @@ int main ( int argc, char *argv[] ) {
                 << "                    The startingstate.xyz file will not be affected.\n"
                 << "  --NoNoverride,  * Overrides the type of the IPC with the number of neighbours the IPC has;\n"
                 << "          -NoN      This has been used in the analysis of chains but can be used everywhere.\n"
+                << "  --ClSoverride,  * Overrides the type of the IPC with a random letter to distinguish different;\n"
+                << "          -ClS      clusters -- some neighbouring clusters might still have the same color tough.\n"
                 << "\n\nEXAMPLES:\n"
                 << "./IPCsim printpot\n"
                 << "./IPCsim new --binary=40\n"
@@ -63,6 +65,7 @@ int main ( int argc, char *argv[] ) {
     bool janusSimulation = getFlag(argc, argv, "--janus") || getFlag(argc, argv, "-j");
     bool printForces = getFlag(argc, argv, "--printforces") || getFlag(argc, argv, "-pf");
     bool overridedNoN = getFlag(argc, argv, "--NoNoverride") || getFlag(argc, argv, "-NoN");
+    bool overridedClS = getFlag(argc, argv, "--ClSoverride") || getFlag(argc, argv, "-ClS");
 
 
     // if we have to print the potentials, do that and not think too much
@@ -87,6 +90,7 @@ int main ( int argc, char *argv[] ) {
     currentStage.binaryMixturePercentage = binaryMixturePercentage;
     currentStage.printForces = printForces;
     currentStage.overrideTypeWithNumberOfNeighbours = overridedNoN;
+    currentStage.overrideTypeWithClusterID = overridedClS;
     int simulatedStages = 0;
     double tollerance = 0.;
     std::cout << std::boolalpha;
