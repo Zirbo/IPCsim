@@ -8,12 +8,14 @@
 
 
 void IPCsimulation::initializeDataAnalysis() {
-    pairCorrelation.initialize(20, simulationBoxSide, nIPCs);
+    pairCorrelation.initialize(40, simulationBoxSide, nIPCs);
 
     meanSquaredDisplFile.open("siml/meanSquaredDisplacement.out");
     meanSquaredDisplFile << std::scientific << std::setprecision(6);
     ipcCentersPreviousPositions.resize(nIPCs, {0.0, 0.0, 0.0});
+    updatePreviousPositions();
     displacementOfEachIPCs.resize(nIPCs, {0.0, 0.0, 0.0});
+    computeMSD();
 
     numberOfNeighboursFile.open("siml/numberOfNeighbours.out");
     numberOfNeighboursFile << std::scientific << std::setprecision(6);
@@ -38,6 +40,8 @@ void IPCsimulation::doDataAnalysis() {
     computeHistogramOfBondedNeighbours(listOfNeighbours);
     computeClusters(listOfNeighbours);
     computeNematicOrderParameter(listOfNeighbours);
+
+    updatePreviousPositions();
 }
 
 void IPCsimulation::printDataAnalysis() {
@@ -64,6 +68,15 @@ void IPCsimulation::computeMSD() {
     }
     meanSquaredDisplacement /= nIPCs;
     meanSquaredDisplFile << simulationTime*simulationTimeStep << "\t" << meanSquaredDisplacement << "\n";
+}
+
+void IPCsimulation::updatePreviousPositions() {
+    // set the current as the previous iteration state
+    for (IPC ipc: particles) {
+        for (int j: {0, 1, 2}) {
+            ipcCentersPreviousPositions[ipc.number][j] = ipc.ipcCenter.x[j];
+        }
+    }
 }
 
 void IPCsimulation::updateOrientations() {
@@ -345,7 +358,7 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
     }
 
 
-    // analyze the clusters
+    // compute the clusters sizes
     std::map<int, int> localClusterSizes;
     for (auto i: clusters) {
         const int size = i.second.size();
@@ -357,7 +370,7 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
         }
     }
 
-    // print and add to the averaged final histogram
+    // print and add to the averaged cluster size histogram
     int integral = 0;
     for(std::pair<int, int> n: localClusterSizes) {
         clusterSizesFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
@@ -374,6 +387,12 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
         std::cerr << __func__ << ": something really shitty is going on in the cluster size analysis.";
         exit(1);
     }
+
+    // compute the end-to-end distance for clusters
+  //  for (auto cluster: clusters) {
+        // find the endpoints of this cluster --- watch out for branchpoints :P
+        // compute the distance between endpoints and divide for the cluster size!
+ //   }
 }
 
 void IPCsimulation::printClusterSizes() {

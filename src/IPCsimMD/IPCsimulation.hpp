@@ -193,6 +193,7 @@ private:
     void doDataAnalysis();
     void printDataAnalysis();
     // MSD
+    void updatePreviousPositions();
     std::ofstream meanSquaredDisplFile;
     spaceVector ipcCentersPreviousPositions;
     spaceVector displacementOfEachIPCs;
