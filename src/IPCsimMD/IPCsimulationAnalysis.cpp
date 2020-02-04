@@ -419,7 +419,7 @@ void IPCsimulation::chainFlatnessAnalysis(std::vector<std::list<int>> const& lis
         }
     }
     average_pOverL += pOverL/pOverLsamples;
-    outputFile << "Average pOverL at " << simulationTime << ": " << average_pOverL*simulationBoxSide*printingInterval/simulationTime << "\n";
+    outputFile << "Average pOverL at " << simulationTime*simulationTimeStep << ": " << average_pOverL*simulationBoxSide*printingInterval/(simulationTime*simulationTimeStep) << "\n";
 }
 
 void IPCsimulation::overrideIPCtypeWithClusterID(std::map<int, std::unordered_set<int>> const& clusters) {
