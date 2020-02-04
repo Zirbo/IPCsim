@@ -217,11 +217,11 @@ private:
     void computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours);
     double computePotentialBetweenTwoIPCs(const int firstIPC, const int secndIPC);
     void printHistogramOfBondedNeighbours();
-    std::map<int, int> clusterSizes;
+    std::map<int, int> clusterSizesHistogram;
     std::ofstream clusterSizesFile;
     void doClustersAnalysis(std::vector<std::list<int>> const& listOfNeighbours);
     std::map<int, std::unordered_set<int>> findClusters(std::vector<std::list<int>> const& listOfNeighbours);
-    std::map<int, int> computeClusterSizes(std::map<int, std::unordered_set<int>> const& clusters);
+    std::map<int, int> computeClusterSizesHistogram(std::map<int, std::unordered_set<int>> const& clusters);
     void chainFlatnessAnalysis(std::vector<std::list<int>> const& listOfNeighbours, std::map<int, std::unordered_set<int>> const& clusters);
     void overrideIPCtypeWithClusterID(std::map<int, std::unordered_set<int>> const& clusters);
     double average_pOverL;

@@ -296,37 +296,43 @@ void IPCsimulation::printHistogramOfBondedNeighbours() {
 }
 
 void IPCsimulation::doClustersAnalysis(std::vector<std::list<int>> const& listOfNeighbours) {
-
+    // find and count the clusters
     std::map<int, std::unordered_set<int>> clusters = findClusters(listOfNeighbours);
-    std::map<int, int> localClusterSizes = computeClusterSizes(clusters);
+    std::map<int, int> localClusterSizesHistogram = computeClusterSizesHistogram(clusters);
 
-    chainFlatnessAnalysis(listOfNeighbours, clusters);
-
-    if(overrideTypeWithClusterID)
-        overrideIPCtypeWithClusterID(clusters);
-
-    // print and add to the averaged cluster size histogram
+    // print and add to the cluster size histogram that averages on all simulation
     int integral = 0;
-    for(std::pair<int, int> n: localClusterSizes) {
+    for(std::pair<int, int> n: localClusterSizesHistogram) {
         clusterSizesFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
 
         integral += n.first*n.second;
-        if (clusterSizes.count(n.first) == 0) {
-            clusterSizes[n.first] = n.second;
+        if (clusterSizesHistogram.count(n.first) == 0) {
+            clusterSizesHistogram[n.first] = n.second;
         }
         else {
-            clusterSizes[n.first] += n.second;
+            clusterSizesHistogram[n.first] += n.second;
         }
     }
     if(integral != nIPCs) {
         std::cerr << __func__ << ": something really shitty is going on in the cluster size analysis.";
         exit(1);
     }
+
+    // these are only for chains, no point in computing it for any other system -- need to improve the flag
+    chainFlatnessAnalysis(listOfNeighbours, clusters);
+    if(overrideTypeWithClusterID)
+        overrideIPCtypeWithClusterID(clusters);
 }
 
 std::map<int, std::unordered_set<int>> IPCsimulation::findClusters(std::vector<std::list<int>> const& listOfNeighbours) {
+    // first is the cluster head-of-chain IPC, second is the unordered set of the IPCs in the cluster, INCLUDING the head
     std::map<int, std::unordered_set<int>> clusters;
 
+    /* Interate through the IPCs, and for each make a group with all its neighbours.
+     * Check if any of them is present in other clusters; if so, join all the clusters, otherwise create a new one.
+     * The join is done in two steps: first find all the matches, and only afterwards to the actual joining.
+     * This is to avoid changing the map over which we are iterating.
+     */
     for (int i = 0; i < nIPCs; ++i) {
         std::unordered_set<int> currentGroup;
         currentGroup.insert(i);
@@ -369,22 +375,23 @@ std::map<int, std::unordered_set<int>> IPCsimulation::findClusters(std::vector<s
 
     return clusters;
 }
-std::map<int, int> IPCsimulation::computeClusterSizes(std::map<int, std::unordered_set<int>> const& clusters) {
-    std::map<int, int> clustersSize;
+std::map<int, int> IPCsimulation::computeClusterSizesHistogram(std::map<int, std::unordered_set<int>> const& clusters) {
+    std::map<int, int> clustersSizeHistogram;
     for (auto i: clusters) {
         const int size = i.second.size();
-        if (clustersSize.count(size) == 0) {
-            clustersSize[size] = 1;
+        if (clustersSizeHistogram.count(size) == 0) {
+            clustersSizeHistogram[size] = 1;
         }
         else {
-            clustersSize[size] += 1;
+            clustersSizeHistogram[size] += 1;
         }
     }
 
-    return clustersSize;
+    return clustersSizeHistogram;
 }
 
 void IPCsimulation::chainFlatnessAnalysis(std::vector<std::list<int>> const& listOfNeighbours, std::map<int, std::unordered_set<int>> const& clusters) {
+    // go through all the clusters, compute the end-to-end distance, and divide it by the cluster size. Average this number through all the simulation.
     double pOverL = 0.0;
     int pOverLsamples = 0;
 
@@ -446,7 +453,7 @@ void IPCsimulation::printClusterSizes() {
 
     int i = 0;
     int integral = 0;
-    for(auto n: clusterSizes) {
+    for(auto n: clusterSizesHistogram) {
         clusterSizesFile << n.first << "\t" << norm*n.second << "\n";
         integral += n.first*n.second;
         ++i;
@@ -456,6 +463,11 @@ void IPCsimulation::printClusterSizes() {
 }
 
 void IPCsimulation::computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours) {
+    /* nematic order parameter, I took the definition from
+     * Cuetos, van Roij, Dijkstra, Soft Matter, 2008, 4, 757-767
+     * https://doi.org/10.1039/B715764A
+     */
+
     // loop on the lists of neighbours
     double averageNOP = 0.0;
     for (int i = 0; i < nIPCs; ++i) {
