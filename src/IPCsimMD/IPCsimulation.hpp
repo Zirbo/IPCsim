@@ -30,6 +30,7 @@
 #include <vector>
 #include <array>
 #include <map>
+#include <unordered_set>
 #include <string>
 #include <cmath>
 #include "../IPC.hpp"
@@ -218,7 +219,12 @@ private:
     void printHistogramOfBondedNeighbours();
     std::map<int, int> clusterSizes;
     std::ofstream clusterSizesFile;
-    void computeClusters(std::vector<std::list<int>> const& listOfNeighbours);
+    void doClustersAnalysis(std::vector<std::list<int>> const& listOfNeighbours);
+    std::map<int, std::unordered_set<int>> findClusters(std::vector<std::list<int>> const& listOfNeighbours);
+    std::map<int, int> computeClusterSizes(std::map<int, std::unordered_set<int>> const& clusters);
+    void chainFlatnessAnalysis(std::vector<std::list<int>> const& listOfNeighbours, std::map<int, std::unordered_set<int>> const& clusters);
+    void overrideIPCtypeWithClusterID(std::map<int, std::unordered_set<int>> const& clusters);
+    double average_pOverL;
     void printClusterSizes();
     std::ofstream nematicOrderParameterFile;
     std::vector<double> nematicOrderParameter;

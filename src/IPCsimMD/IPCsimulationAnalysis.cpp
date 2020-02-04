@@ -2,7 +2,6 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
-#include <unordered_set>
 #include "IPCsimulation.hpp"
 
 
@@ -22,6 +21,7 @@ void IPCsimulation::initializeDataAnalysis() {
 
     clusterSizesFile.open("siml/clusterSizes.out");
     clusterSizesFile << std::scientific << std::setprecision(6);
+    average_pOverL = 0.;
 
     initializeAutocorrelations();
 
@@ -38,7 +38,7 @@ void IPCsimulation::doDataAnalysis() {
     pairCorrelation.compute(particles);
     const std::vector<std::list<int>> listOfNeighbours = computeListOfBondedNeighbours();
     computeHistogramOfBondedNeighbours(listOfNeighbours);
-    computeClusters(listOfNeighbours);
+    doClustersAnalysis(listOfNeighbours);
     computeNematicOrderParameter(listOfNeighbours);
 
     updatePreviousPositions();
@@ -295,9 +295,36 @@ void IPCsimulation::printHistogramOfBondedNeighbours() {
     }
 }
 
-void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNeighbours) {
-    // /home/bianchi/IPC-QUASI-2D-MC/IPC-Quasi2D-PostProcessing-NEW/ipc-postprocessing.f90
+void IPCsimulation::doClustersAnalysis(std::vector<std::list<int>> const& listOfNeighbours) {
 
+    std::map<int, std::unordered_set<int>> clusters = findClusters(listOfNeighbours);
+    std::map<int, int> localClusterSizes = computeClusterSizes(clusters);
+
+    chainFlatnessAnalysis(listOfNeighbours, clusters);
+
+    if(overrideTypeWithClusterID)
+        overrideIPCtypeWithClusterID(clusters);
+
+    // print and add to the averaged cluster size histogram
+    int integral = 0;
+    for(std::pair<int, int> n: localClusterSizes) {
+        clusterSizesFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
+
+        integral += n.first*n.second;
+        if (clusterSizes.count(n.first) == 0) {
+            clusterSizes[n.first] = n.second;
+        }
+        else {
+            clusterSizes[n.first] += n.second;
+        }
+    }
+    if(integral != nIPCs) {
+        std::cerr << __func__ << ": something really shitty is going on in the cluster size analysis.";
+        exit(1);
+    }
+}
+
+std::map<int, std::unordered_set<int>> IPCsimulation::findClusters(std::vector<std::list<int>> const& listOfNeighbours) {
     std::map<int, std::unordered_set<int>> clusters;
 
     for (int i = 0; i < nIPCs; ++i) {
@@ -340,59 +367,76 @@ void IPCsimulation::computeClusters(std::vector<std::list<int>> const& listOfNei
         }
     }
 
-    // if requested, override the IPC type with a random cluster ID so that it gets printed
-    if(overrideTypeWithClusterID) {
-        int counter = 0;
-        for(auto cluster: clusters) {
-            ++counter;
-            counter %= 24;
-            char clusterID = 'A' + counter;
-            if (clusterID == 'P')
-                clusterID = 'Y';
-            if (clusterID == 'Q')
-                clusterID = 'Z';
-            for (auto ipc: cluster.second) {
-                particles[ipc].type = clusterID;
-            }
-        }
-    }
-
-
-    // compute the clusters sizes
-    std::map<int, int> localClusterSizes;
+    return clusters;
+}
+std::map<int, int> IPCsimulation::computeClusterSizes(std::map<int, std::unordered_set<int>> const& clusters) {
+    std::map<int, int> clustersSize;
     for (auto i: clusters) {
         const int size = i.second.size();
-        if (localClusterSizes.count(size) == 0) {
-            localClusterSizes[size] = 1;
+        if (clustersSize.count(size) == 0) {
+            clustersSize[size] = 1;
         }
         else {
-            localClusterSizes[size] += 1;
+            clustersSize[size] += 1;
         }
     }
 
-    // print and add to the averaged cluster size histogram
-    int integral = 0;
-    for(std::pair<int, int> n: localClusterSizes) {
-        clusterSizesFile << simulationTime*simulationTimeStep << "\t" << n.first << "\t" << n.second << "\n";
+    return clustersSize;
+}
 
-        integral += n.first*n.second;
-        if (clusterSizes.count(n.first) == 0) {
-            clusterSizes[n.first] = n.second;
-        }
-        else {
-            clusterSizes[n.first] += n.second;
-        }
-    }
-    if(integral != nIPCs) {
-        std::cerr << __func__ << ": something really shitty is going on in the cluster size analysis.";
-        exit(1);
-    }
+void IPCsimulation::chainFlatnessAnalysis(std::vector<std::list<int>> const& listOfNeighbours, std::map<int, std::unordered_set<int>> const& clusters) {
+    double pOverL = 0.0;
+    int pOverLsamples = 0;
 
-    // compute the end-to-end distance for clusters
-  //  for (auto cluster: clusters) {
+    for (auto cluster: clusters) {
+        if (cluster.second.size() == 0)
+            continue;
         // find the endpoints of this cluster --- watch out for branchpoints :P
+        int firstEndpoint = -1;
+        int secondEndpoint = -1;
+        for (int IPC: cluster.second) {
+            if(listOfNeighbours[IPC].size() == 1) {
+                if (firstEndpoint == -1)
+                    firstEndpoint = IPC;
+                else if (secondEndpoint == -1) {
+                    secondEndpoint = IPC;
+                    break;
+                }
+            }
+        }
         // compute the distance between endpoints and divide for the cluster size!
- //   }
+        if (firstEndpoint != -1 && secondEndpoint != -1) {
+            double endToEndDistance[3];
+            for (int i: {0, 1, 2}) {
+                endToEndDistance[i] = particles[firstEndpoint].ipcCenter.x[i] - particles[secondEndpoint].ipcCenter.x[i];
+                relativePBC(endToEndDistance[i]);
+            }
+            double endToEndDistanceModulus = std::sqrt( std::pow(endToEndDistance[0], 2)
+                                                      + std::pow(endToEndDistance[1], 2)
+                                                      + std::pow(endToEndDistance[2], 2) );
+            pOverL += endToEndDistanceModulus/cluster.second.size();
+            ++pOverLsamples;
+        }
+    }
+    average_pOverL += pOverL/pOverLsamples;
+    outputFile << "Average pOverL at " << simulationTime << ": " << average_pOverL*simulationBoxSide*printingInterval/simulationTime << "\n";
+}
+
+void IPCsimulation::overrideIPCtypeWithClusterID(std::map<int, std::unordered_set<int>> const& clusters) {
+    // overrides the IPC type with a random cluster ID so that it gets printed in the startingstate and trajectory
+    int counter = 0;
+    for(auto cluster: clusters) {
+        ++counter;
+        counter %= 24;
+        char clusterID = 'A' + counter;
+        if (clusterID == 'P')
+            clusterID = 'Y';
+        if (clusterID == 'Q')
+            clusterID = 'Z';
+        for (auto ipc: cluster.second) {
+            particles[ipc].type = clusterID;
+        }
+    }
 }
 
 void IPCsimulation::printClusterSizes() {
