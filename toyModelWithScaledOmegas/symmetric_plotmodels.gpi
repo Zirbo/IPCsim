@@ -35,74 +35,74 @@ set style data l
 
 set output "isoW.eps"
 set title "isoW"
-p "models/potentials_isoW/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_isoW/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_isoW/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_isoW/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_isoW/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_isoW/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "minIPC.eps"
 set title "minIPC"
-p "models/potentials_minIPC/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_minIPC/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_minIPC/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_minIPC/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_minIPC/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_minIPC/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "cPat.eps"
 set title "cPat"
-p "models/potentials_cPat/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_cPat/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_cPat/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_cPat/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_cPat/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_cPat/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "target.eps"
 set title "target"
-p "models/potentials_target/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_target/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_target/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_target/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_target/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_target/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 
 set output "PP1.eps"
 set title "PP1"
-p "models/potentials_PP1/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_PP1/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_PP1/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_PP1/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_PP1/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_PP1/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "PP2.eps"
 set title "PP2"
-p "models/potentials_PP2/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_PP2/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_PP2/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_PP2/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_PP2/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_PP2/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "PP3.eps"
 set title "PP3"
-p "models/potentials_PP3/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_PP3/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_PP3/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_PP3/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_PP3/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_PP3/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 
 set output "EE1.eps"
 set title "EE1"
-p "models/potentials_EE1/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_EE1/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_EE1/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_EE1/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_EE1/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_EE1/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "EE2.eps"
 set title "EE2"
-p "models/potentials_EE2/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_EE2/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_EE2/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_EE2/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_EE2/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_EE2/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "EE3.eps"
 set title "EE3"
-p "models/potentials_EE3/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_EE3/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_EE3/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_EE3/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_EE3/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_EE3/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "EE4.eps"
 set title "EE4"
-p "models/potentials_EE4/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_EE4/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_EE4/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_EE4/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_EE4/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_EE4/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
 
 set output "EE5.eps"
 set title "EE5"
-p "models/potentials_EE5/emanuela_r_uu.dat" dt 1 lc 7 lw 3 t "EE", \
-  "models/potentials_EE5/emanuela_r_ul.dat" dt 2 lc 8 lw 3 t "EP", \
-  "models/potentials_EE5/emanuela_r_ll.dat" dt 5 lc 6 lw 3 t "PP"
+p "models/potentials_EE5/emanuela_r_uu.dat" dt 1 lc "blue"  lw 3 t "EE", \
+  "models/potentials_EE5/emanuela_r_ul.dat" dt 2 lc "green" lw 3 t "EP", \
+  "models/potentials_EE5/emanuela_r_ll.dat" dt 5 lc "red"   lw 3 t "PP"
