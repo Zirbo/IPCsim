@@ -28,6 +28,9 @@ void IPCsimulation::initializeDataAnalysis() {
     nematicOrderParameter.resize(nIPCs, 0.0);
     nematicOrderParameterFile.open("siml/NOP.out");
     nematicOrderParameterFile << std::scientific << std::setprecision(6);
+
+    orientationHistogramSize = 40;
+    orientationsHistogram.resize(orientationHistogramSize, std::vector<double>(2*orientationHistogramSize, 0.));
 }
 
 void IPCsimulation::doDataAnalysis() {
@@ -41,6 +44,8 @@ void IPCsimulation::doDataAnalysis() {
     doClustersAnalysis(listOfNeighbours);
     computeNematicOrderParameter(listOfNeighbours);
 
+    accumulateOrientationsHistogram();
+
     updatePreviousPositions();
 }
 
@@ -50,6 +55,7 @@ void IPCsimulation::printDataAnalysis() {
     printHistogramOfBondedNeighbours();
     printClusterSizes();
     printNematicOrderPatameter();
+    printOrientationsHistogram();
 }
 
 /******************************************************************************
@@ -403,8 +409,11 @@ void IPCsimulation::chainFlatnessAnalysis(std::vector<std::list<int>> const& lis
     double pOverL = 0.0;
     int pOverLsamples = 0;
 
+    //const size_t maxSize = size_t(simulationBoxSide*std::cbrt(3.));
+
     for (auto cluster: clusters) {
-        if (cluster.second.size() == 0)
+        const size_t clusterSize = cluster.second.size();
+        if ( clusterSize == 0 ) // || clusterSize < maxSize )
             continue;
         // find the endpoints of this cluster --- watch out for branchpoints :P
         int firstEndpoint = -1;
@@ -512,4 +521,43 @@ void IPCsimulation::printNematicOrderPatameter() {
     averageNOP *= norm;
     nematicOrderParameterFile << "# Average of the final NOP: " << averageNOP/nIPCs << std::endl;
     nematicOrderParameterFile.close();
+}
+
+void IPCsimulation::accumulateOrientationsHistogram() {
+    // polar -> angle with the z-axis; azimuth -> angle with the x-axis
+    // accumulute in a histogram the polar and azimuth angles of each IPC
+    // we assume patch symmetry, so at the moment if cosPolar < 0 we do polar += pi/2 and azimuth += pi
+    const double binSize = M_PI/orientationHistogramSize;
+
+    for (auto const& ipcOrientation: ipcOrientations) {
+        double polarAngle = std::acos(ipcOrientation[2]);
+        const double polarScaling = 1./std::sin(polarAngle);
+        double azimuthAngle = M_PI + std::atan2(ipcOrientation[1]*polarScaling, ipcOrientation[0]*polarScaling);
+
+/*        if (ipcOrientation[2] < 0) {
+            polarAngle = M_PI - polarAngle;
+            azimuthAngle += M_PI;
+            if (azimuthAngle > 2*M_PI)
+                azimuthAngle -= 2*M_PI;
+        }*/
+
+        const int polarBin = int(polarAngle/binSize);
+        const int azimuthBin = int(azimuthAngle/binSize);
+        ++orientationsHistogram[polarBin][azimuthBin];
+    }
+}
+
+void IPCsimulation::printOrientationsHistogram() {
+    std::ofstream outputFile("siml/orientationsHistogram.out");
+    outputFile << std::scientific << std::setprecision(6);
+
+    double norm = printingInterval/simulationTotalDuration;
+    const double binSize = M_PI/orientationHistogramSize;
+
+    for (int p = 0; p < orientationHistogramSize; ++p) {
+        for (int a = 0; a < 2*orientationHistogramSize; ++a) {
+            outputFile << p*binSize << "\t" << a*binSize << "\t" << orientationsHistogram[p][a]*norm << "\n";
+        }
+    }
+    outputFile.close();
 }
