@@ -230,6 +230,10 @@ private:
     std::vector<double> nematicOrderParameter;
     void computeNematicOrderParameter(std::vector<std::list<int>> const& listOfNeighbours);
     void printNematicOrderPatameter();
+    std::vector<std::vector<double>> orientationsHistogram;
+    int orientationHistogramSize;
+    void accumulateOrientationsHistogram();
+    void printOrientationsHistogram();
 };
 
 #endif //__IPCSIMULATOR_HEADER_INCLUDED__
