@@ -30,6 +30,10 @@ int main ( int argc, char *argv[] ) {
                 << "          -NoN      This has been used in the analysis of chains but can be used everywhere.\n"
                 << "  --ClSoverride,  * Overrides the type of the IPC with a random letter to distinguish different;\n"
                 << "          -ClS      clusters -- some neighbouring clusters might still have the same color tough.\n"
+                << "  --NoNThresh,    * Overrides the type of the IPC with a binary color, depending on the number of neighbours the IPC has;\n"
+                << "                    You must specify the threshold like this:\n"
+                << "                          --NoNThresh=P\n"
+                << "                    where P is an integer number between 1 and 12.\n"
                 << "\n\nEXAMPLES:\n"
                 << "./IPCsim printpot\n"
                 << "./IPCsim new --binary=40\n"
@@ -57,6 +61,15 @@ int main ( int argc, char *argv[] ) {
     if(!binaryMixtureEnabled.empty()) {
         binaryMixturePercentage = std::stoi(binaryMixtureEnabled);
         if(binaryMixturePercentage < 1 || binaryMixturePercentage > 50) {
+            std::cerr << helpMessage.str();
+            return EXIT_FAILURE;
+        }
+    }
+    std::string nonThreshEnabled = getFlagWithOption(argc, argv, "--NoNThresh=");
+    int nonThresh = 0;
+    if(!nonThreshEnabled.empty()) {
+        nonThresh = std::stoi(nonThreshEnabled);
+        if(nonThresh < 1 || nonThresh > 12) {
             std::cerr << helpMessage.str();
             return EXIT_FAILURE;
         }
@@ -91,6 +104,7 @@ int main ( int argc, char *argv[] ) {
     currentStage.printForces = printForces;
     currentStage.overrideTypeWithNumberOfNeighbours = overridedNoN;
     currentStage.overrideTypeWithClusterID = overridedClS;
+    currentStage.overrideTypeWithNumberOfNeighboursThreshold = nonThresh;
     int simulatedStages = 0;
     double tollerance = 0.;
     std::cout << std::boolalpha;

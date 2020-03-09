@@ -243,10 +243,24 @@ void IPCsimulation::initializeSystem(const SimulationStage &stage)
     printForces = stage.printForces;
     overrideTypeWithNumberOfNeighbours = stage.overrideTypeWithNumberOfNeighbours;
     overrideTypeWithClusterID = stage.overrideTypeWithClusterID;
-    if( (overrideTypeWithNumberOfNeighbours && overrideTypeWithClusterID) ||
-            (stage.binaryMixturePercentage > 0 && (overrideTypeWithNumberOfNeighbours || overrideTypeWithClusterID) ) ) {
-        std::cerr << "Eneabling more than one of binary mixture, overrideTypeWithNumberOfNeighbours "
-                  << "and overrideTypeWithClusterID at the same time is currently not supported.\n";
+    overrideTypeWithNumberOfNeighboursThreshold = stage.overrideTypeWithNumberOfNeighboursThreshold;
+
+    int tooManyModesEnabled = 0;
+    if (overrideTypeWithNumberOfNeighbours)
+        ++tooManyModesEnabled;
+    if (overrideTypeWithClusterID)
+        ++tooManyModesEnabled;
+    if (stage.binaryMixturePercentage > 0)
+        ++tooManyModesEnabled;
+    if (overrideTypeWithNumberOfNeighboursThreshold != 0)
+        ++tooManyModesEnabled;
+    if( tooManyModesEnabled > 1 ) {
+        std::cerr << "Enabling more than one of\n"
+                  << " * binary mixture,\n"
+                  << " * overrideTypeWithNumberOfNeighbours,\n"
+                  << " * overrideTypeWithClusterID,\n"
+                  << " * and overrideTypeWithNumberOfNeighboursThreshold\n"
+                  << "is not supported.\n";
         exit(1);
     }
 

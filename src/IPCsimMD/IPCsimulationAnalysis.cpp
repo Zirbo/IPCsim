@@ -172,6 +172,14 @@ void IPCsimulation::computeHistogramOfBondedNeighbours(std::vector<std::list<int
         }
     }
 
+    // if requested, override the IPC type with the NoN so that it gets printed
+    if(overrideTypeWithNumberOfNeighboursThreshold != 0) {
+        for(int i = 0; i < nIPCs; ++i) {
+            char newType = (numberOfNeighbours[i] > overrideTypeWithNumberOfNeighboursThreshold)? 'W' : 'S';
+            particles[i].type = newType;
+        }
+    }
+
     // compute the histogram of neighbours
     std::map<int, int> histogramOfNeighbours;
     for(int neighboursOfThisParticle: numberOfNeighbours) {

@@ -48,12 +48,13 @@ struct SimulationStage {
     int binaryMixturePercentage;
     bool printForces;
     bool overrideTypeWithNumberOfNeighbours;
+    int overrideTypeWithNumberOfNeighboursThreshold;
     bool overrideTypeWithClusterID;
 
     SimulationStage() : inputStartingTemperature{0.}, inputStageTotalDuration{0.},
                         inputRestoringPreviousSimulation{false}, inputPrintTrajectoryAndCorrelations{false},
                         janusSimulation{false}, printForces{false}, overrideTypeWithNumberOfNeighbours{false},
-                        overrideTypeWithClusterID{false}
+                        overrideTypeWithNumberOfNeighboursThreshold{0}, overrideTypeWithClusterID{false}
                     {}
 };
 
@@ -73,6 +74,7 @@ private:
     bool printForces;
     bool overrideTypeWithNumberOfNeighbours;
     bool overrideTypeWithClusterID;
+    int overrideTypeWithNumberOfNeighboursThreshold;
     unsigned long simulationTime;
     std::ofstream outputFile;
     std::ofstream energyTrajectoryFile;
