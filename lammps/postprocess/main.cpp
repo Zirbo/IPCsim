@@ -7,20 +7,20 @@
 int main ( int argc, char *argv[] ) {
 
     std::stringstream helpMessage;
-    helpMessage << "You need to specify a valid trajectory file and an inputfile!\n";
+    helpMessage << "You need to specify a valid trajectory file, inputfile, and the directory were the potentials are stored!\n";
 
     std::string trajFile;
     std::string inputFile;
-    if(argc == 3) {
+    std::string potDirName;
+    if(argc == 4) {
         trajFile = argv[1];
         inputFile = argv[2];
+        potDirName = argv[3];
     } else {
         std::cout << helpMessage.str();
         exit(1);
     }
 
-    IPCpostprocess postProcess(trajFile, inputFile);
-    std::cout << "Starting postprocess.\n";
+    IPCpostprocess postProcess(trajFile, inputFile, potDirName);
     postProcess.run();
-    std::cout << "Postprocess finished.\n";
 }

@@ -11,11 +11,11 @@
 #include <string>
 
 #include "IPC.hpp"
-
+#include "IPCpostprocessPotential.hpp"
 
 class IPCpostprocess {
 public:
-    IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename);
+    IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename, const std::string &potDirName);
     void run();
 
 
@@ -27,18 +27,15 @@ private:
     // state point
     int nIPCs;
     double boxSideX, boxSideY, boxSideZ;
+    std::vector<IPC> particles;
     // geometry
     double ipcRadius, patchRadius, patchEccentricity, interactionRange;
 
-
-    std::vector<IPC> particles;
+    IPCpotential potential;
 
     void readFirstConfiguration();
     bool readNewConfiguration();
     void readIPCconfiguration();
-
-    void initializeDataAnalysis();
-    void doDataAnalysis();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

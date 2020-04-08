@@ -1,4 +1,3 @@
-#include "IPCpostprocess.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
@@ -6,8 +5,9 @@
 #include <cmath>
 #include <algorithm>
 
+#include "IPCpostprocess.hpp"
 
-IPCpostprocess::IPCpostprocess(std::string const& trajFilename, const std::string &inputFilename) {
+IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename, std::string const& potDirName) {
 
     // clean up old data and recreate output directory
     if(system("rm -rf analysis") != 0) {
@@ -37,15 +37,15 @@ IPCpostprocess::IPCpostprocess(std::string const& trajFilename, const std::strin
         std::cerr << "File " << trajFilename << " could not be opened. Aborting.\n";
         exit(1);
     }
+
+    potential.initialize(potDirName);
 }
 
 void IPCpostprocess::run() {
     readFirstConfiguration();
-    initializeDataAnalysis();
 
     while (trajectoryFile.peek() != EOF) {
         readNewConfiguration();
-        doDataAnalysis();
     }
 }
 
@@ -107,12 +107,4 @@ void IPCpostprocess::readIPCconfiguration() {
             ipc.secndPatch.x[i] /= boxSideZ;
         }*/
     }
-}
-
-void IPCpostprocess::initializeDataAnalysis() {
-    //
-}
-
-void IPCpostprocess::doDataAnalysis() {
-    //
 }

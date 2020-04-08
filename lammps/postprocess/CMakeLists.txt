@@ -14,6 +14,10 @@ set(ALL_FILES
     IPCpostprocess.cpp
     IPCpostprocess.hpp
     main.cpp
+    IPCpostprocessPotential.hpp
+    IPCpostprocessPotential.cpp
+   # IPCpostprocessDataAnalysis.hpp
+   # IPCpostprocessDataAnalysis.cpp
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
