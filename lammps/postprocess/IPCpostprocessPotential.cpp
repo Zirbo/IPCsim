@@ -18,8 +18,10 @@ void IPCpotential::initialize(std::string const& potentialsDir) {
     readFile(fileName, spacingSS, uss);
 
     if( !(spacingBB == spacingBS) || !(spacingBS== spacingSS) ) {
-        throw 1; //fix me
+        std::cerr << __func__ << ":: something really shitty is going on in the pair potential computation.";
+        exit(1);
     }
+    spacing = spacingBB;
 }
 
 void IPCpotential::readFile(std::string const& fileName, double & spacing, std::vector<double> & container) {

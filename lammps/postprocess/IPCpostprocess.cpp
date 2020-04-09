@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "IPCpostprocess.hpp"
+#include "IPCpostprocessNeighbourAnalysis.hpp"
 
 IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename, std::string const& potDirName) {
 
@@ -43,10 +44,14 @@ IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string cons
 
 void IPCpostprocess::run() {
     readFirstConfiguration();
+    IPCneighboursAnalysis neighbourAnalysis(boxSideX, boxSideY, boxSideZ, interactionRange);
+    neighbourAnalysis.accumulate(potential, particles);
 
     while (trajectoryFile.peek() != EOF) {
         readNewConfiguration();
+        neighbourAnalysis.accumulate(potential, particles);
     }
+    neighbourAnalysis.print();
 }
 
 void IPCpostprocess::readFirstConfiguration() {
