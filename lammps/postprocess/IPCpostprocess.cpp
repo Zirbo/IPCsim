@@ -121,7 +121,7 @@ void IPCpostprocess::readIPCconfiguration() {
 void IPCpostprocess::computeOrientations() {
     const double norm[3] = {boxSideX/patchEccentricity, boxSideY/patchEccentricity, boxSideZ/patchEccentricity};
 
-    int checkSum;
+    double checkSum;
     for (IPC ipc: ipcs) {
         if (ipc.number < 3)
             checkSum = 0.;
@@ -133,9 +133,10 @@ void IPCpostprocess::computeOrientations() {
                 checkSum += std::pow(ipcOrientations[ipc.number][d],2);
         }
         if (ipc.number < 3) {
-            //checkSum = std::sqrt(checkSum);
-            if (std::fabs(checkSum - 1.0) > 1e-5) {
-                std::cerr << __func__ << ":: something bad happened!";
+            checkSum = std::sqrt(checkSum);
+            double diff = std::fabs(checkSum - 1.0);
+            if ( diff > 5e-2) {
+                std::cerr << __func__ << ":: wrong normalization of the orientation of ipc " << ipc.number << ": " << checkSum*patchEccentricity<<" !\n";
                 exit(1);
             }
         }
