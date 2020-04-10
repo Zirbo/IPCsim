@@ -18,6 +18,8 @@ set(ALL_FILES
     IPCpostprocessPotential.cpp
     IPCpostprocessNeighbourAnalysis.hpp
     IPCpostprocessNeighbourAnalysis.cpp
+    IPCpostprocessOrientationsAnalysis.hpp
+    IPCpostprocessOrientationsAnalysis.cpp
 )
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})

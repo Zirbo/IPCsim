@@ -1,6 +1,9 @@
 #ifndef __IPC_HEADER_INCLUDED__
 #define __IPC_HEADER_INCLUDED__
 
+#include <vector>
+#include <array>
+
 struct Particle {
     double x[3], v[3], F[3];
 };
@@ -16,5 +19,7 @@ struct IPC : public IPCbase {
     double eFp1[3], eFp2[3];
 };
 
+typedef std::vector<IPC> Ensemble;
+typedef std::vector<std::array<double, 3>> SpaceVector;
 
 #endif // __IPC_HEADER_INCLUDED__

@@ -9,6 +9,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <cmath>
 
 #include "IPC.hpp"
 #include "IPCpostprocessPotential.hpp"
@@ -27,7 +28,8 @@ private:
     // state point
     int nIPCs;
     double boxSideX, boxSideY, boxSideZ;
-    std::vector<IPC> particles;
+    Ensemble ipcs;
+    SpaceVector ipcOrientations;
     // geometry
     double ipcRadius, patchRadius, patchEccentricity, interactionRange;
 
@@ -36,6 +38,8 @@ private:
     void readFirstConfiguration();
     bool readNewConfiguration();
     void readIPCconfiguration();
+    inline void relativePBC(double & x) {  x -= std::round(x);  }
+    void computeOrientations();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

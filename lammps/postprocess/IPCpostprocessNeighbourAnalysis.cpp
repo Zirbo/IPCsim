@@ -2,23 +2,23 @@
 #include <fstream>
 #include "IPCpostprocessNeighbourAnalysis.hpp"
 
-void IPCneighboursAnalysis::accumulate(IPCpotential const& potential, std::vector<IPC> const & particles) {
-    auto listOfBondedNeighbours = computeListOfBondedNeighbours(potential, particles);
-    computeHistogramOfBondedNeighbours(listOfBondedNeighbours, particles);
+void IPCneighboursAnalysis::accumulate(IPCpotential const& potential, Ensemble const & ipcs) {
+    auto listOfBondedNeighbours = computeListOfBondedNeighbours(potential, ipcs);
+    computeHistogramOfBondedNeighbours(listOfBondedNeighbours, ipcs);
 }
 
 void IPCneighboursAnalysis::print() {
     printHistogramOfBondedNeighbours();
 }
 
-std::vector<std::list<int>> IPCneighboursAnalysis::computeListOfBondedNeighbours(IPCpotential const& potential, std::vector<IPC> const & particles) {
-    const int nIPCs = (int)particles.size();
+std::vector<std::list<int>> IPCneighboursAnalysis::computeListOfBondedNeighbours(IPCpotential const& potential, Ensemble const & ipcs) {
+    const int nIPCs = (int)ipcs.size();
     std::vector<std::list<int>> listOfBondedNeighbours(nIPCs);
 
     for (int i = 0; i < nIPCs; ++i) {
         for (int j = i + 1; j < nIPCs - 1; ++j) {
             //
-            double uij = computePotentialBetweenTwoIPCs(potential, particles[i], particles[j]);
+            double uij = computePotentialBetweenTwoIPCs(potential, ipcs[i], ipcs[j]);
             if (uij < 0.0) {
                 listOfBondedNeighbours[i].push_back(j);
                 listOfBondedNeighbours[j].push_back(i);
@@ -82,16 +82,16 @@ double IPCneighboursAnalysis::computePotentialBetweenTwoIPCs(IPCpotential const&
         } else if (j == 3 || j == 4 || j == 6 || j == 7) {
             uij += potential.uss[dist];
         } else {
-            std::cerr << __func__ << ":: something really shitty is going on in the pair potential computation.";
+            std::cerr << __func__ << ":: something bad happened!";
             exit(1);
         }
     }
     return uij;
 }
 
-void IPCneighboursAnalysis::computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours, std::vector<IPC> const& particles) {
+void IPCneighboursAnalysis::computeHistogramOfBondedNeighbours(std::vector<std::list<int>> const& listOfNeighbours, Ensemble const& ipcs) {
     // compute how many bonded neighbours each particle has
-    int nIPCs = particles.size();
+    int nIPCs = ipcs.size();
     std::vector<int> numberOfNeighbours(nIPCs, 0);
     for (int i = 0; i < nIPCs; ++i)
         numberOfNeighbours[i] = listOfNeighbours[i].size();

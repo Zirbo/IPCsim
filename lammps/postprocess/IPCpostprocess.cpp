@@ -2,11 +2,11 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <cmath>
 #include <algorithm>
 
 #include "IPCpostprocess.hpp"
 #include "IPCpostprocessNeighbourAnalysis.hpp"
+#include "IPCpostprocessOrientationsAnalysis.hpp"
 
 IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename, std::string const& potDirName) {
 
@@ -44,14 +44,20 @@ IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string cons
 
 void IPCpostprocess::run() {
     readFirstConfiguration();
+
     IPCneighboursAnalysis neighbourAnalysis(boxSideX, boxSideY, boxSideZ, interactionRange);
-    neighbourAnalysis.accumulate(potential, particles);
+    IPCorientationsAnalysis orientationsAnalysis;
+
+    neighbourAnalysis.accumulate(potential, ipcs);
+    orientationsAnalysis.accumulate(ipcOrientations);
 
     while (trajectoryFile.peek() != EOF) {
         readNewConfiguration();
-        neighbourAnalysis.accumulate(potential, particles);
+        neighbourAnalysis.accumulate(potential, ipcs);
+        orientationsAnalysis.accumulate(ipcOrientations);
     }
     neighbourAnalysis.print();
+    orientationsAnalysis.print();
 }
 
 void IPCpostprocess::readFirstConfiguration() {
@@ -69,9 +75,11 @@ void IPCpostprocess::readFirstConfiguration() {
     trajectoryFile >> boxSideZ >> boxSideZ;
     trajectoryFile.ignore(200, '\n');
     trajectoryFile.ignore(200, '\n');
-    particles.resize(nIPCs);
+    ipcs.resize(nIPCs);
+    ipcOrientations.resize(nIPCs);
 
     readIPCconfiguration();
+    computeOrientations();
 
     std::cout << timestep << "\n";
 }
@@ -88,6 +96,7 @@ bool IPCpostprocess::readNewConfiguration() {
         trajectoryFile.ignore(200, '\n');
 
     readIPCconfiguration();
+    computeOrientations();
 
     std::cout << timestep << "\n";
     return true;
@@ -96,7 +105,7 @@ bool IPCpostprocess::readNewConfiguration() {
 void IPCpostprocess::readIPCconfiguration() {
     int dummy;
     int ipcNumber;
-    for ( IPC &ipc: particles) {
+    for ( IPC &ipc: ipcs) {
         trajectoryFile >> ipcNumber >> dummy
                 >> ipc.ipcCenter.x[0] >> ipc.ipcCenter.x[1] >> ipc.ipcCenter.x[2]
                 >> dummy >> dummy
@@ -106,10 +115,29 @@ void IPCpostprocess::readIPCconfiguration() {
 
         ipc.number = ipcNumber/3;
         ipc.type = 'C';
-        /*for (int i: {0, 1, 2}) {
-            ipc.ipcCenter.x[i] /= boxSideX;
-            ipc.firstPatch.x[i] /= boxSideY;
-            ipc.secndPatch.x[i] /= boxSideZ;
-        }*/
+    }
+}
+
+void IPCpostprocess::computeOrientations() {
+    const double norm[3] = {boxSideX/patchEccentricity, boxSideY/patchEccentricity, boxSideZ/patchEccentricity};
+
+    int checkSum;
+    for (IPC ipc: ipcs) {
+        if (ipc.number < 3)
+            checkSum = 0.;
+        for (int d: {0, 1, 2}) {
+            ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
+            relativePBC(ipcOrientations[ipc.number][d]);
+            ipcOrientations[ipc.number][d] *= norm[d];
+            if (ipc.number < 3)
+                checkSum += std::pow(ipcOrientations[ipc.number][d],2);
+        }
+        if (ipc.number < 3) {
+            //checkSum = std::sqrt(checkSum);
+            if (std::fabs(checkSum - 1.0) > 1e-5) {
+                std::cerr << __func__ << ":: something bad happened!";
+                exit(1);
+            }
+        }
     }
 }
