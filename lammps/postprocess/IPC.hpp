@@ -8,18 +8,18 @@ struct Particle {
     double x[3], v[3], F[3];
 };
 
-struct IPCbase {
+struct IPC {
   Particle ipcCenter;
+  Particle firstPatch, secndPatch;
+  double eFp1[3], eFp2[3];
   char type;
   int number;
 };
 
-struct IPC : public IPCbase {
-    Particle firstPatch, secndPatch;
-    double eFp1[3], eFp2[3];
-};
-
 typedef std::vector<IPC> Ensemble;
-typedef std::vector<std::array<double, 3>> SpaceVector;
+typedef std::array<double, 3> Triad;
+typedef std::vector<std::array<double, 3>> VectorOfTriads;
+
+const Triad DIMENSIONS = {0, 1, 2};
 
 #endif // __IPC_HEADER_INCLUDED__

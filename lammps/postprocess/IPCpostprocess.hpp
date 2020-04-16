@@ -27,9 +27,9 @@ private:
     std::ifstream trajectoryFile;
     // state point
     int nIPCs;
-    double boxSideX, boxSideY, boxSideZ;
+    Triad boxSide;
     Ensemble ipcs;
-    SpaceVector ipcOrientations;
+    VectorOfTriads ipcOrientations;
     // geometry
     double ipcRadius, patchRadius, patchEccentricity, interactionRange;
 
@@ -40,6 +40,7 @@ private:
     void readIPCconfiguration();
     inline void relativePBC(double & x) {  x -= std::round(x);  }
     void computeOrientations();
+    void computePerfectOrientations();
 };
 
 #endif //__IPCPOSTPROCESS_HEADER_INCLUDED__

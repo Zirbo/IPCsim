@@ -4,17 +4,9 @@
 
 #include "IPCpostprocessOrientationsAnalysis.hpp"
 
-void IPCorientationsAnalysis::accumulate(SpaceVector const& ipcOrientations) {
-    accumulateOrientationsHistogram(ipcOrientations);
-}
-void IPCorientationsAnalysis::print() {
-    printOrientationsHistogram();
-}
-
-void IPCorientationsAnalysis::accumulateOrientationsHistogram(SpaceVector const& ipcOrientations) {
+void IPCorientationsAnalysis::accumulate(VectorOfTriads const& ipcOrientations) {
     // polar -> angle with the z-axis; azimuth -> angle with the x-axis
     // accumulute in a histogram the polar and azimuth angles of each IPC
-    // we assume patch symmetry, so at the moment if cosPolar < 0 we do polar += pi/2 and azimuth += pi
     const double binSize = M_PI/orientationHistogramSize;
 
     for (auto const& ipcOrientation: ipcOrientations) {
@@ -22,6 +14,7 @@ void IPCorientationsAnalysis::accumulateOrientationsHistogram(SpaceVector const&
         const double polarScaling = 1./std::sin(polarAngle);
         double azimuthAngle = M_PI + std::atan2(ipcOrientation[1]*polarScaling, ipcOrientation[0]*polarScaling);
 
+        // we assume patch symmetry, so if cosPolar < 0 we do polar += pi/2 and azimuth += pi
 /*        if (ipcOrientation[2] < 0) {
             polarAngle = M_PI - polarAngle;
             azimuthAngle += M_PI;
@@ -37,8 +30,8 @@ void IPCorientationsAnalysis::accumulateOrientationsHistogram(SpaceVector const&
     ++totalSamples;
 }
 
-void IPCorientationsAnalysis::printOrientationsHistogram() {
-    std::ofstream outputFile("orientationsHistogram.out");
+void IPCorientationsAnalysis::print(std::string const& outputFileName) {
+    std::ofstream outputFile(outputFileName);
     outputFile << std::scientific << std::setprecision(6);
 
     double norm = 1./totalSamples;

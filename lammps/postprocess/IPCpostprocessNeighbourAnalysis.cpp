@@ -7,10 +7,6 @@ void IPCneighboursAnalysis::accumulate(IPCpotential const& potential, Ensemble c
     computeHistogramOfBondedNeighbours(listOfBondedNeighbours, ipcs);
 }
 
-void IPCneighboursAnalysis::print() {
-    printHistogramOfBondedNeighbours();
-}
-
 std::vector<std::list<int>> IPCneighboursAnalysis::computeListOfBondedNeighbours(IPCpotential const& potential, Ensemble const & ipcs) {
     const int nIPCs = (int)ipcs.size();
     std::vector<std::list<int>> listOfBondedNeighbours(nIPCs);
@@ -31,52 +27,50 @@ std::vector<std::list<int>> IPCneighboursAnalysis::computeListOfBondedNeighbours
 double IPCneighboursAnalysis::computePotentialBetweenTwoIPCs(IPCpotential const& potential, IPC const& firstIPC, IPC const& secndIPC) {
 
     // compute center-center distance
-    double centerCenterSeparation[3];
-    for (int i: {0, 1, 2}) {
-        centerCenterSeparation[i] = firstIPC.ipcCenter.x[i] - secndIPC.ipcCenter.x[i];
-        relativePBC(centerCenterSeparation[i]);
+    double centerCenterDistance = 0.;
+    for (int d: DIMENSIONS) {
+        double centerCenterSeparation = firstIPC.ipcCenter.x[d] - secndIPC.ipcCenter.x[d];
+        relativePBC(centerCenterSeparation);
+        centerCenterDistance += std::pow(boxSide[d]*centerCenterSeparation, 2);
     }
-    double centerCenterSeparationModulus = std::pow(boxSideX*centerCenterSeparation[0], 2)
-                                         + std::pow(boxSideY*centerCenterSeparation[1], 2)
-                                         + std::pow(boxSideZ*centerCenterSeparation[2], 2);
-    centerCenterSeparationModulus = std::sqrt(centerCenterSeparationModulus);
+    centerCenterDistance = std::sqrt(centerCenterDistance);
 
     // if the CENTERS are too far, no interactions, skip this couple of IPCs
-    if (centerCenterSeparationModulus >= interactionRange)
+    if (centerCenterDistance >= interactionRange)
         return 0.0;
 
     // we are inside the interaction range; compute the interaction between centers
     double uij = 0.0;
-    const size_t centerCenterDistance = size_t( centerCenterSeparationModulus/potential.spacing );
-    uij += potential.uBB[centerCenterDistance];
+    const size_t dist = size_t( centerCenterDistance/potential.spacing );
+    uij += potential.uBB[dist];
 
     // compute all the other 8 site-site separations
     double siteSiteSeparation[8][3];
-    for (int i: {0, 1, 2}) {
-        siteSiteSeparation[0][i] = firstIPC.ipcCenter.x[i]  - secndIPC.firstPatch.x[i];
-        siteSiteSeparation[1][i] = firstIPC.ipcCenter.x[i]  - secndIPC.secndPatch.x[i];
-        siteSiteSeparation[2][i] = firstIPC.firstPatch.x[i] - secndIPC.ipcCenter.x[i];
-        siteSiteSeparation[3][i] = firstIPC.firstPatch.x[i] - secndIPC.firstPatch.x[i];
-        siteSiteSeparation[4][i] = firstIPC.firstPatch.x[i] - secndIPC.secndPatch.x[i];
-        siteSiteSeparation[5][i] = firstIPC.secndPatch.x[i] - secndIPC.ipcCenter.x[i];
-        siteSiteSeparation[6][i] = firstIPC.secndPatch.x[i] - secndIPC.firstPatch.x[i];
-        siteSiteSeparation[7][i] = firstIPC.secndPatch.x[i] - secndIPC.secndPatch.x[i];
+    for (int d: DIMENSIONS) {
+        siteSiteSeparation[0][d] = firstIPC.ipcCenter.x[d]  - secndIPC.firstPatch.x[d];
+        siteSiteSeparation[1][d] = firstIPC.ipcCenter.x[d]  - secndIPC.secndPatch.x[d];
+        siteSiteSeparation[2][d] = firstIPC.firstPatch.x[d] - secndIPC.ipcCenter.x[d];
+        siteSiteSeparation[3][d] = firstIPC.firstPatch.x[d] - secndIPC.firstPatch.x[d];
+        siteSiteSeparation[4][d] = firstIPC.firstPatch.x[d] - secndIPC.secndPatch.x[d];
+        siteSiteSeparation[5][d] = firstIPC.secndPatch.x[d] - secndIPC.ipcCenter.x[d];
+        siteSiteSeparation[6][d] = firstIPC.secndPatch.x[d] - secndIPC.firstPatch.x[d];
+        siteSiteSeparation[7][d] = firstIPC.secndPatch.x[d] - secndIPC.secndPatch.x[d];
         for (int j = 0; j < 8; ++j)
-            relativePBC(siteSiteSeparation[j][i]);
+            relativePBC(siteSiteSeparation[j][d]);
     }
 
     // compute all the other 8 site-site interactions
     for (int j = 0; j < 8; ++j) {
-        double siteSiteSeparationModulus = std::pow(boxSideX*siteSiteSeparation[j][0], 2)
-                                         + std::pow(boxSideY*siteSiteSeparation[j][1], 2)
-                                         + std::pow(boxSideZ*siteSiteSeparation[j][2], 2);
-        siteSiteSeparationModulus = std::sqrt(siteSiteSeparationModulus);
+        double siteSiteDistance = 0.;
+        for (int d: DIMENSIONS)
+            siteSiteDistance += std::pow(boxSide[d]*siteSiteSeparation[j][d], 2);
+        siteSiteDistance = std::sqrt(siteSiteDistance);
 
         // if we are too far, no interaction, skip to the next site-site pair
-        if (siteSiteSeparationModulus >= interactionRange)
+        if (siteSiteDistance >= interactionRange)
             continue;
 
-        const size_t dist = size_t( siteSiteSeparationModulus/potential.spacing );
+        const size_t dist = size_t( siteSiteDistance/potential.spacing );
         if (j == 0 || j == 1 || j == 2 || j == 5) {
             uij += potential.uBs[dist];
         } else if (j == 3 || j == 4 || j == 6 || j == 7) {
@@ -119,9 +113,9 @@ void IPCneighboursAnalysis::computeHistogramOfBondedNeighbours(std::vector<std::
     totalSamples++;
 }
 
-void IPCneighboursAnalysis::printHistogramOfBondedNeighbours() {
+void IPCneighboursAnalysis::print(std::string const& outputFileName) {
     const double norm = 1./totalSamples;
-    std::ofstream averageNumberOfNeighboursFile("numberOfBondedNeighbours.out");
+    std::ofstream averageNumberOfNeighboursFile(outputFileName);
     //averageNumberOfNeighboursFile << std::scientific << std::setprecision(2);
 
     for(auto n: histogramOfBondedNeighbours) {

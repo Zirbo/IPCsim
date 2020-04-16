@@ -13,8 +13,8 @@ public:
         : orientationHistogramSize(40) {
         orientationsHistogram.resize(orientationHistogramSize, std::vector<double>(2*orientationHistogramSize, 0.));
     }
-    void accumulate(SpaceVector const& ipcOrientations);
-    void print();
+    void accumulate(VectorOfTriads const& ipcOrientations);
+    void print(std::string const& outputFileName);
 
 private:
     std::vector<std::vector<double>> orientationsHistogram;
@@ -22,10 +22,6 @@ private:
     int totalSamples;
 
     inline void relativePBC(double & x) {  x -= std::round(x);  }
-
-    void accumulateOrientationsHistogram(SpaceVector const& ipcOrientations);
-    void printOrientationsHistogram();
-
 };
 
 #endif //__IPCPOSTPROCESS_ORIENTATIONSANALYSIS_HEADER_INCLUDED__

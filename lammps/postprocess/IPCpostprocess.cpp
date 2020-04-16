@@ -45,7 +45,7 @@ IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string cons
 void IPCpostprocess::run() {
     readFirstConfiguration();
 
-    IPCneighboursAnalysis neighbourAnalysis(boxSideX, boxSideY, boxSideZ, interactionRange);
+    IPCneighboursAnalysis neighbourAnalysis(boxSide, interactionRange);
     IPCorientationsAnalysis orientationsAnalysis;
 
     neighbourAnalysis.accumulate(potential, ipcs);
@@ -56,8 +56,8 @@ void IPCpostprocess::run() {
         neighbourAnalysis.accumulate(potential, ipcs);
         orientationsAnalysis.accumulate(ipcOrientations);
     }
-    neighbourAnalysis.print();
-    orientationsAnalysis.print();
+    neighbourAnalysis.print("orientationAnalysis.out");
+    orientationsAnalysis.print("orientationAnalysis.out");
 }
 
 void IPCpostprocess::readFirstConfiguration() {
@@ -70,9 +70,9 @@ void IPCpostprocess::readFirstConfiguration() {
     nIPCs /=3;
     trajectoryFile.ignore(200, '\n');
     trajectoryFile.ignore(200, '\n');
-    trajectoryFile >> boxSideX >> boxSideX;
-    trajectoryFile >> boxSideY >> boxSideY;
-    trajectoryFile >> boxSideZ >> boxSideZ;
+    trajectoryFile >> boxSide[0] >> boxSide[0];
+    trajectoryFile >> boxSide[1] >> boxSide[1];
+    trajectoryFile >> boxSide[2] >> boxSide[2];
     trajectoryFile.ignore(200, '\n');
     trajectoryFile.ignore(200, '\n');
     ipcs.resize(nIPCs);
@@ -118,14 +118,14 @@ void IPCpostprocess::readIPCconfiguration() {
     }
 }
 
-void IPCpostprocess::computeOrientations() {
-    const double norm[3] = {boxSideX/patchEccentricity, boxSideY/patchEccentricity, boxSideZ/patchEccentricity};
+void IPCpostprocess::computePerfectOrientations() {
+    const double norm[3] = {boxSide[0]/patchEccentricity, boxSide[1]/patchEccentricity, boxSide[2]/patchEccentricity};
 
     double checkSum;
     for (IPC ipc: ipcs) {
         if (ipc.number < 3)
             checkSum = 0.;
-        for (int d: {0, 1, 2}) {
+        for (int d: DIMENSIONS) {
             ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
             relativePBC(ipcOrientations[ipc.number][d]);
             ipcOrientations[ipc.number][d] *= norm[d];
@@ -140,5 +140,21 @@ void IPCpostprocess::computeOrientations() {
                 exit(1);
             }
         }
+    }
+}
+
+void IPCpostprocess::computeOrientations() {
+    for (IPC ipc: ipcs) {
+        double norm = 0.;
+        for (int d: DIMENSIONS) {
+            ipcOrientations[ipc.number][d] = ipc.firstPatch.x[d] - ipc.ipcCenter.x[d];
+            relativePBC(ipcOrientations[ipc.number][d]);
+            norm += std::pow(ipcOrientations[ipc.number][d],2);
+        }
+        norm = std::pow(norm, -0.5);
+        for (int d: DIMENSIONS) {
+            ipcOrientations[ipc.number][d] *= norm;
+        }
+
     }
 }
