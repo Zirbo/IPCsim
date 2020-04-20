@@ -7,6 +7,7 @@
 #include "IPCpostprocess.hpp"
 #include "IPCpostprocessNeighbourAnalysis.hpp"
 #include "IPCpostprocessOrientationsAnalysis.hpp"
+#include "IPCpairCorrelation.hpp"
 
 IPCpostprocess::IPCpostprocess(std::string const& trajFilename, std::string const& inputFilename, std::string const& potDirName) {
 
@@ -47,17 +48,21 @@ void IPCpostprocess::run() {
 
     IPCneighboursAnalysis neighbourAnalysis(boxSide, interactionRange);
     IPCorientationsAnalysis orientationsAnalysis;
+    IPCisotropicPairCorrelationFunction g_r(50, boxSide, nIPCs);
 
     neighbourAnalysis.accumulate(potential, ipcs);
     orientationsAnalysis.accumulate(ipcOrientations);
+    g_r.accumulate(ipcs);
 
     while (trajectoryFile.peek() != EOF) {
         readNewConfiguration();
         neighbourAnalysis.accumulate(potential, ipcs);
         orientationsAnalysis.accumulate(ipcOrientations);
+        g_r.accumulate(ipcs);
     }
     neighbourAnalysis.print("orientationAnalysis.out");
     orientationsAnalysis.print("orientationAnalysis.out");
+    g_r.print("g_r.out");
 }
 
 void IPCpostprocess::readFirstConfiguration() {
